@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "models": [
+    {
+      "id": "sensevoice-small-local",
+      "task": "transcription",
+      "name": "SenseVoice Small INT8",
+      "languages": ["zh", "en", "yue", "ja", "ko"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2",
+      "archive_name": "sensevoice-small-int8.tar.bz2",
+      "archive_sha256": "7d1efa2138a65b0b488df37f8b89e3d91a60676e416f515b952358d83dfd347e",
+      "required_files": ["model.int8.onnx", "tokens.txt", "LICENSE"],
+      "model_file": "model.int8.onnx",
+      "tokens_file": "tokens.txt",
+      "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution."
+    },
+    {
+      "id": "melo-tts-zh-en-local",
+      "task": "speech",
+      "name": "MeloTTS Chinese and English VITS ONNX",
+      "languages": ["zh", "en"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
+      "archive_name": "melo-tts-zh-en.tar.bz2",
+      "archive_sha256": "e58351ed7149f290a54534538badd4077cdbe6fddc964b24d0bee870415d1514",
+      "required_files": ["model.onnx", "lexicon.txt", "tokens.txt", "LICENSE"],
+      "model_file": "model.onnx",
+      "lexicon_file": "lexicon.txt",
+      "tokens_file": "tokens.txt",
+      "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution."
+    }
+  ]
+}
