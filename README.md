@@ -30,7 +30,7 @@ Local speech tools often require separate runtimes, model formats, and APIs for 
 | STT | SenseVoice Small INT8: Chinese, English, Cantonese, Japanese, Korean |
 | TTS | Melo VITS ONNX: Chinese and English; WAV output |
 | API | OpenAPI/Swagger UI, file transcription, speech synthesis, model/catalog and runtime status |
-| Model management | List and install catalog models from fixed HTTPS URLs; no GUI yet |
+| Model management | Catalog, resumable install jobs, activation, uninstall, and offline import/export; no GUI |
 | GPU | Not enabled in the current release |
 | Streaming | Not exposed as a SmartVoice API yet |
 
@@ -49,6 +49,8 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m smartvoice --host 127.0.0.1 --port 8000
 ```
 
+For persistent settings, copy [`config/smartvoice.example.json`](config/smartvoice.example.json), edit it, and start with `--config path\to\smartvoice.json`. The same config can be selected for model commands using `python -m smartvoice models --config path\to\smartvoice.json list`.
+
 The first model install requires internet access. Once the model files are installed, transcription and synthesis run locally without a network connection. Model weights are stored outside the repository in the user data directory (`%LOCALAPPDATA%\SmartVoice` by default); set `SMARTVOICE_HOME` to use another location.
 
 `models list` prints a readable summary by default. Add `--json` when piping catalog output to scripts.
@@ -62,11 +64,19 @@ Start the service, then open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/
 | Endpoint | Description |
 |---|---|
 | `GET /health` | Process liveness and version |
-| `GET /ready` | Readiness; reports missing required models |
+| `GET /ready` | Readiness by required task; reports available models |
 | `GET /v1/capabilities` | Installed task, language, and model capabilities |
 | `GET /v1/runtime` | Backend, requested/actual device, runtime status |
 | `GET /v1/models` | Installed models |
 | `GET /v1/catalog` | Models available from the built-in catalog |
+| `POST /v1/models/{id}/download` | Start a background catalog model download/install job |
+| `GET /v1/jobs/{job_id}` | Read download progress and result |
+| `DELETE /v1/jobs/{job_id}` | Cancel a download; retrying install resumes partial data |
+| `PUT /v1/models/{id}/activation` | Select the default model for its task |
+| `DELETE /v1/models/{id}/activation` | Clear the default selection for its task |
+| `DELETE /v1/models/{id}` | Uninstall a model not loaded by the service |
+| `GET /v1/models/{id}/export` | Download a verified offline model package |
+| `POST /v1/models/import` | Import and verify an offline model package |
 | `POST /v1/audio/transcriptions` | Transcribe an uploaded audio file (`multipart/form-data`) |
 | `POST /v1/audio/speech` | Synthesize text to WAV (`application/json`) |
 
@@ -90,7 +100,20 @@ curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
   --output speech.wav
 ```
 
-The current TTS model supports Chinese and English and returns mono WAV audio. Audio input is processed in memory; inference requests do not write uploaded audio to disk, and request bodies are not logged.
+The current TTS model supports Chinese and English and returns mono WAV audio. Uploaded audio is not persistently stored; multipart parsing may use a temporary spool file, which is closed after request handling. Request bodies are not logged.
+
+An explicit TTS `language` is validated against the dominant text script and returned as request metadata. The current bilingual model derives pronunciation from the text itself; the parameter does not switch an internal model language mode.
+
+### Manage models
+
+The CLI supports `models list`, `install`, `activate`, `deactivate`, `uninstall`, `export`, and `import`. Interrupted downloads retain a partial archive and resume on a subsequent `install` when the HTTPS server supports byte ranges. The API uses background jobs for downloads; use the job ID to poll status or cancel. Uninstall is refused while the current service has the model loaded. Model archives and offline packages are validated before being made available.
+
+```powershell
+python -m smartvoice models activate sensevoice-small-local
+python -m smartvoice models export sensevoice-small-local .\sensevoice.smartvoice.zip
+python -m smartvoice models import .\sensevoice.smartvoice.zip
+python -m smartvoice models uninstall sensevoice-small-local
+```
 
 ## Architecture
 
@@ -139,23 +162,35 @@ catalog/       Pinned model metadata and download sources
 src/           SmartVoice API, domain contracts, services, and adapters
 tests/         API, catalog, and optional real-inference tests
 examples/      Local STT evaluation helper and manifest template
+benchmarks/    Benchmark runner, config/, result/, and log/
+config/        Example service configuration
 doc/           Industry research and product requirements
 assets/        Project logo
 ```
 
 ## Roadmap
 
-- [x] Windows CPU source-run prototype for local STT and TTS
-- [x] Versioned API routes and OpenAPI documentation
+### Core features
+
+- [x] Local STT and TTS prototype behind versioned API routes with OpenAPI documentation
 - [x] Fixed-source model catalog with archive and file integrity checks
-- [ ] Set first-release Windows hardware, language, quality, and performance baselines
+- [x] Record an initial Windows CPU performance and resource benchmark for the current model pair
+- [ ] Expand the validated model catalog and set representative quality thresholds and minimum-hardware targets
+- [x] Add model lifecycle jobs, cancellation/resume, activation, uninstall, and offline import/export
 - [ ] Add alternative inference/runtime adapters without changing the client contract
-- [ ] Evaluate and validate GPU providers
-- [ ] Add model lifecycle jobs, cancellation/resume, and offline model import/export
 - [ ] Evaluate streaming STT and an optional MCP adapter
+
+### Platform and hardware support
+
+- [x] Windows x64 CPU source-run prototype
+- [x] Capture a reproducible Windows CPU benchmark run (not a minimum-hardware commitment)
+- [ ] Define supported hardware targets and runtime compatibility matrix
+- [ ] Evaluate and validate GPU providers
 - [ ] Add macOS, Linux, and Android platform adapters
 
 See the [implementation plan](doc/implementation-plan.md), [industry research](doc/industry-research.md), and [requirements specification](doc/requirements-spec.md) for design rationale and acceptance criteria.
+
+Windows CPU benchmark instructions, configuration, and reports are maintained under [`benchmarks/`](benchmarks/windows-cpu-benchmark.md).
 
 ## Contributing
 

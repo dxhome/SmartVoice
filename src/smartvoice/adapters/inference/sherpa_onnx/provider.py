@@ -12,8 +12,15 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from smartvoice.config.settings import Settings
-from smartvoice.domain.errors import InferenceError, InvalidAudioError, InvalidRequestError, ModelUnavailableError
-from smartvoice.services.model_catalog import get_model_spec, installed_models
+from smartvoice.domain.errors import (
+    InferenceError,
+    InvalidAudioError,
+    InvalidRequestError,
+    ModelUnavailableError,
+    SpeechOutputTooLargeError,
+)
+from smartvoice.services.model_catalog import active_model_ids, get_model_spec, installed_models
+from smartvoice.services.host_metrics import host_info, process_metrics, system_memory_info
 
 STT_MODEL_ID = "sensevoice-small-local"
 TTS_MODEL_ID = "melo-tts-zh-en-local"
@@ -41,6 +48,14 @@ class SherpaOnnxProvider:
             verified.append(model)
         return verified
 
+    def is_model_loaded(self, model_id: str) -> bool:
+        with self._lock:
+            if model_id == STT_MODEL_ID:
+                return bool(self._recognizers)
+            if model_id == TTS_MODEL_ID:
+                return self._tts is not None
+            return False
+
     def runtime(self) -> dict[str, object]:
         models = self.installed_models()
         return {
@@ -49,8 +64,12 @@ class SherpaOnnxProvider:
             "actual_device": "cpu" if self.settings.provider == "cpu" else None,
             "provider_status": "available" if self.settings.provider == "cpu" else "unsupported",
             "installed_model_count": len(models),
+            "active_models": active_model_ids(self.settings),
             "runtime_version": self._runtime_version(),
             "reason": None if self.settings.provider == "cpu" else "The initial release supports CPU only.",
+            "host": host_info(),
+            "system_memory": system_memory_info(),
+            "process": process_metrics(),
         }
 
     def capabilities(self) -> dict[str, object]:
@@ -62,18 +81,25 @@ class SherpaOnnxProvider:
             tasks.append({"task": "speech", "model": TTS_MODEL_ID, "languages": ["zh", "en"], "voices": ["default"], "streaming": False})
         return {"api_version": "v1", "capability_schema_version": "1.0", "backend": "sherpa-onnx", "tasks": tasks}
 
-    def transcribe(self, audio: bytes, language: str = "auto") -> dict[str, object]:
+    def transcribe(
+        self, audio: bytes, language: str = "auto", model_id: str = STT_MODEL_ID
+    ) -> dict[str, object]:
         import av
         import numpy as np
 
-        model_dir = self._model_dir(STT_MODEL_ID)
-        spec = get_model_spec(STT_MODEL_ID)
+        if model_id != STT_MODEL_ID:
+            raise InvalidRequestError(f"The active sherpa-onnx adapter does not support STT model {model_id!r}.")
+        model_dir = self._model_dir(model_id)
+        spec = get_model_spec(model_id)
         model_path = self._manifest_path(model_dir, spec.model_file)
         tokens_path = self._manifest_path(model_dir, spec.tokens_file)
         try:
             samples = self._decode_audio(av, audio, self.settings.max_audio_seconds)
         except Exception as exc:
-            raise InvalidAudioError("Could not decode this audio. Try a valid WAV, MP3, M4A, or FLAC file.") from exc
+            raise InvalidAudioError(
+                "Could not decode this audio. Try a valid WAV, MP3, M4A, or FLAC file.",
+                detail=type(exc).__name__,
+            ) from exc
         if samples.size == 0:
             raise InvalidAudioError("The uploaded audio is empty.")
         duration = samples.size / TARGET_SAMPLE_RATE
@@ -95,7 +121,7 @@ class SherpaOnnxProvider:
             "text": result.text,
             "language": self._normalize_language(getattr(result, "lang", None)) or (language if language != "auto" else None),
             "duration": round(duration, 3),
-            "model": STT_MODEL_ID,
+            "model": model_id,
             "device": "cpu",
             "processing_seconds": round(elapsed, 3),
             "rtf": round(elapsed / duration, 4) if duration else None,
@@ -138,13 +164,17 @@ class SherpaOnnxProvider:
         finally:
             container.close()
 
-    def synthesize(self, text: str, voice: str = "default", speed: float = 1.0) -> tuple[bytes, int, float]:
+    def synthesize(
+        self, text: str, voice: str = "default", speed: float = 1.0, model_id: str = TTS_MODEL_ID
+    ) -> tuple[bytes, int, float]:
         import numpy as np
 
+        if model_id != TTS_MODEL_ID:
+            raise InvalidRequestError(f"The active sherpa-onnx adapter does not support TTS model {model_id!r}.")
         if voice not in {"default", "0"}:
             raise InvalidRequestError("The selected voice is not available in the installed TTS model.")
-        model_dir = self._model_dir(TTS_MODEL_ID)
-        spec = get_model_spec(TTS_MODEL_ID)
+        model_dir = self._model_dir(model_id)
+        spec = get_model_spec(model_id)
         model_path = self._manifest_path(model_dir, spec.model_file)
         lexicon_path = self._manifest_path(model_dir, spec.lexicon_file or "")
         tokens_path = self._manifest_path(model_dir, spec.tokens_file)
@@ -152,14 +182,31 @@ class SherpaOnnxProvider:
             try:
                 tts = self._get_tts(model_path, lexicon_path, tokens_path)
                 start = time.perf_counter()
-                generated = tts.generate(text, sid=0, speed=speed)
+                text_chunks = self._split_tts_text(text, 200)
+                audio_chunks = []
+                sample_rate = 0
+                total_samples = 0
+                for text_chunk in text_chunks:
+                    generated = tts.generate(text_chunk, sid=0, speed=speed)
+                    chunk_samples = np.asarray(generated.samples, dtype=np.float32)
+                    chunk_sample_rate = int(generated.sample_rate)
+                    if chunk_samples.size == 0 or chunk_sample_rate <= 0:
+                        raise InferenceError("The TTS runtime returned empty audio.")
+                    if sample_rate and chunk_sample_rate != sample_rate:
+                        raise InferenceError("The TTS runtime changed sample rate between text segments.")
+                    sample_rate = chunk_sample_rate
+                    total_samples += chunk_samples.size
+                    duration_so_far = total_samples / sample_rate
+                    pcm_bytes_so_far = total_samples * 2 + 44
+                    if duration_so_far > self.settings.max_tts_audio_seconds or pcm_bytes_so_far > self.settings.max_tts_output_bytes:
+                        raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio output limit.")
+                    audio_chunks.append(chunk_samples)
                 elapsed = time.perf_counter() - start
+            except SpeechOutputTooLargeError:
+                raise
             except Exception as exc:
                 raise InferenceError("Speech synthesis failed.", detail=type(exc).__name__) from exc
-        samples = np.asarray(generated.samples, dtype=np.float32)
-        sample_rate = int(generated.sample_rate)
-        if samples.size == 0 or sample_rate <= 0:
-            raise InferenceError("The TTS runtime returned empty audio.")
+        samples = np.concatenate(audio_chunks)
         duration = samples.size / sample_rate
         pcm = np.clip(samples, -1.0, 1.0)
         pcm = (pcm * 32767.0).astype("<i2", copy=False)
@@ -170,6 +217,23 @@ class SherpaOnnxProvider:
             wav.setframerate(sample_rate)
             wav.writeframes(pcm.tobytes())
         return output.getvalue(), sample_rate, duration
+
+    @staticmethod
+    def _split_tts_text(text: str, max_characters: int) -> list[str]:
+        chunks = []
+        start = 0
+        sentence_boundaries = "。！？!?；;"
+        while start < len(text):
+            end = min(start + max_characters, len(text))
+            if end < len(text):
+                boundary = max(text.rfind(mark, start + 1, end) for mark in sentence_boundaries)
+                if boundary <= start:
+                    boundary = text.rfind(" ", start + 1, end)
+                if boundary > start:
+                    end = boundary + 1
+            chunks.append(text[start:end])
+            start = end
+        return chunks
 
     def _get_recognizer(self, model_path: Path, tokens_path: Path, language: str):
         if language not in {"auto", "zh", "en", "ja", "ko", "yue"}:

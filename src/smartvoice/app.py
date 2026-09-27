@@ -2,6 +2,7 @@
 
 import logging
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -11,6 +12,9 @@ from smartvoice import __version__
 from smartvoice.api.v1.routes import get_request_id, router as v1_router
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import SmartVoiceError
+from smartvoice.services.host_metrics import process_metrics
+from smartvoice.services.inference_queue import InferenceQueue
+from smartvoice.services.model_jobs import ModelJobManager
 
 logger = logging.getLogger("smartvoice.api")
 if not logger.handlers:
@@ -39,13 +43,24 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
         from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 
         provider = SherpaOnnxProvider(settings)
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        yield
+        application.state.model_jobs.cancel_all()
+
+    logger.setLevel(getattr(logging, settings.log_level, logging.INFO))
     app = FastAPI(
         title="SmartVoice API",
         description="Local Chinese and English speech API powered by optional sherpa-onnx models.",
         version=__version__,
+        lifespan=lifespan,
     )
     app.state.settings = settings
     app.state.provider = provider
+    app.state.inference_queue = InferenceQueue(
+        settings.max_concurrent_inference, settings.max_queued_inference
+    )
+    app.state.model_jobs = ModelJobManager(settings)
     app.include_router(v1_router)
 
     @app.exception_handler(RequestValidationError)
@@ -70,6 +85,12 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
 
     @app.exception_handler(SmartVoiceError)
     async def smartvoice_error_handler(request: Request, exc: SmartVoiceError) -> JSONResponse:
+        log_method = logger.error if exc.http_status >= 500 else logger.warning
+        log_method(
+            "smartvoice_error request_id=%s method=%s path=%s status=%d code=%s diagnostic=%s",
+            getattr(request.state, "request_id", "unknown"), request.method, request.url.path,
+            exc.http_status, exc.code, exc.detail or "-",
+        )
         return JSONResponse(
             status_code=exc.http_status,
             content={
@@ -103,13 +124,25 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
     async def attach_request_id(request: Request, call_next):
         request.state.request_id = get_request_id(request)
         started = time.perf_counter()
+        before = process_metrics()
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
         duration_ms = (time.perf_counter() - started) * 1000
+        after = process_metrics()
+        cpu_seconds = max(0.0, float(after["cpu_time_seconds"]) - float(before["cpu_time_seconds"]))
+        response.headers["X-Process-CPU-Time-Seconds"] = f"{cpu_seconds:.6f}"
+        for key, header in (
+            ("working_set_bytes", "X-Process-Working-Set-Bytes"),
+            ("peak_working_set_bytes", "X-Process-Peak-Working-Set-Bytes"),
+        ):
+            if key in after:
+                response.headers[header] = str(after[key])
         log_method = logger.warning if response.status_code >= 400 else logger.info
         log_method(
-            "request_completed request_id=%s method=%s path=%s status=%d duration_ms=%.1f",
+            "request_completed request_id=%s method=%s path=%s status=%d duration_ms=%.1f model=%s device=%s cpu_seconds=%.4f working_set_bytes=%s",
             request.state.request_id, request.method, request.url.path, response.status_code, duration_ms,
+            getattr(request.state, "model_id", "-"), getattr(request.state, "actual_device", "-"),
+            cpu_seconds, after.get("working_set_bytes", "unknown"),
         )
         return response
 
@@ -120,15 +153,19 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
 
     @app.get("/ready", tags=["service"])
     async def readiness() -> JSONResponse:
-        installed_ids = {str(model["id"]) for model in app.state.provider.installed_models()}
-        required = {"sensevoice-small-local", "melo-tts-zh-en-local"}
-        missing = sorted(required - installed_ids)
+        installed = app.state.provider.installed_models()
+        available_tasks = sorted({str(model.get("task")) for model in installed if model.get("task")})
+        required_tasks = {"transcription", "speech"}
+        missing = sorted(required_tasks - set(available_tasks))
+        runtime = app.state.provider.runtime()
         return JSONResponse(
             status_code=503 if missing else 200,
             content={
                 "status": "not_ready" if missing else "ready",
-                "inference_backend": "sherpa-onnx",
-                "reasons": [f"model_not_installed:{model_id}" for model_id in missing],
+                "inference_backend": runtime.get("backend"),
+                "available_tasks": available_tasks,
+                "available_models": [str(model.get("id")) for model in installed],
+                "reasons": [f"model_not_available_for_task:{task}" for task in missing],
             },
         )
 

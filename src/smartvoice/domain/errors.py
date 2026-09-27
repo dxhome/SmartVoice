@@ -16,6 +16,31 @@ class ModelUnavailableError(SmartVoiceError):
     http_status = 503
 
 
+class InferenceOverloadedError(SmartVoiceError):
+    code = "inference_overloaded"
+    http_status = 503
+
+
+class InferenceTimeoutError(SmartVoiceError):
+    code = "inference_timeout"
+    http_status = 504
+
+
+class AudioTooLargeError(SmartVoiceError):
+    code = "file_too_large"
+    http_status = 413
+
+
+class SpeechOutputTooLargeError(SmartVoiceError):
+    code = "speech_output_too_large"
+    http_status = 413
+
+
+class PayloadTooLargeError(SmartVoiceError):
+    code = "payload_too_large"
+    http_status = 413
+
+
 class InvalidAudioError(SmartVoiceError):
     code = "invalid_audio"
     http_status = 422
