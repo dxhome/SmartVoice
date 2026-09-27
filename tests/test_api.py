@@ -14,10 +14,16 @@ from smartvoice.config.settings import Settings
 
 
 class FakeProvider:
+    synthesize_call = None
+
     def installed_models(self):
         return [
             {"id": "sensevoice-small-local", "task": "transcription"},
             {"id": "melo-tts-zh-en-local", "task": "speech"},
+            {"id": "piper-fr-fr-siwis-medium-local", "task": "speech"},
+            {"id": "piper-de-de-thorsten-medium-local", "task": "speech"},
+            {"id": "supertonic-3-multilingual-local", "task": "speech"},
+            {"id": "whisper-base-multilingual-local", "task": "transcription"},
         ]
 
     def runtime(self):
@@ -37,8 +43,9 @@ class FakeProvider:
             "segments": [{"text": "测试", "start": 0.1}],
         }
 
-    def synthesize(self, text, voice="default", speed=1.0, model_id=None):
-        assert text in {"你好", "Hello"}
+    def synthesize(self, text, voice="default", speed=1.0, model_id=None, language="auto"):
+        self.synthesize_call = (text, model_id, language)
+        assert text in {"你好", "Hello", "Bonjour"}
         return b"RIFF-test-wav", 24000, 0.8
 
 
@@ -56,6 +63,25 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(client.get("/health").status_code, 200)
             self.assertEqual(client.get("/health").json()["status"], "ok")
             self.assertEqual(client.get("/ready").json()["status"], "ready")
+
+    def test_docs_show_project_branding_and_github_link(self):
+        with self.make_client() as client:
+            docs = client.get("/docs")
+            schema = client.get("/openapi.json").json()
+            logo = client.get("/assets/smartvoice-logo.png")
+
+        self.assertEqual(docs.status_code, 200)
+        self.assertIn('img[src*="smartvoice-logo.png"]', docs.text)
+        self.assertIn("width: 200px !important", docs.text)
+        self.assertIn("height: 200px !important", docs.text)
+        self.assertIn("/openapi.json", docs.text)
+        description = schema["info"]["description"]
+        self.assertIn("Private, local speech recognition and synthesis", description)
+        self.assertIn("https://github.com/dxhome/SmartVoice", description)
+        self.assertNotIn("prototype", description.lower())
+        self.assertEqual(logo.status_code, 200)
+        self.assertEqual(logo.headers["content-type"], "image/png")
+        self.assertTrue(logo.content.startswith(b"\x89PNG\r\n\x1a\n"))
 
     def test_readiness_reports_missing_models(self):
         class EmptyProvider(FakeProvider):
@@ -137,7 +163,7 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(client.get("/v1/jobs/job-123").json()["status"], "completed")
             self.assertEqual(client.delete("/v1/jobs/job-123").json()["status"], "canceling")
 
-    def test_model_activation_export_uninstall_and_import_routes(self):
+    def test_model_default_export_uninstall_and_import_routes(self):
         from smartvoice.services.model_catalog import get_model_spec
 
         with self.make_client() as client:
@@ -162,9 +188,14 @@ class ApiTests(unittest.TestCase):
                 "file_sha256": file_hashes,
             }), encoding="utf-8")
 
-            activated = client.put(f"/v1/models/{spec.id}/activation")
-            self.assertEqual(activated.status_code, 200, activated.text)
-            self.assertEqual(activated.json()["active_models"][spec.task], spec.id)
+            defaulted = client.put(f"/v1/models/{spec.id}/default")
+            self.assertEqual(defaulted.status_code, 200, defaulted.text)
+            self.assertEqual(defaulted.json()["default_models"][spec.task], spec.id)
+            cleared = client.delete(f"/v1/models/{spec.id}/default")
+            self.assertEqual(cleared.status_code, 200, cleared.text)
+            self.assertNotIn(spec.task, cleared.json()["default_models"])
+            defaulted = client.put(f"/v1/models/{spec.id}/default")
+            self.assertEqual(defaulted.status_code, 200, defaulted.text)
             exported = client.get(f"/v1/models/{spec.id}/export")
             self.assertEqual(exported.status_code, 200)
             self.assertEqual(exported.headers["content-type"], "application/zip")
@@ -226,7 +257,22 @@ class ApiTests(unittest.TestCase):
             response = client.post("/v1/audio/speech", json={"input": "Hello", "language": "en"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["x-requested-language"], "en")
-            self.assertEqual(response.headers["x-text-language"], "en")
+            self.assertEqual(response.headers["x-text-language"], "mixed_or_undetermined")
+
+    def test_tts_accepts_explicit_french_and_selects_model(self):
+        provider = FakeProvider()
+        with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
+            response = client.post("/v1/audio/speech", json={
+                "model": "piper-fr-fr-siwis-medium-local", "input": "Bonjour", "language": "fr",
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(provider.synthesize_call, ("Bonjour", "piper-fr-fr-siwis-medium-local", "fr"))
+
+    def test_tts_detects_japanese_and_korean_scripts(self):
+        from smartvoice.api.v1.routes import _tts_script_language
+
+        self.assertEqual(_tts_script_language("こんにちは"), "ja")
+        self.assertEqual(_tts_script_language("안녕하세요"), "ko")
 
     def test_tts_rejects_language_hint_that_conflicts_with_input_script(self):
         with self.make_client() as client:

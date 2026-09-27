@@ -1,4 +1,4 @@
-"""CPU inference adapter for the initial SenseVoice and VITS model pair."""
+"""CPU inference adapter for catalogued sherpa-onnx models."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from smartvoice.domain.errors import (
     ModelUnavailableError,
     SpeechOutputTooLargeError,
 )
-from smartvoice.services.model_catalog import active_model_ids, get_model_spec, installed_models
+from smartvoice.services.model_catalog import default_model_ids, get_model_spec, installed_models
 from smartvoice.services.host_metrics import host_info, process_metrics, system_memory_info
 
 STT_MODEL_ID = "sensevoice-small-local"
@@ -33,8 +33,8 @@ class SherpaOnnxProvider:
     def __init__(self, settings: Settings):
         self.settings = settings
         self._lock = threading.RLock()
-        self._recognizers: dict[str, object] = {}
-        self._tts = None
+        self._recognizers: dict[tuple[str, str], object] = {}
+        self._tts: dict[str, object] = {}
         self._verified_files: dict[str, tuple[int, int, str]] = {}
 
     def installed_models(self) -> list[dict[str, object]]:
@@ -50,11 +50,7 @@ class SherpaOnnxProvider:
 
     def is_model_loaded(self, model_id: str) -> bool:
         with self._lock:
-            if model_id == STT_MODEL_ID:
-                return bool(self._recognizers)
-            if model_id == TTS_MODEL_ID:
-                return self._tts is not None
-            return False
+            return any(key[0] == model_id for key in self._recognizers) or model_id in self._tts
 
     def runtime(self) -> dict[str, object]:
         models = self.installed_models()
@@ -64,7 +60,7 @@ class SherpaOnnxProvider:
             "actual_device": "cpu" if self.settings.provider == "cpu" else None,
             "provider_status": "available" if self.settings.provider == "cpu" else "unsupported",
             "installed_model_count": len(models),
-            "active_models": active_model_ids(self.settings),
+            "default_models": default_model_ids(self.settings),
             "runtime_version": self._runtime_version(),
             "reason": None if self.settings.provider == "cpu" else "The initial release supports CPU only.",
             "host": host_info(),
@@ -73,12 +69,10 @@ class SherpaOnnxProvider:
         }
 
     def capabilities(self) -> dict[str, object]:
-        installed = {str(model["id"]) for model in self.installed_models()}
         tasks = []
-        if STT_MODEL_ID in installed:
-            tasks.append({"task": "transcription", "model": STT_MODEL_ID, "languages": ["zh", "en", "yue", "ja", "ko"], "streaming": False})
-        if TTS_MODEL_ID in installed:
-            tasks.append({"task": "speech", "model": TTS_MODEL_ID, "languages": ["zh", "en"], "voices": ["default"], "streaming": False})
+        for model in self.installed_models():
+            tasks.append({"task": model["task"], "model": model["id"], "languages": model["languages"],
+                          **({"voices": ["default"]} if model["task"] == "speech" else {}), "streaming": False})
         return {"api_version": "v1", "capability_schema_version": "1.0", "backend": "sherpa-onnx", "tasks": tasks}
 
     def transcribe(
@@ -87,12 +81,13 @@ class SherpaOnnxProvider:
         import av
         import numpy as np
 
-        if model_id != STT_MODEL_ID:
-            raise InvalidRequestError(f"The active sherpa-onnx adapter does not support STT model {model_id!r}.")
         model_dir = self._model_dir(model_id)
         spec = get_model_spec(model_id)
+        if language not in {"auto", *spec.languages}:
+            raise InvalidRequestError(f"Language {language!r} is not supported by this model.")
         model_path = self._manifest_path(model_dir, spec.model_file)
         tokens_path = self._manifest_path(model_dir, spec.tokens_file)
+        decoder_path = self._manifest_path(model_dir, spec.decoder_file) if spec.decoder_file else None
         try:
             samples = self._decode_audio(av, audio, self.settings.max_audio_seconds)
         except Exception as exc:
@@ -108,7 +103,7 @@ class SherpaOnnxProvider:
 
         with self._lock:
             try:
-                recognizer = self._get_recognizer(model_path, tokens_path, language)
+                recognizer = self._get_recognizer(spec.model_type, model_path, decoder_path, tokens_path, language)
                 stream = recognizer.create_stream()
                 stream.accept_waveform(TARGET_SAMPLE_RATE, samples)
                 start = time.perf_counter()
@@ -165,29 +160,41 @@ class SherpaOnnxProvider:
             container.close()
 
     def synthesize(
-        self, text: str, voice: str = "default", speed: float = 1.0, model_id: str = TTS_MODEL_ID
+        self, text: str, voice: str = "default", speed: float = 1.0, model_id: str = TTS_MODEL_ID,
+        language: str = "auto",
     ) -> tuple[bytes, int, float]:
         import numpy as np
 
-        if model_id != TTS_MODEL_ID:
-            raise InvalidRequestError(f"The active sherpa-onnx adapter does not support TTS model {model_id!r}.")
+        spec = get_model_spec(model_id)
+        if spec.task != "speech":
+            raise InvalidRequestError(f"Model {model_id!r} does not support speech synthesis.")
         if voice not in {"default", "0"}:
             raise InvalidRequestError("The selected voice is not available in the installed TTS model.")
         model_dir = self._model_dir(model_id)
         spec = get_model_spec(model_id)
         model_path = self._manifest_path(model_dir, spec.model_file)
-        lexicon_path = self._manifest_path(model_dir, spec.lexicon_file or "")
-        tokens_path = self._manifest_path(model_dir, spec.tokens_file)
+        lexicon_path = self._manifest_path(model_dir, spec.lexicon_file) if spec.lexicon_file else None
+        tokens_path = self._manifest_path(model_dir, spec.tokens_file) if spec.model_type == "vits" else None
+        data_dir = self._manifest_path(model_dir, spec.data_dir, expect_directory=True) if spec.data_dir else None
+        model_files = {name: self._manifest_path(model_dir, name) for name in spec.tts_files}
         with self._lock:
             try:
-                tts = self._get_tts(model_path, lexicon_path, tokens_path)
+                tts = self._get_tts(model_id, spec.model_type, model_files or {"model": model_path}, lexicon_path, tokens_path, data_dir)
                 start = time.perf_counter()
                 text_chunks = self._split_tts_text(text, 200)
                 audio_chunks = []
                 sample_rate = 0
                 total_samples = 0
                 for text_chunk in text_chunks:
-                    generated = tts.generate(text_chunk, sid=0, speed=speed)
+                    if spec.model_type == "supertonic":
+                        config = self._sherpa().GenerationConfig()
+                        config.sid = 0
+                        config.speed = speed
+                        config.num_steps = 8
+                        config.extra["lang"] = language if language != "auto" else "en"
+                        generated = tts.generate(text_chunk, config=config)
+                    else:
+                        generated = tts.generate(text_chunk, sid=0, speed=speed)
                     chunk_samples = np.asarray(generated.samples, dtype=np.float32)
                     chunk_sample_rate = int(generated.sample_rate)
                     if chunk_samples.size == 0 or chunk_sample_rate <= 0:
@@ -235,35 +242,55 @@ class SherpaOnnxProvider:
             start = end
         return chunks
 
-    def _get_recognizer(self, model_path: Path, tokens_path: Path, language: str):
-        if language not in {"auto", "zh", "en", "ja", "ko", "yue"}:
-            raise InvalidRequestError(f"Language {language!r} is not supported by this model.")
-        if language not in self._recognizers:
+    def _get_recognizer(self, model_type: str, model_path: Path, decoder_path: Path | None, tokens_path: Path, language: str):
+        key = (model_path.parent.name, language)
+        if key not in self._recognizers:
             sherpa_onnx = self._sherpa()
-            self._recognizers[language] = sherpa_onnx.OfflineRecognizer.from_sense_voice(
-                model=str(model_path), tokens=str(tokens_path), num_threads=self.settings.num_threads,
-                provider=self.settings.provider, language=language, use_itn=True,
-            )
-        return self._recognizers[language]
+            if model_type == "sense_voice":
+                recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+                    model=str(model_path), tokens=str(tokens_path), num_threads=self.settings.num_threads,
+                    provider=self.settings.provider, language=language, use_itn=True,
+                )
+            elif model_type == "whisper" and decoder_path:
+                recognizer = sherpa_onnx.OfflineRecognizer.from_whisper(
+                    encoder=str(model_path), decoder=str(decoder_path), tokens=str(tokens_path),
+                    num_threads=self.settings.num_threads, provider=self.settings.provider,
+                    language="" if language == "auto" else language, task="transcribe",
+                )
+            else:
+                raise InvalidRequestError(f"Unsupported sherpa-onnx STT model type {model_type!r}.")
+            self._recognizers[key] = recognizer
+        return self._recognizers[key]
 
-    def _get_tts(self, model_path: Path, lexicon_path: Path, tokens_path: Path):
-        if self._tts is None:
+    def _get_tts(self, model_id: str, model_type: str, paths: dict[str, Path], lexicon_path: Path | None, tokens_path: Path | None, data_dir: Path | None):
+        if model_id not in self._tts:
             sherpa_onnx = self._sherpa()
-            config = sherpa_onnx.OfflineTtsConfig(
-                model=sherpa_onnx.OfflineTtsModelConfig(
+            if model_type == "supertonic":
+                model = sherpa_onnx.OfflineTtsSupertonicModelConfig(
+                    duration_predictor=str(paths["duration_predictor.int8.onnx"]),
+                    text_encoder=str(paths["text_encoder.int8.onnx"]),
+                    vector_estimator=str(paths["vector_estimator.int8.onnx"]),
+                    vocoder=str(paths["vocoder.int8.onnx"]), tts_json=str(paths["tts.json"]),
+                    unicode_indexer=str(paths["unicode_indexer.bin"]), voice_style=str(paths["voice.bin"]),
+                )
+                model_config = sherpa_onnx.OfflineTtsModelConfig(supertonic=model, provider=self.settings.provider, num_threads=self.settings.num_threads)
+            elif model_type == "vits":
+                model_config = sherpa_onnx.OfflineTtsModelConfig(
                     vits=sherpa_onnx.OfflineTtsVitsModelConfig(
-                        model=str(model_path), lexicon=str(lexicon_path),
-                        tokens=str(tokens_path),
-                    ),
-                    provider=self.settings.provider,
-                    num_threads=self.settings.num_threads,
-                ),
+                        model=str(paths["model"]), lexicon=str(lexicon_path) if lexicon_path else "",
+                        tokens=str(tokens_path), data_dir=str(data_dir) if data_dir else "",
+                    ), provider=self.settings.provider, num_threads=self.settings.num_threads,
+                )
+            else:
+                raise InvalidRequestError(f"Unsupported sherpa-onnx TTS model type {model_type!r}.")
+            config = sherpa_onnx.OfflineTtsConfig(
+                model=model_config,
                 max_num_sentences=1,
             )
             if not config.validate():
                 raise ValueError("Invalid sherpa-onnx TTS model configuration")
-            self._tts = sherpa_onnx.OfflineTts(config)
-        return self._tts
+            self._tts[model_id] = sherpa_onnx.OfflineTts(config)
+        return self._tts[model_id]
 
     def _model_dir(self, model_id: str) -> Path:
         if self.settings.provider != "cpu":

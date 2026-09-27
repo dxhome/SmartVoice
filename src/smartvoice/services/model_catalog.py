@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import shutil
+import ssl
 import threading
 import tarfile
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -35,12 +38,19 @@ class ModelSpec:
     backend: str
     source: str
     archive_name: str
-    archive_sha256: str
+    archive_sha256: str | None
     required_files: tuple[str, ...]
+    required_dirs: tuple[str, ...]
     model_file: str
     tokens_file: str
     license_note: str
     lexicon_file: str | None = None
+    model_type: str = "vits"
+    tts_files: tuple[str, ...] = ()
+    data_dir: str | None = None
+    decoder_file: str | None = None
+    file_sources: dict[str, str] | None = None
+    file_sha256: dict[str, str] | None = None
 
 
 def load_catalog() -> list[ModelSpec]:
@@ -51,15 +61,32 @@ def load_catalog() -> list[ModelSpec]:
     specs = []
     for item in raw["models"]:
         source = item["source"]
-        if not source.startswith("https://github.com/k2-fsa/sherpa-onnx/releases/download/"):
+        allowed_source_prefixes = (
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/",
+            "https://huggingface.co/k2-fsa/sherpa-models/resolve/6eed21873e424aa3b01b52c767d9d3bd3cca94d8/",
+            "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/",
+        )
+        if not source.startswith(allowed_source_prefixes):
             raise RuntimeError(f"Catalog source is not allowlisted for {item['id']}")
+        file_sources = item.get("file_sources")
+        file_sha256 = item.get("file_sha256")
+        if file_sources is not None:
+            if set(file_sources) != set(item["required_files"]) or set(file_sha256 or {}) != set(item["required_files"]):
+                raise RuntimeError(f"Catalog file sources and hashes must match required files for {item['id']}")
+            if any(not isinstance(url, str) or not url.startswith(allowed_source_prefixes[2]) for url in file_sources.values()):
+                raise RuntimeError(f"Catalog file source is not allowlisted for {item['id']}")
         specs.append(ModelSpec(
             id=item["id"], task=item["task"], name=item["name"],
             languages=tuple(item["languages"]), backend=item["backend"],
             source=source, archive_name=item["archive_name"], archive_sha256=item["archive_sha256"],
             required_files=tuple(item["required_files"]), model_file=item["model_file"],
+            required_dirs=tuple(item.get("required_dirs", ())),
             tokens_file=item["tokens_file"], license_note=item["license_note"],
             lexicon_file=item.get("lexicon_file"),
+            model_type=item.get("model_type", "vits"),
+            tts_files=tuple(item.get("tts_files", ())),
+            data_dir=item.get("data_dir"), decoder_file=item.get("decoder_file"),
+            file_sources=file_sources, file_sha256=file_sha256,
         ))
     return specs
 
@@ -72,7 +99,7 @@ def get_model_spec(model_id: str) -> ModelSpec:
 
 
 def installed_models(settings: Settings) -> list[dict[str, object]]:
-    active = active_model_ids(settings)
+    defaults = default_model_ids(settings)
     results: list[dict[str, object]] = []
     for spec in load_catalog():
         manifest_path = settings.models_dir / spec.id / "smartvoice-model.json"
@@ -98,6 +125,19 @@ def installed_models(settings: Settings) -> list[dict[str, object]]:
                 if not resolved.is_relative_to(root.resolve()) or not resolved.is_file():
                     valid = False
                     break
+            for required in spec.required_dirs:
+                relative = file_map.get(required)
+                resolved = (root / relative).resolve() if isinstance(relative, str) else root
+                if not resolved.is_relative_to(root.resolve()) or not resolved.is_dir():
+                    valid = False
+                    break
+            if valid and spec.file_sha256:
+                for required, expected in spec.file_sha256.items():
+                    relative = file_map.get(required)
+                    resolved = (root / relative).resolve() if isinstance(relative, str) else root
+                    if not resolved.is_relative_to(root.resolve()) or not resolved.is_file() or _sha256(resolved) != expected:
+                        valid = False
+                        break
         except (OSError, KeyError, AttributeError, TypeError, json.JSONDecodeError):
             valid = False
         if valid:
@@ -109,11 +149,8 @@ def installed_models(settings: Settings) -> list[dict[str, object]]:
                 "backend": spec.backend,
                 "archive_sha256": manifest.get("archive_sha256"),
                 "installed": True,
-                "active": active.get(spec.task) == spec.id,
-                "installed_size_bytes": sum(
-                    (root / file_map[key]).stat().st_size
-                    for key in spec.required_files
-                ),
+                "default": defaults.get(spec.task) == spec.id,
+                "installed_size_bytes": sum(path.stat().st_size for path in root.rglob("*") if path.is_file()),
                 "license_note": spec.license_note,
             })
     return results
@@ -130,7 +167,7 @@ def catalog_models(settings: Settings) -> list[dict[str, object]]:
         ),
         "archive_name": spec.archive_name,
         "archive_sha256": spec.archive_sha256,
-        "active": bool(installed_by_id.get(spec.id, {}).get("active", False)),
+        "default": bool(installed_by_id.get(spec.id, {}).get("default", False)),
         "installed_size_bytes": installed_by_id.get(spec.id, {}).get("installed_size_bytes"),
         "required_files": list(spec.required_files),
         "license_note": spec.license_note,
@@ -151,9 +188,17 @@ def model_storage(settings: Settings) -> dict[str, int]:
     }
 
 
-def active_model_ids(settings: Settings) -> dict[str, str]:
-    path = settings.data_dir / "active_models.json"
+def default_model_ids(settings: Settings) -> dict[str, str]:
+    path = settings.data_dir / "default_models.json"
+    legacy_path = settings.data_dir / "active_models.json"
     if not path.is_file():
+        if legacy_path.is_file():
+            try:
+                legacy = json.loads(legacy_path.read_text(encoding="utf-8"))
+                if isinstance(legacy, dict):
+                    return {str(task): str(model_id) for task, model_id in legacy.items() if isinstance(task, str)}
+            except (OSError, json.JSONDecodeError):
+                pass
         defaults: dict[str, str] = {}
         for spec in load_catalog():
             root = settings.models_dir / spec.id
@@ -166,6 +211,12 @@ def active_model_ids(settings: Settings) -> dict[str, str]:
                     relative = manifest.get("files", {}).get(required)
                     file_path = (root / relative).resolve() if isinstance(relative, str) else root
                     if not file_path.is_relative_to(root.resolve()) or not file_path.is_file():
+                        valid = False
+                        break
+                for required in spec.required_dirs:
+                    relative = manifest.get("files", {}).get(required)
+                    directory = (root / relative).resolve() if isinstance(relative, str) else root
+                    if not directory.is_relative_to(root.resolve()) or not directory.is_dir():
                         valid = False
                         break
                 if valid:
@@ -182,7 +233,7 @@ def active_model_ids(settings: Settings) -> dict[str, str]:
     return {str(task): str(model_id) for task, model_id in value.items() if isinstance(task, str)}
 
 
-def activate_model(settings: Settings, model_id: str) -> dict[str, str]:
+def set_default_model(settings: Settings, model_id: str) -> dict[str, str]:
     spec = get_model_spec(model_id)
     model_root = settings.models_dir / model_id
     manifest_path = model_root / "smartvoice-model.json"
@@ -202,32 +253,52 @@ def activate_model(settings: Settings, model_id: str) -> dict[str, str]:
             file_path = (model_root / relative).resolve()
             if not file_path.is_relative_to(model_root.resolve()) or not file_path.is_file() or _sha256(file_path) != expected:
                 raise ValueError(f"Model integrity verification failed for {required}")
+        for required in spec.required_dirs:
+            relative = manifest.get("files", {}).get(required)
+            directory = (model_root / relative).resolve() if isinstance(relative, str) else model_root
+            if not directory.is_relative_to(model_root.resolve()) or not directory.is_dir():
+                raise ValueError(f"Model directory is missing or invalid: {required}")
+        for key, expected in manifest.get("file_sha256", {}).items():
+            relative = manifest.get("files", {}).get(key)
+            file_path = (model_root / relative).resolve() if isinstance(relative, str) else model_root
+            if not file_path.is_relative_to(model_root.resolve()) or not file_path.is_file() or _sha256(file_path) != expected:
+                raise ValueError(f"Model integrity verification failed for {key}")
     except (OSError, KeyError, AttributeError, TypeError, json.JSONDecodeError) as exc:
         raise InvalidRequestError(f"Model {model_id!r} is not installed with a valid manifest.") from exc
     except ValueError as exc:
         raise InvalidRequestError(f"Model {model_id!r} failed verification: {exc}") from exc
     if model_id not in {str(item["id"]) for item in installed_models(settings)}:
         raise InvalidRequestError(f"Model {model_id!r} is not installed and verified.")
-    active = active_model_ids(settings)
-    active[spec.task] = model_id
-    _write_active_models(settings, active)
-    return active
+    defaults = default_model_ids(settings)
+    defaults[spec.task] = model_id
+    _write_default_models(settings, defaults)
+    return defaults
 
 
-def deactivate_model(settings: Settings, model_id: str) -> dict[str, str]:
+def clear_default_model(settings: Settings, task: str) -> dict[str, str]:
+    if task not in {"transcription", "speech"}:
+        raise InvalidRequestError(f"Unknown model task: {task}")
+    defaults = default_model_ids(settings)
+    defaults.pop(task, None)
+    _write_default_models(settings, defaults)
+    return defaults
+
+
+def clear_model_default(settings: Settings, model_id: str) -> dict[str, str]:
+    """Remove a model's default marker without affecting another model's default."""
     spec = get_model_spec(model_id)
-    active = active_model_ids(settings)
-    if active.get(spec.task) == model_id:
-        active.pop(spec.task)
-        _write_active_models(settings, active)
-    return active
+    defaults = default_model_ids(settings)
+    if defaults.get(spec.task) == model_id:
+        defaults.pop(spec.task)
+        _write_default_models(settings, defaults)
+    return defaults
 
 
-def _write_active_models(settings: Settings, active: dict[str, str]) -> None:
+def _write_default_models(settings: Settings, defaults: dict[str, str]) -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
-    path = settings.data_dir / "active_models.json"
+    path = settings.data_dir / "default_models.json"
     temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(active, indent=2), encoding="utf-8")
+    temporary.write_text(json.dumps(defaults, indent=2), encoding="utf-8")
     os.replace(temporary, path)
 
 
@@ -245,7 +316,9 @@ def uninstall_model(settings: Settings, model_id: str, *, loaded: bool = False) 
         raise InvalidRequestError(f"Model {model_id!r} is not installed.")
     size = sum(path.stat().st_size for path in directory.rglob("*") if path.is_file())
     shutil.rmtree(directory)
-    deactivate_model(settings, model_id)
+    defaults = default_model_ids(settings)
+    if defaults.get(spec.task) == model_id:
+        clear_default_model(settings, spec.task)
     return size
 
 
@@ -322,13 +395,25 @@ def import_model(settings: Settings, archive_path: Path) -> Path:
                 raise ValueError(f"Model package file path escapes model directory: {required}")
             if not file_path.is_file() or hashes.get(required) != _sha256(file_path):
                 raise ValueError(f"Model package file failed integrity validation: {required}")
+            if spec.file_sha256 and hashes.get(required) != spec.file_sha256.get(required):
+                raise ValueError(f"Model package file does not match the catalog-pinned content: {required}")
+        for required in spec.required_dirs:
+            relative = files.get(required)
+            directory = (model_root / relative).resolve() if isinstance(relative, str) else model_root
+            if not directory.is_relative_to(model_root.resolve()) or not directory.is_dir():
+                raise ValueError(f"Model package is missing a safe directory for {required}")
+        for key, expected in hashes.items():
+            relative = files.get(key)
+            file_path = (model_root / relative).resolve() if isinstance(relative, str) else model_root
+            if not file_path.is_relative_to(model_root.resolve()) or not file_path.is_file() or _sha256(file_path) != expected:
+                raise ValueError(f"Model package file failed integrity validation: {key}")
         destination = settings.models_dir / model_id
         if destination.exists():
             raise InvalidRequestError(f"Model directory already exists: {destination}")
         destination.parent.mkdir(parents=True, exist_ok=True)
         os.replace(model_root, destination)
-        if spec.task not in active_model_ids(settings):
-            activate_model(settings, model_id)
+        if spec.task not in default_model_ids(settings):
+            set_default_model(settings, model_id)
         return destination
     finally:
         shutil.rmtree(temporary_root, ignore_errors=True)
@@ -352,10 +437,39 @@ def _download(
     progress: Callable[[int, int | None], None] | None,
     cancel_event: threading.Event | None = None,
 ) -> None:
+    """Download with bounded retries for transient TLS/network disconnects."""
+    retry_delays = (1, 3, 7)
+    for attempt in range(len(retry_delays) + 1):
+        try:
+            _download_once(url, path, progress, cancel_event)
+            return
+        except (urllib.error.URLError, TimeoutError, ConnectionError, ssl.SSLError) as exc:
+            reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+            retryable = isinstance(reason, (TimeoutError, ConnectionError, ssl.SSLEOFError, ssl.SSLZeroReturnError))
+            if not retryable or attempt == len(retry_delays):
+                if retryable:
+                    raise urllib.error.URLError(
+                        f"HTTPS download failed after {attempt + 1} attempts; check network access to the model host or retry later ({reason})"
+                    ) from exc
+                raise
+            delay = retry_delays[attempt]
+            logging.getLogger(__name__).warning(
+                "Transient model download connection error; retrying attempt %d/%d in %d seconds: %s",
+                attempt + 2, len(retry_delays) + 1, delay, reason,
+            )
+            time.sleep(delay)
+
+
+def _download_once(
+    url: str,
+    path: Path,
+    progress: Callable[[int, int | None], None] | None,
+    cancel_event: threading.Event | None = None,
+) -> None:
     class SafeHttpsRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, req, fp, code, msg, headers, newurl):
             parsed = urlparse(newurl)
-            allowed_hosts = {"github.com", "release-assets.githubusercontent.com"}
+            allowed_hosts = {"github.com", "release-assets.githubusercontent.com", "huggingface.co", "cdn-lfs.huggingface.co", "cas-bridge.xethub.hf.co", "us.aws.cdn.hf.co"}
             if parsed.scheme != "https" or parsed.hostname not in allowed_hosts or parsed.username or parsed.password:
                 raise ValueError("Model download redirected outside the approved HTTPS hosts")
             return super().redirect_request(req, fp, code, msg, headers, newurl)
@@ -457,13 +571,28 @@ def install_model(
     try:
         extracted = temporary / "extracted"
         extracted.mkdir()
-        if not archive_path.is_file() or _sha256(archive_path) != spec.archive_sha256:
-            _download(spec.source, archive_path, progress, cancel_event)
-        archive_digest = _sha256(archive_path)
-        if archive_digest != spec.archive_sha256:
+        component_parts: list[Path] = []
+        if spec.file_sources:
+            # A previous catalog entry used this path for a non-ONNX archive.
             archive_path.unlink(missing_ok=True)
-            raise ValueError(f"Model archive SHA-256 mismatch for {spec.id}")
-        _safe_extract(archive_path, extracted)
+            for filename, url in spec.file_sources.items():
+                part_path = download_dir / f"{spec.id}-{filename}.part"
+                component_parts.append(part_path)
+                if not part_path.is_file() or _sha256(part_path) != spec.file_sha256[filename]:
+                    _download(url, part_path, progress, cancel_event)
+                if _sha256(part_path) != spec.file_sha256[filename]:
+                    part_path.unlink(missing_ok=True)
+                    raise ValueError(f"Model file SHA-256 mismatch for {spec.id}: {filename}")
+                shutil.copyfile(part_path, extracted / filename)
+            archive_digest = None
+        else:
+            if not archive_path.is_file() or _sha256(archive_path) != spec.archive_sha256:
+                _download(spec.source, archive_path, progress, cancel_event)
+            archive_digest = _sha256(archive_path)
+            if archive_digest != spec.archive_sha256:
+                archive_path.unlink(missing_ok=True)
+                raise ValueError(f"Model archive SHA-256 mismatch for {spec.id}")
+            _safe_extract(archive_path, extracted)
 
         found: dict[str, Path] = {}
         for required in spec.required_files:
@@ -471,26 +600,48 @@ def install_model(
             if len(matches) != 1:
                 raise ValueError(f"Expected one {required!r} in model archive, found {len(matches)}")
             found[required] = matches[0]
+        for required in spec.required_dirs:
+            matches = list(extracted.rglob(required))
+            if len(matches) != 1 or not matches[0].is_dir():
+                raise ValueError(f"Expected one model directory {required!r} in archive, found {len(matches)}")
+            found[required] = matches[0]
         file_map: dict[str, str] = {}
         for relative_name, source_path in found.items():
             rel = source_path.relative_to(extracted)
             file_map[relative_name] = rel.as_posix()
+            if source_path.is_dir():
+                for child in source_path.rglob("*"):
+                    if child.is_file() and not child.is_symlink():
+                        child_rel = child.relative_to(extracted).as_posix()
+                        file_map[child_rel] = child_rel
         manifest = {
             "schema_version": "1.0", "id": spec.id, "task": spec.task,
             "source": spec.source, "archive_sha256": archive_digest,
-            "hash_scope": "verified against the SHA-256 pinned in the SmartVoice source catalog",
+            "hash_scope": (
+                "each required model file verified against its SHA-256 pinned in the SmartVoice source catalog"
+                if spec.file_sources else
+                "verified against the archive SHA-256 pinned in the SmartVoice source catalog"
+            ),
             "installed_at": datetime.now(timezone.utc).isoformat(),
             "files": file_map,
-            "file_sha256": {key: _sha256(path) for key, path in found.items()},
+            "file_sha256": {
+                key: _sha256(extracted / relative)
+                for key, relative in file_map.items()
+                if (extracted / relative).is_file()
+            },
             "license_review_required": True,
         }
         (extracted / "smartvoice-model.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         os.replace(extracted, destination)
-        archive_path.unlink(missing_ok=True)
+        if spec.file_sources:
+            for part_path in component_parts:
+                part_path.unlink(missing_ok=True)
+        else:
+            archive_path.unlink(missing_ok=True)
     finally:
         shutil.rmtree(temporary, ignore_errors=True)
-    if spec.task not in active_model_ids(settings):
-        activate_model(settings, spec.id)
+    if spec.task not in default_model_ids(settings):
+        set_default_model(settings, spec.id)
     return destination

@@ -18,8 +18,9 @@ import uvicorn
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import SmartVoiceError
 from smartvoice.services.model_catalog import (
-    ModelDownloadCancelled, activate_model, catalog_models, deactivate_model, export_model,
+    ModelDownloadCancelled, catalog_models, clear_default_model, export_model,
     get_model_spec, import_model, install_model, uninstall_model,
+    set_default_model,
 )
 
 
@@ -48,9 +49,9 @@ def _format_model_list(models: list[dict[str, object]]) -> str:
                 backend = model.get("backend", "Unknown")
                 size = model.get("installed_size_bytes")
                 size_label = f"{float(size) / 1024**2:.0f} MiB" if isinstance(size, int) else "Not installed"
-                active_label = " | Active" if model.get("active") else ""
+                default_label = " | Default" if model.get("default") else ""
                 status_label = " | Invalid files" if model.get("status") == "invalid" else ""
-                lines.append(f"    - {name} ({model_id}) | {languages} | {backend} | {size_label}{active_label}{status_label}")
+                lines.append(f"    - {name} ({model_id}) | {languages} | {backend} | {size_label}{default_label}{status_label}")
     return "\n".join(lines)
 
 
@@ -131,10 +132,12 @@ def _models(args: list[str]) -> None:
     install_parser.add_argument("model_id")
     uninstall_parser = subparsers.add_parser("uninstall", aliases=["remove"], help="Remove an installed model")
     uninstall_parser.add_argument("model_id")
-    activate_parser = subparsers.add_parser("activate", help="Select the active model for its task")
-    activate_parser.add_argument("model_id")
-    deactivate_parser = subparsers.add_parser("deactivate", help="Clear an active model selection")
-    deactivate_parser.add_argument("model_id")
+    default_parser = subparsers.add_parser("default", help="Manage default STT and TTS models")
+    default_actions = default_parser.add_subparsers(dest="default_action", required=True)
+    set_default_parser = default_actions.add_parser("set", help="Set the default model for its task")
+    set_default_parser.add_argument("model_id")
+    clear_default_parser = default_actions.add_parser("clear", help="Clear a task's default model")
+    clear_default_parser.add_argument("task", choices=("transcription", "speech"))
     export_parser = subparsers.add_parser("export", help="Create a portable offline model package")
     export_parser.add_argument("model_id")
     export_parser.add_argument("destination", type=Path)
@@ -164,17 +167,21 @@ def _models(args: list[str]) -> None:
             parser.error(str(exc))
         print(f"Removed {parsed.model_id}; released {size / 1024**2:.1f} MiB.")
         return
-    if parsed.action == "activate":
+    if parsed.action == "default" and parsed.default_action == "set":
         try:
-            active = activate_model(settings, parsed.model_id)
+            defaults = set_default_model(settings, parsed.model_id)
         except (OSError, ValueError, SmartVoiceError) as exc:
             parser.error(str(exc))
         task = get_model_spec(parsed.model_id).task
-        print(f"Active model for {task}: {active[task]}")
+        print(f"Default model for {task}: {defaults[task]}")
         return
-    if parsed.action == "deactivate":
-        deactivate_model(settings, parsed.model_id)
-        print(f"Deactivated {parsed.model_id}.")
+    if parsed.action == "default" and parsed.default_action == "clear":
+        try:
+            defaults = clear_default_model(settings, parsed.task)
+        except (OSError, ValueError, SmartVoiceError) as exc:
+            parser.error(str(exc))
+        label = defaults.get(parsed.task, "none")
+        print(f"Default model for {parsed.task}: {label}")
         return
     if parsed.action == "export":
         try:
@@ -205,8 +212,12 @@ def _models(args: list[str]) -> None:
             print(f"\rDownloaded {downloaded / 1024**2:.1f} MiB", end="", flush=True)
         last_output = now
 
-    print("The archive is fetched from its fixed HTTPS catalog URL and checked against the catalog SHA-256.")
-    print("The pinned digest was captured from the tested HTTPS archive; review the model license before redistribution.")
+    spec = get_model_spec(parsed.model_id)
+    if spec.file_sources:
+        print("Model files are fetched from fixed HTTPS catalog URLs and each file is checked against its catalog SHA-256.")
+    else:
+        print("The archive is fetched from its fixed HTTPS catalog URL and checked against the catalog SHA-256.")
+    print("Review the model license before redistribution.")
     try:
         destination = install_model(settings, parsed.model_id, progress)
     except (OSError, ValueError, SmartVoiceError, ModelDownloadCancelled) as exc:

@@ -12,6 +12,54 @@ from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvide
 
 
 class ProviderContractTests(unittest.TestCase):
+    def test_whisper_model_uses_whisper_recognizer_factory(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        provider = SherpaOnnxProvider(Settings(data_dir=Path.cwd() / ".smartvoice-dev" / "whisper-contract"))
+        factory = Mock(return_value=object())
+        provider._sherpa = lambda: SimpleNamespace(OfflineRecognizer=SimpleNamespace(from_whisper=factory))
+        recognizer = provider._get_recognizer("whisper", Path("encoder.onnx"), Path("decoder.onnx"), Path("tokens.txt"), "fr")
+        self.assertIsNotNone(recognizer)
+        self.assertEqual(factory.call_args.kwargs["language"], "fr")
+        self.assertEqual(factory.call_args.kwargs["task"], "transcribe")
+
+    def test_supertonic_config_uses_all_required_assets(self):
+        from types import SimpleNamespace
+
+        created = {}
+
+        class SupertonicConfig:
+            def __init__(self, **kwargs):
+                created["assets"] = kwargs
+
+        class ModelConfig:
+            def __init__(self, **kwargs):
+                created["model"] = kwargs
+
+        class TtsConfig:
+            def __init__(self, **kwargs):
+                created["tts"] = kwargs
+
+            def validate(self):
+                return True
+
+        class Tts:
+            def __init__(self, _config):
+                pass
+
+        provider = SherpaOnnxProvider(Settings(data_dir=Path.cwd() / ".smartvoice-dev" / "supertonic-contract"))
+        provider._sherpa = lambda: SimpleNamespace(
+            OfflineTtsSupertonicModelConfig=SupertonicConfig,
+            OfflineTtsModelConfig=ModelConfig,
+            OfflineTtsConfig=TtsConfig,
+            OfflineTts=Tts,
+        )
+        asset_names = ("duration_predictor.int8.onnx", "text_encoder.int8.onnx", "vector_estimator.int8.onnx",
+                       "vocoder.int8.onnx", "tts.json", "unicode_indexer.bin", "voice.bin")
+        provider._get_tts("supertonic", "supertonic", {name: Path(name) for name in asset_names}, None, None, None)
+        self.assertEqual(set(created["assets"]), {"duration_predictor", "text_encoder", "vector_estimator", "vocoder", "tts_json", "unicode_indexer", "voice_style"})
+
     def test_tts_text_chunking_preserves_text_and_bounds_chunks(self):
         text = "你好。" + ("长文本测试 " * 75) + "结束！"
         chunks = SherpaOnnxProvider._split_tts_text(text, 80)
@@ -45,7 +93,7 @@ class ProviderContractTests(unittest.TestCase):
             def transcribe(self, audio, language="auto", model_id=None):
                 return {"text": "contract", "language": language, "duration": 1.0, "model": model_id, "device": "cpu"}
 
-            def synthesize(self, text, voice="default", speed=1.0, model_id=None):
+            def synthesize(self, text, voice="default", speed=1.0, model_id=None, language="auto"):
                 return b"RIFF-test", 24000, 1.0
 
         class ProviderB(ProviderA):

@@ -17,8 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from smartvoice.domain.errors import AudioTooLargeError, InvalidRequestError, ModelUnavailableError, PayloadTooLargeError
 from smartvoice.services.model_catalog import (
-    activate_model, catalog_models, deactivate_model, export_model, import_model,
-    model_storage, uninstall_model,
+    catalog_models, clear_model_default, default_model_ids, export_model, import_model,
+    model_storage, set_default_model, uninstall_model,
 )
 
 router = APIRouter(prefix="/v1")
@@ -69,24 +69,23 @@ def select_installed_model(request: Request, task: str, requested_model: str | N
         return requested_model
     if not task_models:
         raise ModelUnavailableError(f"No installed model is available for the {task} task.")
-    from smartvoice.services.model_catalog import active_model_ids
-
-    selection_file = request.app.state.settings.data_dir / "active_models.json"
-    selected = active_model_ids(request.app.state.settings).get(task)
+    selection_file = request.app.state.settings.data_dir / "default_models.json"
+    selected = default_model_ids(request.app.state.settings).get(task)
     if selected in task_models:
         return selected
     if selection_file.is_file():
-        raise ModelUnavailableError(f"No active model is selected for the {task} task. Activate an installed model first.")
+        raise ModelUnavailableError(f"No default model is selected for the {task} task. Set a default model first.")
     return task_models[0]
 
 
 def _tts_script_language(text: str) -> str | None:
+    if any("\u3040" <= char <= "\u30ff" for char in text):
+        return "ja"
+    if any("\uac00" <= char <= "\ud7af" for char in text):
+        return "ko"
     cjk = sum("\u3400" <= char <= "\u9fff" for char in text)
-    latin = sum(char.isascii() and char.isalpha() for char in text)
-    if cjk > latin:
+    if cjk:
         return "zh"
-    if latin > cjk:
-        return "en"
     return None
 
 
@@ -147,16 +146,16 @@ async def cancel_model_job(request: Request, job_id: str) -> dict[str, object]:
     return request.app.state.model_jobs.cancel(job_id)
 
 
-@router.put("/models/{model_id}/activation", tags=["models"])
-async def activate_model_route(request: Request, model_id: str) -> dict[str, object]:
-    active = await run_in_threadpool(activate_model, request.app.state.settings, model_id)
-    return {"active_models": active}
+@router.put("/models/{model_id}/default", tags=["models"])
+async def set_default_model_route(request: Request, model_id: str) -> dict[str, object]:
+    defaults = await run_in_threadpool(set_default_model, request.app.state.settings, model_id)
+    return {"default_models": defaults}
 
 
-@router.delete("/models/{model_id}/activation", tags=["models"])
-async def deactivate_model_route(request: Request, model_id: str) -> dict[str, object]:
-    active = await run_in_threadpool(deactivate_model, request.app.state.settings, model_id)
-    return {"active_models": active}
+@router.delete("/models/{model_id}/default", tags=["models"])
+async def clear_default_model_route(request: Request, model_id: str) -> dict[str, object]:
+    defaults = await run_in_threadpool(clear_model_default, request.app.state.settings, model_id)
+    return {"default_models": defaults}
 
 
 @router.delete("/models/{model_id}", tags=["models"])
@@ -261,13 +260,23 @@ async def transcriptions(
 @router.post("/audio/speech", tags=["audio"])
 async def speech(request: Request, payload: SpeechRequest) -> Response:
     model = select_installed_model(request, "speech", payload.model)
-    if payload.language not in {None, "auto", "zh", "en"}:
-        raise InvalidRequestError("The selected TTS model supports only Chinese and English.")
+    from smartvoice.services.model_catalog import get_model_spec
+
+    spec = get_model_spec(model)
+    if payload.language not in {None, "auto", *spec.languages}:
+        raise InvalidRequestError(f"The selected TTS model supports: {', '.join(spec.languages)}.")
     detected_language = _tts_script_language(payload.input)
-    if payload.language in {"zh", "en"} and detected_language and payload.language != detected_language:
+    # Latin scripts do not distinguish English, French, and German; validate
+    # only scripts that identify a language unambiguously.
+    if payload.language not in {None, "auto"} and detected_language in {"zh", "ja", "ko"} and payload.language != detected_language:
         raise InvalidRequestError(
             f"The input text appears to be {detected_language}, which conflicts with requested language {payload.language}."
         )
+    requested_language = payload.language if payload.language not in {None, "auto"} else detected_language
+    if requested_language is None and len(spec.languages) == 1:
+        requested_language = spec.languages[0]
+    if requested_language and requested_language not in spec.languages:
+        raise InvalidRequestError(f"The selected TTS model does not support language {requested_language!r}.")
     if len(payload.input) > request.app.state.settings.max_tts_characters:
         raise InvalidRequestError(
             f"Text exceeds the {request.app.state.settings.max_tts_characters} character limit; split it into shorter requests."
@@ -276,7 +285,7 @@ async def speech(request: Request, payload: SpeechRequest) -> Response:
     request.state.actual_device = "cpu"
     inference_started = time.perf_counter()
     (audio, sample_rate, duration), queue_wait = await _run_request_inference(
-        request, lambda: get_provider(request).synthesize(payload.input, payload.voice, payload.speed, model)
+        request, lambda: get_provider(request).synthesize(payload.input, payload.voice, payload.speed, model, requested_language or "auto")
     )
     inference_seconds = max(0.0, time.perf_counter() - inference_started - queue_wait)
     return StreamingResponse(

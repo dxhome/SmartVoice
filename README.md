@@ -27,12 +27,27 @@ Local speech tools often require separate runtimes, model formats, and APIs for 
 |---|---|
 | Platform | Windows x64 source-run prototype; broader platform packaging is future work |
 | Inference | sherpa-onnx adapter, CPU provider only |
-| STT | SenseVoice Small INT8: Chinese, English, Cantonese, Japanese, Korean |
-| TTS | Melo VITS ONNX: Chinese and English; WAV output |
+| STT | SenseVoice Small INT8: Chinese, English, Cantonese, Japanese, Korean; Whisper Base multilingual INT8: English, Chinese, Japanese, Korean, French, German |
+| TTS | Melo VITS ONNX: Chinese and English; Supertonic 3 INT8: English, French, German, Japanese, Korean; Piper VITS: French and German; WAV output |
 | API | OpenAPI/Swagger UI, file transcription, speech synthesis, model/catalog and runtime status |
-| Model management | Catalog, resumable install jobs, activation, uninstall, and offline import/export; no GUI |
+| Model management | Catalog, resumable install jobs, one default per task, uninstall, and offline import/export; no GUI |
 | GPU | Not enabled in the current release |
 | Streaming | Not exposed as a SmartVoice API yet |
+
+### Models in the current catalog
+
+The built-in catalog currently contains the following STT and TTS models. These are the models available in this prototype, not a limit on SmartVoice's multilingual project goal. All currently use the sherpa-onnx adapter and CPU provider.
+
+| Model ID | Task and model type | Languages listed in catalog | Format / notes |
+|---|---|---|---|
+| `whisper-base-multilingual-local` | STT — Whisper Base multilingual encoder-decoder | Automatic detection; English, Chinese, Japanese, Korean, French, German | INT8 ONNX; general multilingual transcription |
+| `sensevoice-small-local` | STT — SenseVoice Small | Chinese, English, Cantonese, Japanese, Korean | INT8 ONNX; multilingual recognition |
+| `melo-tts-zh-en-local` | TTS — MeloTTS VITS | Chinese, English | VITS ONNX; WAV output |
+| `supertonic-3-multilingual-local` | TTS — Supertonic 3 | English, French, German, Japanese, Korean | INT8 ONNX model components; WAV output |
+| `piper-fr-fr-siwis-medium-local` | TTS — Piper VITS, Siwis Medium voice | French (France) | INT8 ONNX; includes French phonemizer data |
+| `piper-de-de-thorsten-medium-local` | TTS — Piper VITS, Thorsten Medium voice | German | INT8 ONNX; includes German phonemizer data |
+
+Install a model with `python -m smartvoice models install <model-id>`. See [`catalog/models.json`](catalog/models.json) for the pinned source, integrity metadata, and model-specific license notes. Language availability does not guarantee equal quality, and third-party model/voice licenses are separate from the SmartVoice source license.
 
 The listed language and model capabilities describe the current catalog entries; they do not imply equal quality across languages. Models and their bundled assets have separate licenses. Review each model's included license before use or redistribution. SmartVoice code is licensed under Apache-2.0.
 
@@ -46,6 +61,11 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m smartvoice models list
 .\.venv\Scripts\python.exe -m smartvoice models install sensevoice-small-local
 .\.venv\Scripts\python.exe -m smartvoice models install melo-tts-zh-en-local
+# Optional multilingual models and French/German voices
+.\.venv\Scripts\python.exe -m smartvoice models install whisper-base-multilingual-local
+.\.venv\Scripts\python.exe -m smartvoice models install supertonic-3-multilingual-local
+.\.venv\Scripts\python.exe -m smartvoice models install piper-fr-fr-siwis-medium-local
+.\.venv\Scripts\python.exe -m smartvoice models install piper-de-de-thorsten-medium-local
 .\.venv\Scripts\python.exe -m smartvoice --host 127.0.0.1 --port 8000
 ```
 
@@ -55,7 +75,7 @@ The first model install requires internet access. Once the model files are insta
 
 `models list` prints a readable summary by default. Add `--json` when piping catalog output to scripts.
 
-The model archives are downloaded from fixed HTTPS URLs declared in [`catalog/models.json`](catalog/models.json). SmartVoice checks each archive against its catalog SHA-256, validates archive paths and size limits, and records installed file hashes. The current pinned hashes were captured from the tested HTTPS archives; upstream does not publish independent checksums for these archives, so review catalog changes carefully.
+Model artifacts are downloaded from fixed HTTPS URLs declared in [`catalog/models.json`](catalog/models.json). SmartVoice checks each archive or individually downloaded model file against its catalog-pinned SHA-256, validates archive paths and size limits where applicable, and records installed file hashes. Model sources are pinned to immutable versions, and catalog changes should be reviewed carefully.
 
 ## API
 
@@ -72,8 +92,8 @@ Start the service, then open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/
 | `POST /v1/models/{id}/download` | Start a background catalog model download/install job |
 | `GET /v1/jobs/{job_id}` | Read download progress and result |
 | `DELETE /v1/jobs/{job_id}` | Cancel a download; retrying install resumes partial data |
-| `PUT /v1/models/{id}/activation` | Select the default model for its task |
-| `DELETE /v1/models/{id}/activation` | Clear the default selection for its task |
+| `PUT /v1/models/{id}/default` | Set the default model for its task |
+| `DELETE /v1/models/{id}/default` | Clear the model's default marker; does nothing if another model is the task default |
 | `DELETE /v1/models/{id}` | Uninstall a model not loaded by the service |
 | `GET /v1/models/{id}/export` | Download a verified offline model package |
 | `POST /v1/models/import` | Import and verify an offline model package |
@@ -100,16 +120,17 @@ curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
   --output speech.wav
 ```
 
-The current TTS model supports Chinese and English and returns mono WAV audio. Uploaded audio is not persistently stored; multipart parsing may use a temporary spool file, which is closed after request handling. Request bodies are not logged.
+TTS models return mono WAV audio. Pass `model` and `language` to select an installed multilingual model or voice; French and German are available through Supertonic 3 and the corresponding Piper voice packs. Uploaded audio is not persistently stored; multipart parsing may use a temporary spool file, which is closed after request handling. Request bodies are not logged.
 
-An explicit TTS `language` is validated against the dominant text script and returned as request metadata. The current bilingual model derives pronunciation from the text itself; the parameter does not switch an internal model language mode.
+An explicit TTS `language` is checked against the selected model and returned as request metadata. Script checks detect Chinese, Japanese, and Korean; Latin text alone cannot distinguish English, French, and German, so specify the language for those cases.
 
 ### Manage models
 
-The CLI supports `models list`, `install`, `activate`, `deactivate`, `uninstall`, `export`, and `import`. Interrupted downloads retain a partial archive and resume on a subsequent `install` when the HTTPS server supports byte ranges. The API uses background jobs for downloads; use the job ID to poll status or cancel. Uninstall is refused while the current service has the model loaded. Model archives and offline packages are validated before being made available.
+The CLI supports `models list`, `install`, `default set`, `default clear`, `uninstall`, `export`, and `import`. One default STT model and one default TTS model can be selected independently. Interrupted downloads retain a partial archive and resume on a subsequent `install` when the HTTPS server supports byte ranges. The API uses background jobs for downloads; use the job ID to poll status or cancel. Uninstall is refused while the current service has the model loaded. Model archives and offline packages are validated before being made available.
 
 ```powershell
-python -m smartvoice models activate sensevoice-small-local
+python -m smartvoice models default set sensevoice-small-local
+python -m smartvoice models default clear transcription
 python -m smartvoice models export sensevoice-small-local .\sensevoice.smartvoice.zip
 python -m smartvoice models import .\sensevoice.smartvoice.zip
 python -m smartvoice models uninstall sensevoice-small-local
@@ -176,7 +197,7 @@ assets/        Project logo
 - [x] Fixed-source model catalog with archive and file integrity checks
 - [x] Record an initial Windows CPU performance and resource benchmark for the current model pair
 - [ ] Expand the validated model catalog and set representative quality thresholds and minimum-hardware targets
-- [x] Add model lifecycle jobs, cancellation/resume, activation, uninstall, and offline import/export
+- [x] Add model lifecycle jobs, cancellation/resume, task defaults, uninstall, and offline import/export
 - [ ] Add alternative inference/runtime adapters without changing the client contract
 - [ ] Evaluate streaming STT and an optional MCP adapter
 

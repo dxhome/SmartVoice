@@ -3,10 +3,12 @@
 import logging
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.openapi.docs import get_swagger_ui_html
 
 from smartvoice import __version__
 from smartvoice.api.v1.routes import get_request_id, router as v1_router
@@ -23,6 +25,16 @@ if not logger.handlers:
     logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 logger.propagate = False
+
+OPENAPI_DESCRIPTION = """![SmartVoice logo](/assets/smartvoice-logo.png)
+**Private, local speech recognition and synthesis for edge devices.**
+
+SmartVoice is an early-stage local speech-to-text (STT) and text-to-speech (TTS) service. It brings both tasks behind one HTTP API, with a replaceable inference backend and a model catalog for offline use.
+
+Multilingual STT and TTS · Cross-platform goal · Offline inference · OpenAPI
+
+[View the SmartVoice project on GitHub](https://github.com/dxhome/SmartVoice)
+"""
 
 
 def _validation_details(exc: RequestValidationError) -> list[dict[str, str]]:
@@ -51,8 +63,9 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
     logger.setLevel(getattr(logging, settings.log_level, logging.INFO))
     app = FastAPI(
         title="SmartVoice API",
-        description="Local Chinese and English speech API powered by optional sherpa-onnx models.",
+        description=OPENAPI_DESCRIPTION,
         version=__version__,
+        docs_url=None,
         lifespan=lifespan,
     )
     app.state.settings = settings
@@ -62,6 +75,33 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
     )
     app.state.model_jobs = ModelJobManager(settings)
     app.include_router(v1_router)
+
+    logo_path = Path(__file__).resolve().parents[2] / "assets" / "smartvoice-logo.png"
+
+    @app.get("/assets/smartvoice-logo.png", include_in_schema=False)
+    async def smartvoice_logo() -> FileResponse:
+        return FileResponse(logo_path, media_type="image/png")
+
+    @app.get("/docs", include_in_schema=False)
+    async def swagger_docs() -> HTMLResponse:
+        page = get_swagger_ui_html(
+            openapi_url=app.openapi_url or "/openapi.json",
+            title="SmartVoice | API documentation",
+        )
+        html = page.body.decode("utf-8")
+        style = """<style>
+        .swagger-ui img[src*="smartvoice-logo.png"] {
+            display: block !important;
+            width: 200px !important;
+            height: 200px !important;
+            max-width: 200px !important;
+            max-height: 200px !important;
+            object-fit: contain !important;
+            margin: 0 0 18px !important;
+        }
+        .swagger-ui .info .markdown p { max-width: 900px; }
+        </style>"""
+        return HTMLResponse(html.replace("</head>", f"{style}</head>"))
 
     @app.exception_handler(RequestValidationError)
     async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:

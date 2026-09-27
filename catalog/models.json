@@ -2,6 +2,32 @@
   "schema_version": "1.0",
   "models": [
     {
+      "id": "whisper-base-multilingual-local",
+      "task": "transcription",
+      "name": "Whisper Base Multilingual INT8",
+      "languages": ["auto", "en", "zh", "ja", "ko", "fr", "de"],
+      "backend": "sherpa-onnx",
+      "source": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-encoder.int8.onnx",
+      "archive_name": "sherpa-whisper-base.tar.bz2",
+      "archive_sha256": null,
+      "required_files": ["base-encoder.int8.onnx", "base-decoder.int8.onnx", "base-tokens.txt"],
+      "file_sources": {
+        "base-encoder.int8.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-encoder.int8.onnx",
+        "base-decoder.int8.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-decoder.int8.onnx",
+        "base-tokens.txt": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-tokens.txt"
+      },
+      "file_sha256": {
+        "base-encoder.int8.onnx": "0b8fb1304b6109976038efff5ace81720e00386f3ff6b54ee8c75291ca0a1e11",
+        "base-decoder.int8.onnx": "9759d217388a01b3a4c7c15533201067b48ae819c4daafc8624e64b9409dc02d",
+        "base-tokens.txt": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+      },
+      "model_file": "base-encoder.int8.onnx",
+      "decoder_file": "base-decoder.int8.onnx",
+      "tokens_file": "base-tokens.txt",
+      "license_note": "Whisper is multilingual; review the model license and archive notices before redistribution.",
+      "model_type": "whisper"
+    },
+    {
       "id": "sensevoice-small-local",
       "task": "transcription",
       "name": "SenseVoice Small INT8",
@@ -13,7 +39,8 @@
       "required_files": ["model.int8.onnx", "tokens.txt", "LICENSE"],
       "model_file": "model.int8.onnx",
       "tokens_file": "tokens.txt",
-      "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution."
+      "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution.",
+      "model_type": "sense_voice"
     },
     {
       "id": "melo-tts-zh-en-local",
@@ -28,7 +55,58 @@
       "model_file": "model.onnx",
       "lexicon_file": "lexicon.txt",
       "tokens_file": "tokens.txt",
-      "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution."
+      "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution.",
+      "model_type": "vits"
+    },
+    {
+      "id": "supertonic-3-multilingual-local",
+      "task": "speech",
+      "name": "Supertonic 3 Multilingual INT8",
+      "languages": ["en", "fr", "de", "ja", "ko"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2",
+      "archive_name": "supertonic-3-multilingual-int8.tar.bz2",
+      "archive_sha256": "82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427",
+      "required_files": ["duration_predictor.int8.onnx", "text_encoder.int8.onnx", "vector_estimator.int8.onnx", "vocoder.int8.onnx", "tts.json", "unicode_indexer.bin", "voice.bin", "LICENSE"],
+      "model_file": "duration_predictor.int8.onnx",
+      "tokens_file": "tokens.txt",
+      "tts_files": ["duration_predictor.int8.onnx", "text_encoder.int8.onnx", "vector_estimator.int8.onnx", "vocoder.int8.onnx", "tts.json", "unicode_indexer.bin", "voice.bin"],
+      "license_note": "Model weights are subject to OpenRAIL-M; review the bundled license for usage and redistribution terms.",
+      "model_type": "supertonic"
+    },
+    {
+      "id": "piper-fr-fr-siwis-medium-local",
+      "task": "speech",
+      "name": "Piper French (France) Siwis Medium INT8",
+      "languages": ["fr"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium-int8.tar.bz2",
+      "archive_name": "piper-fr-fr-siwis-medium-int8.tar.bz2",
+      "archive_sha256": "3909cff9b3cfd4820c66aa13bf554315c82e34899c161f0b446ece372bc4b5ec",
+      "required_files": ["fr_FR-siwis-medium.onnx", "tokens.txt", "LICENSE"],
+      "required_dirs": ["espeak-ng-data"],
+      "model_file": "fr_FR-siwis-medium.onnx",
+      "tokens_file": "tokens.txt",
+      "data_dir": "espeak-ng-data",
+      "license_note": "Review the voice model license included in the downloaded archive before redistribution.",
+      "model_type": "vits"
+    },
+    {
+      "id": "piper-de-de-thorsten-medium-local",
+      "task": "speech",
+      "name": "Piper German Thorsten Medium INT8",
+      "languages": ["de"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium-int8.tar.bz2",
+      "archive_name": "piper-de-de-thorsten-medium-int8.tar.bz2",
+      "archive_sha256": "07e240b7b9c1fc9211d5a69512f8cbe11b3286c2ed79c15c076ac6ed427fdf13",
+      "required_files": ["de_DE-thorsten-medium.onnx", "tokens.txt", "LICENSE"],
+      "required_dirs": ["espeak-ng-data"],
+      "model_file": "de_DE-thorsten-medium.onnx",
+      "tokens_file": "tokens.txt",
+      "data_dir": "espeak-ng-data",
+      "license_note": "Review the voice model license included in the downloaded archive before redistribution.",
+      "model_type": "vits"
     }
   ]
 }

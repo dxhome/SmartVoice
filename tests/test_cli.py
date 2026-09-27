@@ -15,6 +15,7 @@ class ModelListOutputTests(unittest.TestCase):
                 "languages": ["zh", "en"],
                 "backend": "sherpa-onnx",
                 "installed": True,
+                "default": True,
             },
             {
                 "id": "melo-tts-zh-en-local",
@@ -40,6 +41,7 @@ class ModelListOutputTests(unittest.TestCase):
         self.assertLess(output.index("  STT (1)"), output.index("Uninstalled (2)"))
         self.assertLess(output.index("  STT (1)", output.index("Uninstalled (2)")), output.index("  TTS (1)"))
         self.assertIn("    - SenseVoice Small INT8 (sensevoice-small-local) | zh, en | sherpa-onnx", output)
+        self.assertIn("Default", output)
         self.assertIn("    - Paraformer Chinese (paraformer-zh-local) | zh | funasr", output)
         self.assertIn("    - Melo TTS (melo-tts-zh-en-local) | zh, en | sherpa-onnx", output)
         self.assertIn("zh, en", output)

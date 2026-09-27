@@ -13,7 +13,8 @@ class InferenceProvider(Protocol):
     def transcribe(self, audio: bytes, language: str = "auto", model_id: str | None = None) -> dict[str, object]: ...
 
     def synthesize(
-        self, text: str, voice: str = "default", speed: float = 1.0, model_id: str | None = None
+        self, text: str, voice: str = "default", speed: float = 1.0, model_id: str | None = None,
+        language: str = "auto",
     ) -> tuple[bytes, int, float]: ...
 
     def capabilities(self) -> dict[str, object]: ...
