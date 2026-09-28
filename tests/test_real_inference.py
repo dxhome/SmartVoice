@@ -54,7 +54,10 @@ class RealInferenceTests(unittest.TestCase):
             self.assertEqual(runtime.json()["actual_device"], "cpu")
             self.assertGreater(runtime.json()["host"]["logical_cpu_count"], 0)
             self.assertGreater(runtime.json()["host"]["total_physical_memory_bytes"], 0)
-            self.assertGreater(runtime.json()["process"]["working_set_bytes"], 0)
+            process = runtime.json()["process"]
+            self.assertGreater(
+                process.get("working_set_bytes", process.get("peak_working_set_bytes", 0)), 0
+            )
             for language in ("zh", "en"):
                 sample = next((_settings.models_dir / "sensevoice-small-local").rglob(f"{language}.wav"))
                 with sample.open("rb") as audio:

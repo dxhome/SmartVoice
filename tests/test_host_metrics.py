@@ -10,7 +10,7 @@ class HostMetricsTests(unittest.TestCase):
     def test_host_info_reports_platform_cpu_and_memory_shape(self):
         host_metrics.host_info.cache_clear()
         try:
-            with patch.object(host_metrics, "_windows_memory_status", return_value={"total_physical_bytes": 1234}):
+            with patch.object(host_metrics, "_system_memory_status", return_value={"total_physical_bytes": 1234}):
                 info = host_metrics.host_info()
         finally:
             host_metrics.host_info.cache_clear()
@@ -21,7 +21,7 @@ class HostMetricsTests(unittest.TestCase):
         self.assertEqual(info["total_physical_memory_bytes"], 1234)
 
     def test_process_metrics_reports_cpu_time_and_pid(self):
-        with patch.object(host_metrics, "_windows_process_memory", return_value={
+        with patch.object(host_metrics, "_process_memory", return_value={
             "working_set_bytes": 100,
             "peak_working_set_bytes": 120,
             "private_bytes": 80,
@@ -37,7 +37,7 @@ class HostMetricsTests(unittest.TestCase):
         self.assertEqual(metrics["peak_pagefile_bytes"], 140)
 
     def test_non_windows_memory_unavailability_is_reported_as_none(self):
-        with patch.object(host_metrics.os, "name", "posix"):
+        with patch.object(host_metrics.os, "name", "posix"), patch.object(host_metrics.platform, "system", return_value="Linux"):
             self.assertIsNone(host_metrics.system_memory_info())
             self.assertEqual(host_metrics.process_metrics()["pid"], host_metrics.os.getpid())
 

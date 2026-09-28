@@ -8,7 +8,7 @@
 
 SmartVoice is an early-stage, local speech-to-text (STT) and text-to-speech (TTS) service. It brings both tasks behind one HTTP API, with a replaceable inference backend and a model catalog for offline use.
 
-> **Project status:** Prototype / active development. The current vertical slice has been smoke-tested on Windows x64 with CPU inference. It is not yet a packaged installer or a production release. GPU acceleration and macOS, Linux, and Android support are planned, not currently delivered.
+> **Project status:** Prototype / active development. The current vertical slice has been smoke-tested on Windows x64 and macOS Apple Silicon with CPU inference. macOS is not yet packaged as an installer or production release. GPU acceleration, Linux, and Android support are not currently delivered.
 
 ## Why SmartVoice?
 
@@ -25,7 +25,7 @@ Local speech tools often require separate runtimes, model formats, and APIs for 
 
 | Area | Current status |
 |---|---|
-| Platform | Windows x64 source-run prototype; broader platform packaging is future work |
+| Platform | Windows x64 source-run prototype; macOS source-run support (Apple Silicon) |
 | Inference | sherpa-onnx adapter, CPU provider only |
 | STT | SenseVoice Small INT8: Chinese, English, Cantonese, Japanese, Korean; Whisper Base multilingual INT8: English, Chinese, Japanese, Korean, French, German |
 | TTS | Melo VITS ONNX: Chinese and English; Supertonic 3 INT8: English, French, German, Japanese, Korean; Piper VITS: French and German; WAV output |
@@ -51,9 +51,23 @@ Install a model with `python -m smartvoice models install <model-id>`. See [`cat
 
 The listed language and model capabilities describe the current catalog entries; they do not imply equal quality across languages. Models and their bundled assets have separate licenses. Review each model's included license before use or redistribution. SmartVoice code is licensed under Apache-2.0.
 
-## Quick start (Windows x64)
+## Quick start (macOS and Windows)
 
 Requires Python 3.11 or newer. This prototype runs on CPU and does not require a GPU or CUDA installation.
+
+On macOS, the current inference path uses CPU; Apple Silicon GPU acceleration is not enabled.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[inference,dev]"
+python -m smartvoice models list
+python -m smartvoice models install sensevoice-small-local
+python -m smartvoice models install melo-tts-zh-en-local
+python -m smartvoice --host 127.0.0.1 --port 8000
+```
+
+On Windows x64, use PowerShell:
 
 ```powershell
 python -m venv .venv
@@ -71,7 +85,7 @@ python -m venv .venv
 
 For persistent settings, copy [`config/smartvoice.example.json`](config/smartvoice.example.json), edit it, and start with `--config path\to\smartvoice.json`. The same config can be selected for model commands using `python -m smartvoice models --config path\to\smartvoice.json list`.
 
-The first model install requires internet access. Once the model files are installed, transcription and synthesis run locally without a network connection. Model weights are stored outside the repository in the user data directory (`%LOCALAPPDATA%\SmartVoice` by default); set `SMARTVOICE_HOME` to use another location.
+The first model install requires internet access. Once the model files are installed, transcription and synthesis run locally without a network connection. Model weights are stored outside the repository in the user data directory (`~/Library/Application Support/SmartVoice` on macOS, `%LOCALAPPDATA%\SmartVoice` on Windows); set `SMARTVOICE_HOME` to use another location.
 
 `models list` prints a readable summary by default. Add `--json` when piping catalog output to scripts.
 
@@ -152,20 +166,15 @@ Client / Agent
           sherpa-onnx adapter (current)
 ```
 
-The API/capability contract is intended to remain stable while inference backends and platform providers change. Current code includes an inference port and a sherpa-onnx adapter; additional runtime and platform adapters are future work. The first release target is Windows. macOS, Linux, Android, GPU providers, streaming, and MCP integration are on the roadmap; they should not be treated as supported today.
+The API/capability contract is intended to remain stable while inference backends and platform providers change. Current code includes an inference port and a sherpa-onnx adapter; additional runtime and platform adapters are future work. Windows x64 CPU and macOS Apple Silicon CPU are source-run targets. Linux, Android, GPU providers, streaming, and MCP integration remain on the roadmap; macOS is not yet packaged as an installer.
 
 ## Development
 
-Install the inference and development dependencies:
+Install the inference and development dependencies, then run the test suite:
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[inference,dev]"
-```
-
-Run the test suite:
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```bash
+python -m pip install -e ".[inference,dev]"
+python -m unittest discover -s tests -v
 ```
 
 Real-inference tests require the catalog models to be installed. To evaluate speech-recognition quality on a local reference set, copy [`examples/stt-reference-manifest.csv`](examples/stt-reference-manifest.csv), add `audio_path,reference,language` rows, then run:
@@ -207,7 +216,8 @@ assets/        Project logo
 - [x] Capture a reproducible Windows CPU benchmark run (not a minimum-hardware commitment)
 - [ ] Define supported hardware targets and runtime compatibility matrix
 - [ ] Evaluate and validate GPU providers
-- [ ] Add macOS, Linux, and Android platform adapters
+- [x] Add macOS Apple Silicon source-run support
+- [ ] Add Linux and Android platform adapters
 
 See the [implementation plan](doc/implementation-plan.md), [industry research](doc/industry-research.md), and [requirements specification](doc/requirements-spec.md) for design rationale and acceptance criteria.
 

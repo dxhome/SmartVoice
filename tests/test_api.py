@@ -249,7 +249,10 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(response.headers["x-audio-sample-rate"], "24000")
             self.assertIn("x-inference-time-seconds", response.headers)
             self.assertEqual(response.headers["x-requested-language"], "auto")
-            self.assertIn("x-process-working-set-bytes", response.headers)
+            self.assertTrue(
+                "x-process-working-set-bytes" in response.headers
+                or "x-process-peak-working-set-bytes" in response.headers
+            )
             self.assertTrue(response.content.startswith(b"RIFF"))
 
     def test_tts_language_hint_is_returned_in_metadata(self):

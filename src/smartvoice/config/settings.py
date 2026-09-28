@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import json
+import sys
 from dataclasses import dataclass, fields
 from pathlib import Path
 
@@ -12,6 +13,8 @@ def default_data_dir() -> Path:
     explicit = os.environ.get("SMARTVOICE_HOME")
     if explicit:
         return Path(explicit).expanduser().resolve()
+    if os.name == "posix" and sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "SmartVoice"
     if os.environ.get("LOCALAPPDATA"):
         return Path(os.environ["LOCALAPPDATA"]) / "SmartVoice"
     return Path.home() / ".smartvoice"

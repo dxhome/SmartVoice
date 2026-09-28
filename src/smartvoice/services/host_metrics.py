@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import platform
+import subprocess
 import time
 from functools import lru_cache
 from typing import Any
@@ -74,6 +75,57 @@ def _windows_process_memory() -> dict[str, int] | None:
     }
 
 
+def _mac_memory_status() -> dict[str, int] | None:
+    if platform.system() != "Darwin":
+        return None
+    try:
+        total = int(os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE"))
+    except (OSError, ValueError):
+        try:
+            total = int(subprocess.check_output(
+                ["sysctl", "-n", "hw.memsize"], text=True, stderr=subprocess.DEVNULL, timeout=1
+            ).strip())
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return None
+    try:
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        vm_stats = subprocess.check_output(["vm_stat"], text=True, timeout=1)
+        page_counts = {}
+        for line in vm_stats.splitlines():
+            if ":" not in line:
+                continue
+            name, count = line.split(":", 1)
+            try:
+                page_counts[name.strip()] = int(count.strip().rstrip("."))
+            except ValueError:
+                continue
+        available_pages = sum(page_counts.get(name, 0) for name in (
+            "Pages free", "Pages inactive", "Pages speculative", "Pages purgeable"
+        ))
+        available = available_pages * page_size
+        return {"total_physical_bytes": total, "available_physical_bytes": available,
+                "memory_load_percent": round((total - available) * 100 / total)}
+    except (OSError, ValueError, IndexError, subprocess.SubprocessError):
+        return {"total_physical_bytes": total}
+
+
+def _system_memory_status() -> dict[str, int] | None:
+    return _windows_memory_status() or _mac_memory_status()
+
+
+def _process_memory() -> dict[str, int] | None:
+    windows = _windows_process_memory()
+    if windows is not None:
+        return windows
+    if platform.system() == "Darwin":
+        import resource
+
+        # macOS reports ru_maxrss in bytes (Linux reports it in KiB).
+        peak = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+        return {"peak_working_set_bytes": peak}
+    return None
+
+
 @lru_cache(maxsize=1)
 def host_info() -> dict[str, Any]:
     cpu_name = platform.processor() or platform.machine()
@@ -89,13 +141,13 @@ def host_info() -> dict[str, Any]:
         "os": platform.platform(),
         "processor": cpu_name,
         "logical_cpu_count": os.cpu_count(),
-        "total_physical_memory_bytes": (_windows_memory_status() or {}).get("total_physical_bytes"),
+        "total_physical_memory_bytes": (_system_memory_status() or {}).get("total_physical_bytes"),
     }
 
 
 def system_memory_info() -> dict[str, int] | None:
     """Return a fresh system-wide memory snapshot (not cached hardware metadata)."""
-    return _windows_memory_status()
+    return _system_memory_status()
 
 
 def process_metrics() -> dict[str, Any]:
@@ -103,7 +155,7 @@ def process_metrics() -> dict[str, Any]:
         "cpu_time_seconds": round(time.process_time(), 6),
         "pid": os.getpid(),
     }
-    memory = _windows_process_memory()
+    memory = _process_memory()
     if memory is not None:
         result.update(memory)
     return result
