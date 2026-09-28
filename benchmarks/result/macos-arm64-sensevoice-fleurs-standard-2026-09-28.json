@@ -1,0 +1,791 @@
+{
+  "schema_version": "2.0",
+  "benchmark_suite": "smartvoice-model-comparison-v1",
+  "run_id": "20260928T084702Z-ac880e",
+  "profile": "standard",
+  "generated_at": "2026-09-28T08:50:03.269994+00:00",
+  "software": {
+    "smartvoice": "0.1.0",
+    "python": "3.11.9"
+  },
+  "platform": {
+    "system": "Darwin",
+    "release": "27.0.0",
+    "machine": "arm64",
+    "processor": "arm",
+    "python_implementation": "CPython"
+  },
+  "dataset": {
+    "repo_id": "google/fleurs",
+    "revision": "10b20dadef85684efea8561331323382da703432",
+    "split": "test",
+    "license": "cc-by-4.0",
+    "languages": {
+      "en": {
+        "repository": "google/fleurs",
+        "revision": "10b20dadef85684efea8561331323382da703432",
+        "config": "en_us",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "e7886f59000714f61fff6c84ee9d87f70460b14d4f877995c03322127fac37e9"
+      },
+      "zh": {
+        "repository": "google/fleurs",
+        "revision": "10b20dadef85684efea8561331323382da703432",
+        "config": "cmn_hans_cn",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "fdc86d4687047a5b67b57d483d199edd0e4679e24ee1fc50cd3930eb7704833a"
+      }
+    }
+  },
+  "models": [
+    {
+      "id": "stt-sensevoice-small-int8",
+      "archive_sha256": "7d1efa2138a65b0b488df37f8b89e3d91a60676e416f515b952358d83dfd347e",
+      "file_sha256": {
+        "model.int8.onnx": "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
+        "tokens.txt": "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
+        "LICENSE": "221c6df10b0931a5629adad671ea48fb7747e034c414b6d2bfa275bc3dd4ea17"
+      },
+      "installed_model_files_bytes": 239549806
+    }
+  ],
+  "config_sha256": "a66f82182aa0d7343894de8ce92c48a7929d38e85b993b3c60383efa0e1bad4a",
+  "profile_settings": {
+    "quality_sample_limit": 100,
+    "performance_sample_limit": 5,
+    "bootstrap_samples": 1000,
+    "performance": {
+      "warmup_iterations": 3,
+      "iterations": 20
+    },
+    "concurrency": {
+      "concurrency_levels": [
+        1,
+        2,
+        4
+      ],
+      "requests_per_worker": 10,
+      "soak_workers": 4,
+      "soak_seconds": 60
+    }
+  },
+  "service_settings": {
+    "provider": "cpu",
+    "inference_threads": 4,
+    "max_concurrent_inference": 1,
+    "max_queued_inference": 2,
+    "inference_queue_timeout_seconds": 60.0,
+    "inference_execution_timeout_seconds": 600.0
+  },
+  "categories": {
+    "quality": {
+      "stt": [
+        {
+          "model_id": "stt-sensevoice-small-int8",
+          "language": "en",
+          "metric": "wer",
+          "value": 0.093462,
+          "confidence_interval_95": {
+            "lower_95": 0.072502,
+            "upper_95": 0.116331
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@10b20dadef85684efea8561331323382da703432:en_us/test"
+        },
+        {
+          "model_id": "stt-sensevoice-small-int8",
+          "language": "zh",
+          "metric": "cer",
+          "value": 0.078669,
+          "confidence_interval_95": {
+            "lower_95": 0.058396,
+            "upper_95": 0.099049
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@10b20dadef85684efea8561331323382da703432:cmn_hans_cn/test"
+        }
+      ],
+      "tts": []
+    },
+    "performance": [
+      {
+        "case": {
+          "task": "transcription",
+          "model_id": "stt-sensevoice-small-int8",
+          "language": "en",
+          "sample_id": "1830239880893513318"
+        },
+        "cold_request": {
+          "request_wall_seconds": 1.0923304580064723,
+          "inference_seconds": 1.0774,
+          "queue_wait_seconds": 0.0001,
+          "audio_duration_seconds": 3.96,
+          "real_time_factor": 0.2720707070707071,
+          "process_cpu_seconds": 1.209476,
+          "working_set_bytes": null,
+          "process_peak_working_set_bytes": 581304320
+        },
+        "cold_request_over_inference_seconds": 0.01483,
+        "warm": {
+          "request_wall_seconds": {
+            "median": 0.080983,
+            "p50": 0.081095,
+            "p95": 0.084164,
+            "p99": 0.084814,
+            "min": 0.079518,
+            "max": 0.084814
+          },
+          "inference_seconds": {
+            "median": 0.0716,
+            "p50": 0.0716,
+            "p95": 0.0727,
+            "p99": 0.0733,
+            "min": 0.071,
+            "max": 0.0733
+          },
+          "queue_wait_seconds": {
+            "median": 0.0001,
+            "p50": 0.0001,
+            "p95": 0.0001,
+            "p99": 0.0001,
+            "min": 0.0001,
+            "max": 0.0001
+          },
+          "real_time_factor": {
+            "median": 0.018081,
+            "p50": 0.018081,
+            "p95": 0.018359,
+            "p99": 0.01851,
+            "min": 0.017929,
+            "max": 0.01851
+          },
+          "process_cpu_seconds": {
+            "median": 0.280399,
+            "p50": 0.281027,
+            "p95": 0.290989,
+            "p99": 0.295337,
+            "min": 0.261883,
+            "max": 0.295337
+          }
+        },
+        "serial_throughput_requests_per_second": {
+          "median": 12.348348,
+          "p50": 12.365461,
+          "p95": 12.489625,
+          "p99": 12.575743,
+          "min": 11.790558,
+          "max": 12.575743
+        },
+        "logical_cpu_utilization_percent": {
+          "median": 34.440122,
+          "p50": 34.442225,
+          "p95": 35.54964,
+          "p99": 35.916729,
+          "min": 32.082473,
+          "max": 35.916729
+        },
+        "characters_per_inference_second": null,
+        "resources": {
+          "baseline_process_rss_bytes": null,
+          "steady_rss_median_bytes": null,
+          "model_loaded_rss_delta_bytes": null,
+          "peak_rss_bytes": 584220672.0
+        },
+        "warmup_iterations": 3,
+        "measured_iterations": 20,
+        "elapsed_seconds": 3.009846,
+        "service_startup_seconds": 0.853977,
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 6175817728,
+            "memory_load_percent": 64
+          },
+          "process_resources": {
+            "cpu_time_seconds": 0.625506,
+            "peak_working_set_bytes": 55771136
+          }
+        }
+      },
+      {
+        "case": {
+          "task": "transcription",
+          "model_id": "stt-sensevoice-small-int8",
+          "language": "zh",
+          "sample_id": "17738549684744212080"
+        },
+        "cold_request": {
+          "request_wall_seconds": 0.9550367920019198,
+          "inference_seconds": 0.9443,
+          "queue_wait_seconds": 0.0001,
+          "audio_duration_seconds": 4.8,
+          "real_time_factor": 0.19672916666666668,
+          "process_cpu_seconds": 1.19287,
+          "working_set_bytes": null,
+          "process_peak_working_set_bytes": 737132544
+        },
+        "cold_request_over_inference_seconds": 0.010637,
+        "warm": {
+          "request_wall_seconds": {
+            "median": 0.092857,
+            "p50": 0.09294,
+            "p95": 0.10284,
+            "p99": 0.197144,
+            "min": 0.091309,
+            "max": 0.197144
+          },
+          "inference_seconds": {
+            "median": 0.08295,
+            "p50": 0.083,
+            "p95": 0.0857,
+            "p99": 0.1818,
+            "min": 0.082,
+            "max": 0.1818
+          },
+          "queue_wait_seconds": {
+            "median": 0.0001,
+            "p50": 0.0001,
+            "p95": 0.0001,
+            "p99": 0.0001,
+            "min": 0.0001,
+            "max": 0.0001
+          },
+          "real_time_factor": {
+            "median": 0.017281,
+            "p50": 0.017292,
+            "p95": 0.017854,
+            "p99": 0.037875,
+            "min": 0.017083,
+            "max": 0.037875
+          },
+          "process_cpu_seconds": {
+            "median": 0.319402,
+            "p50": 0.320084,
+            "p95": 0.332479,
+            "p99": 0.422645,
+            "min": 0.310845,
+            "max": 0.422645
+          }
+        },
+        "serial_throughput_requests_per_second": {
+          "median": 10.769266,
+          "p50": 10.77893,
+          "p95": 10.94878,
+          "p99": 10.951778,
+          "min": 5.072443,
+          "max": 10.951778
+        },
+        "logical_cpu_utilization_percent": {
+          "median": 34.072794,
+          "p50": 34.079394,
+          "p95": 35.595976,
+          "p99": 35.618821,
+          "min": 21.438427,
+          "max": 35.618821
+        },
+        "characters_per_inference_second": null,
+        "resources": {
+          "baseline_process_rss_bytes": null,
+          "steady_rss_median_bytes": null,
+          "model_loaded_rss_delta_bytes": null,
+          "peak_rss_bytes": 742785024.0
+        },
+        "warmup_iterations": 3,
+        "measured_iterations": 20,
+        "elapsed_seconds": 3.250782,
+        "service_startup_seconds": 0.658618,
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 6518571008,
+            "memory_load_percent": 62
+          },
+          "process_resources": {
+            "cpu_time_seconds": 0.548077,
+            "peak_working_set_bytes": 56426496
+          }
+        }
+      }
+    ],
+    "concurrency": [
+      {
+        "case": {
+          "task": "transcription",
+          "model_id": "stt-sensevoice-small-int8",
+          "language": "en"
+        },
+        "workload_model": "closed_loop_fixed_concurrency",
+        "levels": [
+          {
+            "workers": 1,
+            "requests_per_worker": 10,
+            "request_count": 10,
+            "success_count": 10,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 11.711445,
+            "request_wall_seconds": {
+              "median": 0.08074,
+              "p50": 0.080894,
+              "p95": 0.08581,
+              "p99": 0.08581,
+              "min": 0.079614,
+              "max": 0.08581
+            },
+            "queue_wait_seconds": {
+              "median": 0.0001,
+              "p50": 0.0001,
+              "p95": 0.0001,
+              "p99": 0.0001,
+              "min": 0.0001,
+              "max": 0.0001
+            },
+            "inference_seconds": {
+              "median": 0.07145,
+              "p50": 0.0715,
+              "p95": 0.0735,
+              "p99": 0.0735,
+              "min": 0.0697,
+              "max": 0.0735
+            },
+            "process_cpu_seconds": {
+              "median": 0.27747,
+              "p50": 0.277528,
+              "p95": 0.289308,
+              "p99": 0.289308,
+              "min": 0.255082,
+              "max": 0.289308
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 0.853866
+          },
+          {
+            "workers": 2,
+            "requests_per_worker": 10,
+            "request_count": 20,
+            "success_count": 20,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 12.616777,
+            "request_wall_seconds": {
+              "median": 0.148676,
+              "p50": 0.148739,
+              "p95": 0.152129,
+              "p99": 0.160576,
+              "min": 0.086513,
+              "max": 0.160576
+            },
+            "queue_wait_seconds": {
+              "median": 0.0592,
+              "p50": 0.0592,
+              "p95": 0.0615,
+              "p99": 0.0716,
+              "min": 0.0001,
+              "max": 0.0716
+            },
+            "inference_seconds": {
+              "median": 0.07445,
+              "p50": 0.0745,
+              "p95": 0.077,
+              "p99": 0.0778,
+              "min": 0.0724,
+              "max": 0.0778
+            },
+            "process_cpu_seconds": {
+              "median": 0.565011,
+              "p50": 0.565073,
+              "p95": 0.576621,
+              "p99": 0.577086,
+              "min": 0.266434,
+              "max": 0.577086
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 1.585191
+          },
+          {
+            "workers": 4,
+            "requests_per_worker": 10,
+            "request_count": 40,
+            "success_count": 26,
+            "failure_count": 14,
+            "failure_rate": 0.35,
+            "requests_per_second": 11.633653,
+            "request_wall_seconds": {
+              "median": 0.222973,
+              "p50": 0.223243,
+              "p95": 0.238582,
+              "p99": 0.244458,
+              "min": 0.093064,
+              "max": 0.244458
+            },
+            "queue_wait_seconds": {
+              "median": 0.13395,
+              "p50": 0.134,
+              "p95": 0.1376,
+              "p99": 0.154,
+              "min": 0.0002,
+              "max": 0.154
+            },
+            "inference_seconds": {
+              "median": 0.07485,
+              "p50": 0.0749,
+              "p95": 0.083,
+              "p99": 0.0916,
+              "min": 0.0731,
+              "max": 0.0916
+            },
+            "process_cpu_seconds": {
+              "median": 0.850341,
+              "p50": 0.851234,
+              "p95": 0.954258,
+              "p99": 0.969586,
+              "min": 0.334136,
+              "max": 0.969586
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {
+              "503": 14
+            },
+            "duration_seconds": 2.234896
+          }
+        ],
+        "soak": {
+          "workers": 4,
+          "target_seconds": 60,
+          "actual_seconds": 60.168393,
+          "request_count": 5646,
+          "success_count": 776,
+          "failure_count": 4870,
+          "failure_rate": 0.862558,
+          "requests_per_second": 12.897137,
+          "request_wall_seconds": {
+            "median": 0.232636,
+            "p50": 0.232646,
+            "p95": 0.243633,
+            "p99": 0.259572,
+            "min": 0.101468,
+            "max": 0.325971
+          },
+          "queue_wait_seconds": {
+            "median": 0.1399,
+            "p50": 0.1399,
+            "p95": 0.1522,
+            "p99": 0.1586,
+            "min": 0.0053,
+            "max": 0.2331
+          },
+          "inference_seconds": {
+            "median": 0.0776,
+            "p50": 0.0776,
+            "p95": 0.0836,
+            "p99": 0.0887,
+            "min": 0.0705,
+            "max": 0.172
+          },
+          "process_cpu_seconds": {
+            "median": 1.003092,
+            "p50": 1.003094,
+            "p95": 1.040182,
+            "p99": 1.061548,
+            "min": 0.331343,
+            "max": 1.186314
+          },
+          "real_time_factor": {
+            "median": 0.019596,
+            "p50": 0.019596,
+            "p95": 0.021111,
+            "p99": 0.022399,
+            "min": 0.017803,
+            "max": 0.043434
+          },
+          "working_set_peak_bytes": null,
+          "working_set_start_bytes": null,
+          "working_set_end_bytes": null,
+          "estimated_working_set_growth_bytes_per_minute": null,
+          "errors_by_status": {
+            "503": 4870
+          }
+        },
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 6175817728,
+            "memory_load_percent": 64
+          },
+          "process_resources": {
+            "cpu_time_seconds": 0.625506,
+            "peak_working_set_bytes": 55771136
+          }
+        }
+      },
+      {
+        "case": {
+          "task": "transcription",
+          "model_id": "stt-sensevoice-small-int8",
+          "language": "zh"
+        },
+        "workload_model": "closed_loop_fixed_concurrency",
+        "levels": [
+          {
+            "workers": 1,
+            "requests_per_worker": 10,
+            "request_count": 10,
+            "success_count": 10,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 10.312702,
+            "request_wall_seconds": {
+              "median": 0.092288,
+              "p50": 0.092431,
+              "p95": 0.095692,
+              "p99": 0.095692,
+              "min": 0.091006,
+              "max": 0.095692
+            },
+            "queue_wait_seconds": {
+              "median": 0.0001,
+              "p50": 0.0001,
+              "p95": 0.0001,
+              "p99": 0.0001,
+              "min": 0.0001,
+              "max": 0.0001
+            },
+            "inference_seconds": {
+              "median": 0.08305,
+              "p50": 0.0831,
+              "p95": 0.0853,
+              "p99": 0.0853,
+              "min": 0.0813,
+              "max": 0.0853
+            },
+            "process_cpu_seconds": {
+              "median": 0.314028,
+              "p50": 0.31564,
+              "p95": 0.32621,
+              "p99": 0.32621,
+              "min": 0.298982,
+              "max": 0.32621
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 0.969678
+          },
+          {
+            "workers": 2,
+            "requests_per_worker": 10,
+            "request_count": 20,
+            "success_count": 20,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 11.046386,
+            "request_wall_seconds": {
+              "median": 0.171437,
+              "p50": 0.17169,
+              "p95": 0.174769,
+              "p99": 0.19613,
+              "min": 0.101849,
+              "max": 0.19613
+            },
+            "queue_wait_seconds": {
+              "median": 0.0703,
+              "p50": 0.0703,
+              "p95": 0.0731,
+              "p99": 0.0855,
+              "min": 0.0001,
+              "max": 0.0855
+            },
+            "inference_seconds": {
+              "median": 0.0855,
+              "p50": 0.0856,
+              "p95": 0.0892,
+              "p99": 0.0909,
+              "min": 0.0837,
+              "max": 0.0909
+            },
+            "process_cpu_seconds": {
+              "median": 0.644059,
+              "p50": 0.64413,
+              "p95": 0.660605,
+              "p99": 0.662324,
+              "min": 0.311727,
+              "max": 0.662324
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 1.810547
+          },
+          {
+            "workers": 4,
+            "requests_per_worker": 10,
+            "request_count": 40,
+            "success_count": 23,
+            "failure_count": 17,
+            "failure_rate": 0.425,
+            "requests_per_second": 10.183392,
+            "request_wall_seconds": {
+              "median": 0.173538,
+              "p50": 0.173538,
+              "p95": 0.261245,
+              "p99": 0.281404,
+              "min": 0.107396,
+              "max": 0.281404
+            },
+            "queue_wait_seconds": {
+              "median": 0.071,
+              "p50": 0.071,
+              "p95": 0.1586,
+              "p99": 0.1611,
+              "min": 0.0008,
+              "max": 0.1611
+            },
+            "inference_seconds": {
+              "median": 0.0856,
+              "p50": 0.0856,
+              "p95": 0.0934,
+              "p99": 0.0967,
+              "min": 0.0828,
+              "max": 0.0967
+            },
+            "process_cpu_seconds": {
+              "median": 0.646726,
+              "p50": 0.646726,
+              "p95": 1.040948,
+              "p99": 1.100226,
+              "min": 0.387094,
+              "max": 1.100226
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {
+              "503": 17
+            },
+            "duration_seconds": 2.258579
+          }
+        ],
+        "soak": {
+          "workers": 4,
+          "target_seconds": 60,
+          "actual_seconds": 60.247687,
+          "request_count": 5562,
+          "success_count": 666,
+          "failure_count": 4896,
+          "failure_rate": 0.880259,
+          "requests_per_second": 11.054366,
+          "request_wall_seconds": {
+            "median": 0.269764,
+            "p50": 0.269766,
+            "p95": 0.28304,
+            "p99": 0.357141,
+            "min": 0.113807,
+            "max": 0.388666
+          },
+          "queue_wait_seconds": {
+            "median": 0.16365,
+            "p50": 0.1637,
+            "p95": 0.1775,
+            "p99": 0.2075,
+            "min": 0.0168,
+            "max": 0.2818
+          },
+          "inference_seconds": {
+            "median": 0.0899,
+            "p50": 0.0899,
+            "p95": 0.097,
+            "p99": 0.1028,
+            "min": 0.0831,
+            "max": 0.2014
+          },
+          "process_cpu_seconds": {
+            "median": 1.158651,
+            "p50": 1.158688,
+            "p95": 1.194649,
+            "p99": 1.263855,
+            "min": 0.374173,
+            "max": 1.330403
+          },
+          "real_time_factor": {
+            "median": 0.018729,
+            "p50": 0.018729,
+            "p95": 0.020208,
+            "p99": 0.021417,
+            "min": 0.017312,
+            "max": 0.041958
+          },
+          "working_set_peak_bytes": null,
+          "working_set_start_bytes": null,
+          "working_set_end_bytes": null,
+          "estimated_working_set_growth_bytes_per_minute": null,
+          "errors_by_status": {
+            "503": 4896
+          }
+        },
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 6518571008,
+            "memory_load_percent": 62
+          },
+          "process_resources": {
+            "cpu_time_seconds": 0.548077,
+            "peak_working_set_bytes": 56426496
+          }
+        }
+      }
+    ]
+  },
+  "local_artifacts": {
+    "tts_listening_files_generated": false
+  },
+  "interpretation": "Observed comparison results only; not an acceptance threshold or cross-platform ranking."
+}

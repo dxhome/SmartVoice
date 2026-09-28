@@ -1,0 +1,12 @@
+# Downloaded public speech data and converted benchmark cache
+cache/
+data/
+
+# Per-run logs, generated speech and unaggregated/identifiable evaluation data
+logs/
+runs/
+artifacts/
+tts-audio/
+*ratings-template.csv
+blind-mapping.json
+tts-listening.html

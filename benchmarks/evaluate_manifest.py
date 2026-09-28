@@ -6,28 +6,22 @@ import argparse
 import csv
 import json
 import platform
-import re
 import statistics
 import time
-import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
-from jiwer import cer, wer
-
-
-def normalize(text: str) -> str:
-    text = unicodedata.normalize("NFC", text).casefold()
-    text = "".join(char for char in text if not unicodedata.category(char).startswith("P"))
-    return re.sub(r"\s+", " ", text).strip()
+from benchmarks.metrics import error_rate
+from smartvoice.config.settings import Settings
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path, help="CSV columns: audio_path,reference,language")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
-    parser.add_argument("--output", type=Path, default=Path("stt-evaluation.json"))
+    parser.add_argument("--model", required=True, help="Installed model ID to evaluate")
+    parser.add_argument("--output", type=Path, help="Aggregate JSON output; defaults outside the repository")
     args = parser.parse_args()
 
     rows: list[dict[str, object]] = []
@@ -41,7 +35,7 @@ def main() -> None:
                 response = httpx.post(
                     f"{args.base_url.rstrip('/')}/v1/audio/transcriptions",
                     files={"file": (path.name, audio, "application/octet-stream")},
-                    data={"language": language, "response_format": "json"},
+                    data={"model": args.model, "language": language, "response_format": "json"},
                     timeout=900,
                 )
             response.raise_for_status()
@@ -50,44 +44,45 @@ def main() -> None:
             hypothesis = str(result["text"])
             rows.append({
                 "index": index,
-                "audio_path": str(path),
                 "language": language,
                 "reference": reference,
                 "hypothesis": hypothesis,
-                "cer": cer(normalize(reference), normalize(hypothesis)),
-                "wer": wer(normalize(reference), normalize(hypothesis)),
                 "audio_duration_seconds": result.get("duration"),
-                "processing_seconds": result.get("processing_seconds"),
+                "processing_seconds": result.get("request_processing_seconds"),
                 "request_elapsed_seconds": round(elapsed, 4),
-                "device": result.get("device"),
-                "model": result.get("model"),
             })
 
     by_language = {}
     for language in sorted({str(row["language"]) for row in rows}):
         subset = [row for row in rows if row["language"] == language]
-        references = [normalize(str(row["reference"])) for row in subset]
-        hypotheses = [normalize(str(row["hypothesis"])) for row in subset]
+        profile = "han_cer" if language.startswith("zh") else "latin_wer"
+        references = [str(row["reference"]) for row in subset]
+        hypotheses = [str(row["hypothesis"]) for row in subset]
+        rtf_values = [
+            float(row["processing_seconds"]) / float(row["audio_duration_seconds"])
+            for row in subset if row["audio_duration_seconds"] and row["processing_seconds"] is not None
+        ]
         by_language[language] = {
             "utterances": len(subset),
-            "corpus_cer": cer(references, hypotheses),
-            "corpus_wer": wer(references, hypotheses),
-            "mean_rtf": statistics.mean(
-                float(row["processing_seconds"]) / float(row["audio_duration_seconds"])
-                for row in subset if row["audio_duration_seconds"] and row["processing_seconds"] is not None
-            ) if any(row["audio_duration_seconds"] and row["processing_seconds"] is not None for row in subset) else None,
+            "metric": "cer" if profile == "han_cer" else "wer",
+            "error_rate": error_rate(references, hypotheses, profile),
+            "mean_rtf": statistics.mean(rtf_values) if rtf_values else None,
         }
     report = {
+        "schema_version": "1.0",
+        "category": "quality",
+        "model_id": args.model,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "platform": platform.platform(),
-        "runtime": httpx.get(f"{args.base_url.rstrip('/')}/v1/runtime", timeout=10).json(),
-        "normalization": "Unicode NFC, casefold, remove Unicode punctuation, collapse whitespace",
+        "runtime": {key: httpx.get(f"{args.base_url.rstrip('/')}/v1/runtime", timeout=10).json().get(key) for key in ("backend", "actual_device", "runtime_version", "host")},
         "by_language": by_language,
-        "utterances": rows,
+        "evaluated_utterances": len(rows),
     }
-    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    output = args.output or Settings.from_env().data_dir / "benchmark-runs" / "custom-corpus-quality.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(by_language, ensure_ascii=False, indent=2))
-    print(f"Detailed report: {args.output.resolve()}")
+    print(f"Aggregate report: {output.resolve()}")
 
 
 if __name__ == "__main__":

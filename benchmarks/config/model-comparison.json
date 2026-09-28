@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "smartvoice-model-comparison-v1",
+  "seed": 20260928,
+  "dataset": {
+    "repo_id": "google/fleurs",
+    "revision": "10b20dadef85684efea8561331323382da703432",
+    "split": "test",
+    "license": "cc-by-4.0"
+  },
+  "languages": {
+    "en": {"display_name": "English", "dataset_config": "en_us", "normalization": "latin_wer"},
+    "zh": {"display_name": "Chinese (Simplified)", "dataset_config": "cmn_hans_cn", "normalization": "han_cer"}
+  },
+  "models": [
+    {"id": "stt-whisper-base-multilingual-int8", "task": "transcription", "languages": ["en", "zh"]},
+    {"id": "stt-sensevoice-small-int8", "task": "transcription", "languages": ["en", "zh"]},
+    {"id": "tts-melo-zh-en", "task": "speech", "languages": ["en", "zh"]},
+    {"id": "tts-supertonic-v3-multilingual-int8", "task": "speech", "languages": ["en"]}
+  ],
+  "tts_quality_judge_model_id": "stt-sensevoice-small-int8",
+  "server": {"host": "127.0.0.1", "startup_timeout_seconds": 90},
+  "profiles": {
+    "smoke": {
+      "quality_sample_limit": 8,
+      "performance_sample_limit": 2,
+      "bootstrap_samples": 100,
+      "performance": {"warmup_iterations": 1, "iterations": 2},
+      "concurrency": {"concurrency_levels": [1, 2], "requests_per_worker": 2, "soak_workers": 2, "soak_seconds": 5}
+    },
+    "standard": {
+      "quality_sample_limit": 100,
+      "performance_sample_limit": 5,
+      "bootstrap_samples": 1000,
+      "performance": {"warmup_iterations": 3, "iterations": 20},
+      "concurrency": {"concurrency_levels": [1, 2, 4], "requests_per_worker": 10, "soak_workers": 4, "soak_seconds": 60}
+    },
+    "full": {
+      "quality_sample_limit": null,
+      "performance_sample_limit": 10,
+      "bootstrap_samples": 2000,
+      "performance": {"warmup_iterations": 5, "iterations": 50},
+      "concurrency": {"concurrency_levels": [1, 2, 4, 8], "requests_per_worker": 25, "soak_workers": 4, "soak_seconds": 300}
+    }
+  }
+}
