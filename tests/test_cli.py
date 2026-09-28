@@ -9,7 +9,7 @@ class ModelListOutputTests(unittest.TestCase):
     def test_model_list_groups_by_install_state_then_task_compactly(self):
         output = _format_model_list([
             {
-                "id": "sensevoice-small-local",
+                "id": "stt-sensevoice-small-int8",
                 "name": "SenseVoice Small INT8",
                 "task": "transcription",
                 "languages": ["zh", "en"],
@@ -18,7 +18,7 @@ class ModelListOutputTests(unittest.TestCase):
                 "default": True,
             },
             {
-                "id": "melo-tts-zh-en-local",
+                "id": "tts-melo-zh-en",
                 "name": "Melo TTS",
                 "task": "speech",
                 "languages": ["zh", "en"],
@@ -40,10 +40,10 @@ class ModelListOutputTests(unittest.TestCase):
         self.assertLess(output.index("Installed (1)"), output.index("Uninstalled (2)"))
         self.assertLess(output.index("  STT (1)"), output.index("Uninstalled (2)"))
         self.assertLess(output.index("  STT (1)", output.index("Uninstalled (2)")), output.index("  TTS (1)"))
-        self.assertIn("    - SenseVoice Small INT8 (sensevoice-small-local) | zh, en | sherpa-onnx", output)
+        self.assertIn("    - SenseVoice Small INT8 (stt-sensevoice-small-int8) | zh, en | sherpa-onnx", output)
         self.assertIn("Default", output)
         self.assertIn("    - Paraformer Chinese (paraformer-zh-local) | zh | funasr", output)
-        self.assertIn("    - Melo TTS (melo-tts-zh-en-local) | zh, en | sherpa-onnx", output)
+        self.assertIn("    - Melo TTS (tts-melo-zh-en) | zh, en | sherpa-onnx", output)
         self.assertIn("zh, en", output)
         self.assertNotRegex(output, r"[\u4e00-\u9fff]")
 

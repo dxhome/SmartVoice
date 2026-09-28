@@ -8,7 +8,7 @@ from typing import Any
 
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import InvalidRequestError
-from smartvoice.services.model_catalog import install_model
+from smartvoice.services.model_catalog import get_model_spec, install_model
 
 
 class ModelJobManager:
@@ -18,6 +18,7 @@ class ModelJobManager:
         self._jobs: dict[str, dict[str, Any]] = {}
 
     def start_download(self, model_id: str) -> dict[str, Any]:
+        model_id = get_model_spec(model_id).id
         job_id = uuid.uuid4().hex
         cancel = threading.Event()
         job: dict[str, Any] = {

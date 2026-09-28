@@ -9,7 +9,7 @@ import time
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, Query, Request, UploadFile, HTTPException
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.concurrency import run_in_threadpool
 from starlette.background import BackgroundTask
@@ -17,8 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from smartvoice.domain.errors import AudioTooLargeError, InvalidRequestError, ModelUnavailableError, PayloadTooLargeError
 from smartvoice.services.model_catalog import (
-    catalog_models, clear_model_default, default_model_ids, export_model, import_model,
-    model_storage, set_default_model, uninstall_model,
+    catalog_models, clear_model_default, default_model_ids, export_model,
+    get_model_spec, import_model, model_storage, set_default_model, uninstall_model,
 )
 
 router = APIRouter(prefix="/v1")
@@ -59,14 +59,12 @@ def select_installed_model(request: Request, task: str, requested_model: str | N
         if model.get("task") == task
     ]
     if requested_model:
-        catalog_ids = {str(model["id"]): str(model["task"]) for model in catalog_models(request.app.state.settings)}
-        if requested_model not in catalog_ids:
-            raise InvalidRequestError(f"Unknown model ID: {requested_model}")
-        if catalog_ids[requested_model] != task:
+        spec = get_model_spec(requested_model)
+        if spec.task != task:
             raise InvalidRequestError(f"Model {requested_model!r} does not support the {task} task.")
-        if requested_model not in task_models:
+        if spec.id not in task_models:
             raise ModelUnavailableError(f"Model {requested_model!r} is not installed or not available in the active provider.")
-        return requested_model
+        return spec.id
     if not task_models:
         raise ModelUnavailableError(f"No installed model is available for the {task} task.")
     selection_file = request.app.state.settings.data_dir / "default_models.json"
@@ -106,8 +104,23 @@ async def _run_request_inference(request: Request, operation):
 
 
 @router.get("/capabilities", tags=["runtime"])
-async def capabilities(request: Request) -> dict[str, object]:
-    return get_provider(request).capabilities()
+async def capabilities(
+    request: Request,
+    task: Literal["transcription", "speech"] | None = Query(
+        default=None,
+        description="Filter capabilities by task. Use transcription for STT or speech for TTS.",
+    ),
+) -> dict[str, object]:
+    result = get_provider(request).capabilities()
+    if task is not None:
+        result = {
+            **result,
+            "tasks": [
+                item for item in result.get("tasks", [])
+                if (item.get("task") if isinstance(item, dict) else item) == task
+            ],
+        }
+    return result
 
 
 @router.get("/runtime", tags=["runtime"])
@@ -117,23 +130,53 @@ async def runtime(request: Request) -> dict[str, object]:
 
 @router.get("/models", tags=["models"])
 async def models(request: Request) -> dict[str, object]:
-    return {"data": get_provider(request).installed_models()}
+    return {"object": "list", "data": [_openai_model_object(model) for model in get_provider(request).installed_models()]}
+
+
+def _openai_model_object(model: dict[str, object]) -> dict[str, object]:
+    """Map local model metadata to the OpenAI model object shape plus extensions."""
+    return {
+        "id": str(model["id"]),
+        "object": "model",
+        # The local catalog does not track publication timestamps.
+        "created": 0,
+        "owned_by": "smartvoice",
+        **{key: value for key, value in model.items() if key != "id"},
+    }
+
+
+@router.get("/models/{model_id}", tags=["models"])
+async def retrieve_model(request: Request, model_id: str) -> dict[str, object]:
+    model = next(
+        (item for item in get_provider(request).installed_models() if item.get("id") == model_id),
+        None,
+    )
+    if model is None:
+        raise HTTPException(status_code=404, detail=f"Model {model_id!r} is not installed.")
+    return _openai_model_object(model)
 
 
 @router.get("/catalog", tags=["models"])
-async def catalog(request: Request) -> dict[str, object]:
+async def catalog(
+    request: Request,
+    task: Literal["transcription", "speech"] | None = Query(
+        default=None,
+        description="Filter catalog models by task. Use transcription for STT or speech for TTS.",
+    ),
+) -> dict[str, object]:
+    entries = catalog_models(request.app.state.settings)
+    if task is not None:
+        entries = [model for model in entries if model.get("task") == task]
     return {
-        "data": catalog_models(request.app.state.settings),
+        "data": entries,
         "storage": model_storage(request.app.state.settings),
     }
 
 
 @router.post("/models/{model_id}/download", status_code=202, tags=["models"])
 async def download_model(request: Request, model_id: str) -> dict[str, object]:
-    from smartvoice.services.model_catalog import get_model_spec
-
-    get_model_spec(model_id)
-    return request.app.state.model_jobs.start_download(model_id)
+    spec = get_model_spec(model_id)
+    return request.app.state.model_jobs.start_download(spec.id)
 
 
 @router.get("/jobs/{job_id}", tags=["models"])
@@ -160,16 +203,18 @@ async def clear_default_model_route(request: Request, model_id: str) -> dict[str
 
 @router.delete("/models/{model_id}", tags=["models"])
 async def uninstall_model_route(request: Request, model_id: str) -> dict[str, object]:
+    spec = get_model_spec(model_id)
+    canonical_id = spec.id
     def remove_if_unused():
-        loaded = bool(getattr(get_provider(request), "is_model_loaded", lambda _model_id: False)(model_id))
-        return uninstall_model(request.app.state.settings, model_id, loaded=loaded)
+        loaded = bool(getattr(get_provider(request), "is_model_loaded", lambda _model_id: False)(canonical_id))
+        return uninstall_model(request.app.state.settings, canonical_id, loaded=loaded)
 
     size, _queue_wait = await request.app.state.inference_queue.run(
         remove_if_unused,
         request.app.state.settings.inference_queue_timeout_seconds,
         request.app.state.settings.inference_execution_timeout_seconds,
     )
-    return {"id": model_id, "removed_bytes": size}
+    return {"id": canonical_id, "removed_bytes": size}
 
 
 @router.get("/models/{model_id}/export", tags=["models"])
@@ -185,6 +230,7 @@ async def export_model_route(request: Request, model_id: str) -> FileResponse:
     except Exception:
         archive_path.unlink(missing_ok=True)
         raise
+    model_id = get_model_spec(model_id).id
     return FileResponse(
         archive_path,
         media_type="application/zip",
@@ -260,9 +306,8 @@ async def transcriptions(
 @router.post("/audio/speech", tags=["audio"])
 async def speech(request: Request, payload: SpeechRequest) -> Response:
     model = select_installed_model(request, "speech", payload.model)
-    from smartvoice.services.model_catalog import get_model_spec
-
     spec = get_model_spec(model)
+    model = spec.id
     if payload.language not in {None, "auto", *spec.languages}:
         raise InvalidRequestError(f"The selected TTS model supports: {', '.join(spec.languages)}.")
     detected_language = _tts_script_language(payload.input)

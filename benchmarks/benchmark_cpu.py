@@ -19,6 +19,7 @@ import httpx
 
 from smartvoice import __version__
 from smartvoice.config.settings import Settings
+from smartvoice.services.model_catalog import model_directory
 
 
 class ProcessSampler:
@@ -253,7 +254,7 @@ def main() -> int:
         parser.error("warmup_iterations must be a non-negative integer")
 
     settings = Settings.from_env()
-    sample_dir = settings.models_dir / "sensevoice-small-local"
+    sample_dir = model_directory(settings, "stt-sensevoice-small-int8")
     samples = {language: next(sample_dir.rglob(f"{language}.wav"), None) for language in ("zh", "en")}
     missing = [language for language, path in samples.items() if path is None]
     if missing:

@@ -38,14 +38,16 @@ Local speech tools often require separate runtimes, model formats, and APIs for 
 
 The built-in catalog currently contains the following STT and TTS models. These are the models available in this prototype, not a limit on SmartVoice's multilingual project goal. All currently use the sherpa-onnx adapter and CPU provider.
 
+Canonical model IDs follow `<task>-<family>-<size-or-version>[-<variant>][-<precision>]`: `stt` is transcription and `tts` is speech synthesis. Include language or voice details when they distinguish a model package, and include precision when it distinguishes the model artifact. Runtime backend and `local` are omitted because they are not part of the model's identity. The catalog, API, CLI, install directory, defaults, and offline package all use these IDs directly; only IDs listed in the catalog are accepted.
+
 | Model ID | Task and model type | Languages listed in catalog | Format / notes |
 |---|---|---|---|
-| `whisper-base-multilingual-local` | STT — Whisper Base multilingual encoder-decoder | Automatic detection; English, Chinese, Japanese, Korean, French, German | INT8 ONNX; general multilingual transcription |
-| `sensevoice-small-local` | STT — SenseVoice Small | Chinese, English, Cantonese, Japanese, Korean | INT8 ONNX; multilingual recognition |
-| `melo-tts-zh-en-local` | TTS — MeloTTS VITS | Chinese, English | VITS ONNX; WAV output |
-| `supertonic-3-multilingual-local` | TTS — Supertonic 3 | English, French, German, Japanese, Korean | INT8 ONNX model components; WAV output |
-| `piper-fr-fr-siwis-medium-local` | TTS — Piper VITS, Siwis Medium voice | French (France) | INT8 ONNX; includes French phonemizer data |
-| `piper-de-de-thorsten-medium-local` | TTS — Piper VITS, Thorsten Medium voice | German | INT8 ONNX; includes German phonemizer data |
+| `stt-whisper-base-multilingual-int8` | STT — Whisper Base multilingual encoder-decoder | Automatic detection; English, Chinese, Japanese, Korean, French, German | INT8 ONNX; general multilingual transcription |
+| `stt-sensevoice-small-int8` | STT — SenseVoice Small | Chinese, English, Cantonese, Japanese, Korean | INT8 ONNX; multilingual recognition |
+| `tts-melo-zh-en` | TTS — MeloTTS VITS | Chinese, English | VITS ONNX; WAV output |
+| `tts-supertonic-v3-multilingual-int8` | TTS — Supertonic 3 | English, French, German, Japanese, Korean | INT8 ONNX model components; WAV output |
+| `tts-piper-fr-fr-siwis-medium-int8` | TTS — Piper VITS, Siwis Medium voice | French (France) | INT8 ONNX; includes French phonemizer data |
+| `tts-piper-de-de-thorsten-medium-int8` | TTS — Piper VITS, Thorsten Medium voice | German | INT8 ONNX; includes German phonemizer data |
 
 Install a model with `python -m smartvoice models install <model-id>`. See [`catalog/models.json`](catalog/models.json) for the pinned source, integrity metadata, and model-specific license notes. Language availability does not guarantee equal quality, and third-party model/voice licenses are separate from the SmartVoice source license.
 
@@ -62,8 +64,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[inference,dev]"
 python -m smartvoice models list
-python -m smartvoice models install sensevoice-small-local
-python -m smartvoice models install melo-tts-zh-en-local
+python -m smartvoice models install stt-sensevoice-small-int8
+python -m smartvoice models install tts-melo-zh-en
 python -m smartvoice --host 127.0.0.1 --port 8000
 ```
 
@@ -73,13 +75,13 @@ On Windows x64, use PowerShell:
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[inference]"
 .\.venv\Scripts\python.exe -m smartvoice models list
-.\.venv\Scripts\python.exe -m smartvoice models install sensevoice-small-local
-.\.venv\Scripts\python.exe -m smartvoice models install melo-tts-zh-en-local
+.\.venv\Scripts\python.exe -m smartvoice models install stt-sensevoice-small-int8
+.\.venv\Scripts\python.exe -m smartvoice models install tts-melo-zh-en
 # Optional multilingual models and French/German voices
-.\.venv\Scripts\python.exe -m smartvoice models install whisper-base-multilingual-local
-.\.venv\Scripts\python.exe -m smartvoice models install supertonic-3-multilingual-local
-.\.venv\Scripts\python.exe -m smartvoice models install piper-fr-fr-siwis-medium-local
-.\.venv\Scripts\python.exe -m smartvoice models install piper-de-de-thorsten-medium-local
+.\.venv\Scripts\python.exe -m smartvoice models install stt-whisper-base-multilingual-int8
+.\.venv\Scripts\python.exe -m smartvoice models install tts-supertonic-v3-multilingual-int8
+.\.venv\Scripts\python.exe -m smartvoice models install tts-piper-fr-fr-siwis-medium-int8
+.\.venv\Scripts\python.exe -m smartvoice models install tts-piper-de-de-thorsten-medium-int8
 .\.venv\Scripts\python.exe -m smartvoice --host 127.0.0.1 --port 8000
 ```
 
@@ -99,10 +101,13 @@ Start the service, then open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/
 |---|---|
 | `GET /health` | Process liveness and version |
 | `GET /ready` | Readiness by required task; reports available models |
-| `GET /v1/capabilities` | Installed task, language, and model capabilities |
+| `GET /v1/capabilities?task=transcription` | Installed capabilities, optionally filtered by task (`transcription` for STT, `speech` for TTS) |
 | `GET /v1/runtime` | Backend, requested/actual device, runtime status |
-| `GET /v1/models` | Installed models |
-| `GET /v1/catalog` | Models available from the built-in catalog |
+| `GET /v1/models` | OpenAI-style list of installed models |
+| `GET /v1/models/{id}` | OpenAI-style details for one installed model |
+| `GET /v1/catalog?task=transcription` | Models available from the built-in catalog, optionally filtered by task |
+
+The `/v1/models` endpoints provide the OpenAI model list/retrieve response shape. Task filters are SmartVoice extensions available on `/v1/catalog` and `/v1/capabilities`; use `transcription` for STT or `speech` for TTS. Omit `task` to list all extension entries.
 | `POST /v1/models/{id}/download` | Start a background catalog model download/install job |
 | `GET /v1/jobs/{job_id}` | Read download progress and result |
 | `DELETE /v1/jobs/{job_id}` | Cancel a download; retrying install resumes partial data |
@@ -115,6 +120,8 @@ Start the service, then open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/
 | `POST /v1/audio/speech` | Synthesize text to WAV (`application/json`) |
 
 The server binds to `127.0.0.1` by default and rejects non-loopback binding in this prototype. Remote/LAN access is not enabled until authentication and access controls are implemented.
+
+Start the service with `python -m smartvoice --debug` to log each HTTP request and response headers and bodies and enable DEBUG level logging. Authorization and cookie headers are redacted. Body fields larger than 128 bytes are summarized with their byte size. Failed requests emit an ERROR log with the internal reason; unexpected exceptions include a traceback. HTTP debug logging can include sensitive payloads, so enable it only while diagnosing an issue.
 
 ### Transcribe audio
 
@@ -143,11 +150,11 @@ An explicit TTS `language` is checked against the selected model and returned as
 The CLI supports `models list`, `install`, `default set`, `default clear`, `uninstall`, `export`, and `import`. One default STT model and one default TTS model can be selected independently. Interrupted downloads retain a partial archive and resume on a subsequent `install` when the HTTPS server supports byte ranges. The API uses background jobs for downloads; use the job ID to poll status or cancel. Uninstall is refused while the current service has the model loaded. Model archives and offline packages are validated before being made available.
 
 ```powershell
-python -m smartvoice models default set sensevoice-small-local
+python -m smartvoice models default set stt-sensevoice-small-int8
 python -m smartvoice models default clear transcription
-python -m smartvoice models export sensevoice-small-local .\sensevoice.smartvoice.zip
+python -m smartvoice models export stt-sensevoice-small-int8 .\sensevoice.smartvoice.zip
 python -m smartvoice models import .\sensevoice.smartvoice.zip
-python -m smartvoice models uninstall sensevoice-small-local
+python -m smartvoice models uninstall stt-sensevoice-small-int8
 ```
 
 ## Architecture

@@ -80,7 +80,7 @@ def _serve(args: list[str]) -> None:
     parser.add_argument("--port", type=int, default=None, help="HTTP port")
     parser.add_argument("--data-dir", type=Path, default=None, help="Override the local SmartVoice data directory")
     parser.add_argument("--num-threads", type=int, default=None, help="Override CPU inference threads")
-    parser.add_argument("--log-level", choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"), default=None)
+    parser.add_argument("--debug", action="store_true", help="Log HTTP request/response headers and bodies and enable DEBUG logging")
     parsed = parser.parse_args(args)
     try:
         settings = Settings.from_env(parsed.config)
@@ -92,7 +92,7 @@ def _serve(args: list[str]) -> None:
         server_port=parsed.port or settings.server_port,
         data_dir=parsed.data_dir.expanduser().resolve() if parsed.data_dir else settings.data_dir,
         num_threads=max(1, parsed.num_threads) if parsed.num_threads else settings.num_threads,
-        log_level=parsed.log_level or settings.log_level,
+        log_level="DEBUG" if parsed.debug else settings.log_level,
     )
     if not _is_loopback(settings.server_host):
         parser.error("Only loopback addresses are supported until remote access has authentication and risk controls.")
@@ -113,11 +113,12 @@ def _serve(args: list[str]) -> None:
     settings.models_dir.mkdir(parents=True, exist_ok=True)
     print(f"SmartVoice data directory: {settings.data_dir}")
     print(f"Model directory: {settings.models_dir}")
-    print(f"Starting SmartVoice API at {address} (CPU, {settings.num_threads} inference threads)")
+    debug_label = " | DEBUG MODE" if parsed.debug else ""
+    print(f"Starting SmartVoice API at {address} (CPU, {settings.num_threads} inference threads{debug_label})")
     from smartvoice.app import create_app
 
     uvicorn.run(
-        create_app(settings=settings), host=settings.server_host, port=settings.server_port,
+        create_app(settings=settings, debug_http=parsed.debug), host=settings.server_host, port=settings.server_port,
         log_level=settings.log_level.lower(),
     )
 

@@ -19,11 +19,13 @@ from smartvoice.domain.errors import (
     ModelUnavailableError,
     SpeechOutputTooLargeError,
 )
-from smartvoice.services.model_catalog import default_model_ids, get_model_spec, installed_models
+from smartvoice.services.model_catalog import (
+    default_model_ids, get_model_spec, installed_models, model_directory,
+)
 from smartvoice.services.host_metrics import host_info, process_metrics, system_memory_info
 
-STT_MODEL_ID = "sensevoice-small-local"
-TTS_MODEL_ID = "melo-tts-zh-en-local"
+STT_MODEL_ID = "stt-sensevoice-small-int8"
+TTS_MODEL_ID = "tts-melo-zh-en"
 TARGET_SAMPLE_RATE = 16000
 
 
@@ -81,8 +83,9 @@ class SherpaOnnxProvider:
         import av
         import numpy as np
 
-        model_dir = self._model_dir(model_id)
         spec = get_model_spec(model_id)
+        model_id = spec.id
+        model_dir = self._model_dir(model_id)
         if language not in {"auto", *spec.languages}:
             raise InvalidRequestError(f"Language {language!r} is not supported by this model.")
         model_path = self._manifest_path(model_dir, spec.model_file)
@@ -166,6 +169,7 @@ class SherpaOnnxProvider:
         import numpy as np
 
         spec = get_model_spec(model_id)
+        model_id = spec.id
         if spec.task != "speech":
             raise InvalidRequestError(f"Model {model_id!r} does not support speech synthesis.")
         if voice not in {"default", "0"}:
@@ -295,13 +299,15 @@ class SherpaOnnxProvider:
     def _model_dir(self, model_id: str) -> Path:
         if self.settings.provider != "cpu":
             raise ModelUnavailableError("Only CPU inference is enabled in this release.")
-        directory = self.settings.models_dir / model_id
+        spec = get_model_spec(model_id)
+        model_id = spec.id
+        directory = model_directory(self.settings, model_id)
         manifest = directory / "smartvoice-model.json"
         if not manifest.is_file():
             raise ModelUnavailableError(f"Model {model_id!r} is not installed. Install it with `python -m smartvoice models install {model_id}`.")
         try:
             metadata = json.loads(manifest.read_text(encoding="utf-8"))
-            if metadata.get("id") != model_id:
+            if metadata.get("id") != spec.id:
                 raise ModelUnavailableError("The installed model manifest ID does not match its directory.")
             for relative, expected_hash in metadata.get("file_sha256", {}).items():
                 checked = self._manifest_path(directory, relative)

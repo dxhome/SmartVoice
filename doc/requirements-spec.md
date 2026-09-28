@@ -150,7 +150,7 @@ JSON 示例：
   "text": "今天的会议开始了。",
   "language": "zh",
   "duration": 2.84,
-  "model": "sensevoice-small-local",
+  "model": "stt-sensevoice-small-int8",
   "device": "cpu",
   "segments": []
 }
@@ -206,7 +206,7 @@ API 必须提供 OpenAPI 文档、大小/超时限制、错误码、文件清理
 
 | ID | 任务 | 候选 | 后端方向 | 初始分组 |
 |---|---|---|---|---|
-| `sensevoice-small-local` | STT | SenseVoiceSmall | FunASR 原生或 sherpa-onnx 对应 ONNX 包 | 中文优先轻量候选 |
+| `stt-sensevoice-small-int8` | STT | SenseVoiceSmall | FunASR 原生或 sherpa-onnx 对应 ONNX 包 | 中文优先轻量候选 |
 | `paraformer-zh-local` | STT | Paraformer 中文模型 | FunASR 或兼容 sherpa 模型 | 中文备选 |
 | `whisper-small-local` | STT | Whisper small/base | faster-whisper 或 whisper.cpp | 多语言可选 |
 | `piper-voice-*` | TTS | 按许可登记的 Piper voice | sherpa-onnx/Piper | CPU 轻量候选 |

@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 import ssl
 import threading
@@ -27,6 +28,7 @@ from smartvoice.domain.errors import InvalidRequestError
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 3 * 1024 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 50_000
+MODEL_ID_PATTERN = re.compile(r"^(stt|tts)-[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +62,10 @@ def load_catalog() -> list[ModelSpec]:
         raise RuntimeError("Unsupported model catalog schema")
     specs = []
     for item in raw["models"]:
+        model_id = item["id"]
+        expected_prefix = "stt" if item["task"] == "transcription" else "tts" if item["task"] == "speech" else None
+        if not MODEL_ID_PATTERN.fullmatch(model_id) or not expected_prefix or not model_id.startswith(f"{expected_prefix}-"):
+            raise RuntimeError(f"Invalid canonical model ID {model_id!r}; expected the {expected_prefix or 'stt/tts'}-... format")
         source = item["source"]
         allowed_source_prefixes = (
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/",
@@ -88,26 +94,35 @@ def load_catalog() -> list[ModelSpec]:
             data_dir=item.get("data_dir"), decoder_file=item.get("decoder_file"),
             file_sources=file_sources, file_sha256=file_sha256,
         ))
+    identifiers = [spec.id for spec in specs]
+    if len(identifiers) != len(set(identifiers)):
+        raise RuntimeError("Canonical model IDs must be unique")
     return specs
 
 
 def get_model_spec(model_id: str) -> ModelSpec:
     for spec in load_catalog():
-        if spec.id == model_id:
+        if model_id == spec.id:
             return spec
     raise InvalidRequestError(f"Unknown model ID: {model_id}")
+
+
+def model_directory(settings: Settings, model_id: str) -> Path:
+    """Return the install directory for a canonical catalog model ID."""
+    spec = get_model_spec(model_id)
+    return settings.models_dir / spec.id
 
 
 def installed_models(settings: Settings) -> list[dict[str, object]]:
     defaults = default_model_ids(settings)
     results: list[dict[str, object]] = []
     for spec in load_catalog():
-        manifest_path = settings.models_dir / spec.id / "smartvoice-model.json"
+        root = model_directory(settings, spec.id)
+        manifest_path = root / "smartvoice-model.json"
         if not manifest_path.is_file():
             continue
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            root = settings.models_dir / spec.id
             valid = (
                 manifest.get("id") == spec.id
                 and manifest.get("task") == spec.task
@@ -163,7 +178,7 @@ def catalog_models(settings: Settings) -> list[dict[str, object]]:
         "languages": list(spec.languages), "backend": spec.backend,
         "source": spec.source, "installed": spec.id in installed_by_id,
         "status": "installed" if spec.id in installed_by_id else (
-            "invalid" if (settings.models_dir / spec.id).exists() else "uninstalled"
+            "invalid" if model_directory(settings, spec.id).exists() else "uninstalled"
         ),
         "archive_name": spec.archive_name,
         "archive_sha256": spec.archive_sha256,
@@ -201,7 +216,7 @@ def default_model_ids(settings: Settings) -> dict[str, str]:
                 pass
         defaults: dict[str, str] = {}
         for spec in load_catalog():
-            root = settings.models_dir / spec.id
+            root = model_directory(settings, spec.id)
             try:
                 manifest = json.loads((root / "smartvoice-model.json").read_text(encoding="utf-8"))
                 if manifest.get("id") != spec.id or manifest.get("task") != spec.task or spec.task in defaults:
@@ -235,12 +250,13 @@ def default_model_ids(settings: Settings) -> dict[str, str]:
 
 def set_default_model(settings: Settings, model_id: str) -> dict[str, str]:
     spec = get_model_spec(model_id)
-    model_root = settings.models_dir / model_id
+    model_id = spec.id
+    model_root = model_directory(settings, model_id)
     manifest_path = model_root / "smartvoice-model.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if (
-            manifest.get("id") != model_id
+            manifest.get("id") != spec.id
             or manifest.get("task") != spec.task
             or manifest.get("archive_sha256") != spec.archive_sha256
         ):
@@ -270,7 +286,7 @@ def set_default_model(settings: Settings, model_id: str) -> dict[str, str]:
     if model_id not in {str(item["id"]) for item in installed_models(settings)}:
         raise InvalidRequestError(f"Model {model_id!r} is not installed and verified.")
     defaults = default_model_ids(settings)
-    defaults[spec.task] = model_id
+    defaults[spec.task] = spec.id
     _write_default_models(settings, defaults)
     return defaults
 
@@ -288,7 +304,7 @@ def clear_model_default(settings: Settings, model_id: str) -> dict[str, str]:
     """Remove a model's default marker without affecting another model's default."""
     spec = get_model_spec(model_id)
     defaults = default_model_ids(settings)
-    if defaults.get(spec.task) == model_id:
+    if defaults.get(spec.task) == spec.id:
         defaults.pop(spec.task)
         _write_default_models(settings, defaults)
     return defaults
@@ -306,7 +322,7 @@ def uninstall_model(settings: Settings, model_id: str, *, loaded: bool = False) 
     spec = get_model_spec(model_id)
     if loaded:
         raise InvalidRequestError(f"Model {model_id!r} is loaded by the running service. Restart the service before uninstalling it.")
-    candidate = settings.models_dir / spec.id
+    candidate = model_directory(settings, spec.id)
     if candidate.is_symlink():
         raise InvalidRequestError("Refusing to uninstall a model directory that is a symbolic link.")
     directory = candidate.resolve()
@@ -317,17 +333,17 @@ def uninstall_model(settings: Settings, model_id: str, *, loaded: bool = False) 
     size = sum(path.stat().st_size for path in directory.rglob("*") if path.is_file())
     shutil.rmtree(directory)
     defaults = default_model_ids(settings)
-    if defaults.get(spec.task) == model_id:
+    if defaults.get(spec.task) == spec.id:
         clear_default_model(settings, spec.task)
     return size
 
 
 def export_model(settings: Settings, model_id: str, destination: Path) -> Path:
-    get_model_spec(model_id)
-    source = settings.models_dir / model_id
+    spec = get_model_spec(model_id)
+    source = settings.models_dir / spec.id
     if source.is_symlink() or not source.resolve().is_relative_to(settings.models_dir.resolve()):
         raise InvalidRequestError("The installed model path is not a regular directory inside the model directory.")
-    if model_id not in {str(item["id"]) for item in installed_models(settings)}:
+    if spec.id not in {str(item["id"]) for item in installed_models(settings)}:
         raise InvalidRequestError(f"Model {model_id!r} is not installed and verified.")
     if destination.resolve().is_relative_to(source.resolve()):
         raise InvalidRequestError("Choose an export destination outside the installed model directory.")
@@ -335,7 +351,8 @@ def export_model(settings: Settings, model_id: str, destination: Path) -> Path:
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
         for path in source.rglob("*"):
             if path.is_file() and not path.is_symlink():
-                archive.write(path, Path("model") / path.relative_to(source))
+                package_path = Path("model") / path.relative_to(source)
+                archive.write(path, package_path)
     return destination
 
 
@@ -407,8 +424,9 @@ def import_model(settings: Settings, archive_path: Path) -> Path:
             file_path = (model_root / relative).resolve() if isinstance(relative, str) else model_root
             if not file_path.is_relative_to(model_root.resolve()) or not file_path.is_file() or _sha256(file_path) != expected:
                 raise ValueError(f"Model package file failed integrity validation: {key}")
+        model_id = spec.id
         destination = settings.models_dir / model_id
-        if destination.exists():
+        if model_directory(settings, model_id).exists():
             raise InvalidRequestError(f"Model directory already exists: {destination}")
         destination.parent.mkdir(parents=True, exist_ok=True)
         os.replace(model_root, destination)

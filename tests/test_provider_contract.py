@@ -80,8 +80,8 @@ class ProviderContractTests(unittest.TestCase):
 
             def installed_models(self):
                 return [
-                    {"id": "sensevoice-small-local", "task": "transcription"},
-                    {"id": "melo-tts-zh-en-local", "task": "speech"},
+                    {"id": "stt-sensevoice-small-int8", "task": "transcription"},
+                    {"id": "tts-melo-zh-en", "task": "speech"},
                 ]
 
             def runtime(self):

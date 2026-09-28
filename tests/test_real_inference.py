@@ -10,12 +10,13 @@ from fastapi.testclient import TestClient
 
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
+from smartvoice.services.model_catalog import model_directory
 
 
 _settings = Settings.from_env()
 _models_ready = all(
-    (_settings.models_dir / model_id / "smartvoice-model.json").is_file()
-    for model_id in ("sensevoice-small-local", "melo-tts-zh-en-local")
+    (model_directory(_settings, model_id) / "smartvoice-model.json").is_file()
+    for model_id in ("stt-sensevoice-small-int8", "tts-melo-zh-en")
 )
 _dependencies_ready = all(importlib.util.find_spec(name) is not None for name in ("sherpa_onnx", "av", "numpy"))
 
@@ -59,7 +60,7 @@ class RealInferenceTests(unittest.TestCase):
                 process.get("working_set_bytes", process.get("peak_working_set_bytes", 0)), 0
             )
             for language in ("zh", "en"):
-                sample = next((_settings.models_dir / "sensevoice-small-local").rglob(f"{language}.wav"))
+                sample = next(model_directory(_settings, "stt-sensevoice-small-int8").rglob(f"{language}.wav"))
                 with sample.open("rb") as audio:
                     stt = client.post(
                         "/v1/audio/transcriptions",
@@ -70,7 +71,7 @@ class RealInferenceTests(unittest.TestCase):
                 self.assertTrue(stt.json()["text"])
                 self.assertEqual(stt.json()["language"], language)
 
-            source_wav = next((_settings.models_dir / "sensevoice-small-local").rglob("zh.wav")).read_bytes()
+            source_wav = next(model_directory(_settings, "stt-sensevoice-small-int8").rglob("zh.wav")).read_bytes()
             audio_formats = (
                 ("sample.wav", source_wav, "audio/wav"),
                 ("sample.mp3", _encode_audio(source_wav, "mp3", "libmp3lame", 44100, "fltp"), "audio/mpeg"),

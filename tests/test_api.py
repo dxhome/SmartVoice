@@ -18,12 +18,12 @@ class FakeProvider:
 
     def installed_models(self):
         return [
-            {"id": "sensevoice-small-local", "task": "transcription"},
-            {"id": "melo-tts-zh-en-local", "task": "speech"},
-            {"id": "piper-fr-fr-siwis-medium-local", "task": "speech"},
-            {"id": "piper-de-de-thorsten-medium-local", "task": "speech"},
-            {"id": "supertonic-3-multilingual-local", "task": "speech"},
-            {"id": "whisper-base-multilingual-local", "task": "transcription"},
+            {"id": "stt-sensevoice-small-int8", "task": "transcription"},
+            {"id": "tts-melo-zh-en", "task": "speech"},
+            {"id": "tts-piper-fr-fr-siwis-medium-int8", "task": "speech"},
+            {"id": "tts-piper-de-de-thorsten-medium-int8", "task": "speech"},
+            {"id": "tts-supertonic-v3-multilingual-int8", "task": "speech"},
+            {"id": "stt-whisper-base-multilingual-int8", "task": "transcription"},
         ]
 
     def runtime(self):
@@ -38,7 +38,7 @@ class FakeProvider:
             "text": "测试转写",
             "language": "zh",
             "duration": 1.25,
-            "model": "sensevoice-small-local",
+            "model": "stt-sensevoice-small-int8",
             "device": "cpu",
             "segments": [{"text": "测试", "start": 0.1}],
         }
@@ -63,6 +63,45 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(client.get("/health").status_code, 200)
             self.assertEqual(client.get("/health").json()["status"], "ok")
             self.assertEqual(client.get("/ready").json()["status"], "ready")
+
+    def test_http_debug_logs_request_and_response_and_errors_include_reason(self):
+        import logging
+
+        settings = Settings(data_dir=self.data_dir)
+        with TestClient(create_app(settings=settings, provider=FakeProvider(), debug_http=True)) as client:
+            with self.assertLogs("smartvoice.api", level=logging.DEBUG) as captured:
+                response = client.post(
+                    "/v1/audio/speech",
+                    headers={"X-Debug-Test": "present", "Authorization": "Bearer secret"},
+                    json={"input": "Hello"},
+                )
+                missing = client.get("/v1/models/not-installed")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(missing.status_code, 404)
+        logs = "\n".join(captured.output)
+        self.assertIn("http_request", logs)
+        self.assertIn('"input":"Hello"', logs)
+        self.assertIn("x-debug-test", logs)
+        self.assertIn("[REDACTED]", logs)
+        self.assertIn("http_response", logs)
+        self.assertIn("http_request_error", logs)
+        self.assertIn("not installed", logs)
+
+    def test_http_debug_summarizes_body_fields_over_128_bytes(self):
+        from smartvoice.app import _format_http_body
+
+        body = json.dumps({
+            "small": "ok",
+            "large": "x" * 129,
+            "nested": {"payload": "é" * 65},
+        }).encode("utf-8")
+        formatted = _format_http_body(body)
+
+        self.assertIn('"small":"ok"', formatted)
+        self.assertIn('"large":"<content omitted: 129 bytes>"', formatted)
+        self.assertIn('"payload":"<content omitted: 130 bytes>"', formatted)
+        self.assertNotIn("x" * 129, formatted)
 
     def test_docs_show_project_branding_and_github_link(self):
         with self.make_client() as client:
@@ -116,6 +155,37 @@ class ApiTests(unittest.TestCase):
             self.assertTrue(response.json()["data"])
             self.assertIn("available_disk_bytes", response.json()["storage"])
 
+    def test_openai_model_list_shape_and_task_filters_on_smartvoice_extensions(self):
+        with self.make_client() as client:
+            installed = client.get("/v1/models")
+            one_model = client.get("/v1/models/stt-sensevoice-small-int8")
+            catalog = client.get("/v1/catalog", params={"task": "speech"})
+            capabilities = client.get("/v1/capabilities", params={"task": "transcription"})
+            schema = client.get("/openapi.json").json()
+
+        self.assertEqual(installed.status_code, 200)
+        self.assertEqual(installed.json()["object"], "list")
+        self.assertTrue(installed.json()["data"])
+        self.assertTrue(all(item["object"] == "model" for item in installed.json()["data"]))
+        model = installed.json()["data"][0]
+        self.assertIn("created", model)
+        self.assertIn("owned_by", model)
+        self.assertEqual(one_model.status_code, 200)
+        self.assertEqual(one_model.json()["id"], "stt-sensevoice-small-int8")
+        self.assertEqual(catalog.status_code, 200)
+        self.assertTrue(catalog.json()["data"])
+        self.assertTrue(all(item["task"] == "speech" for item in catalog.json()["data"]))
+        self.assertIn("available_disk_bytes", catalog.json()["storage"])
+        self.assertEqual(capabilities.json()["tasks"], ["transcription"])
+        self.assertNotIn("parameters", schema["paths"]["/v1/models"]["get"])
+        for path in ("/v1/catalog", "/v1/capabilities"):
+            parameters = schema["paths"][path]["get"]["parameters"]
+            task = next(parameter for parameter in parameters if parameter["name"] == "task")
+            enum_schema = next(
+                option for option in task["schema"]["anyOf"] if "enum" in option
+            )
+            self.assertEqual(enum_schema["enum"], ["transcription", "speech"])
+
     def test_runtime_includes_cpu_host_and_process_resource_metrics(self):
         from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 
@@ -132,12 +202,12 @@ class ApiTests(unittest.TestCase):
     def test_uninstall_route_refuses_a_loaded_model(self):
         class LoadedProvider(FakeProvider):
             def is_model_loaded(self, model_id):
-                return model_id == "sensevoice-small-local"
+                return model_id == "stt-sensevoice-small-int8"
 
         with TestClient(create_app(
             settings=Settings(data_dir=self.data_dir), provider=LoadedProvider()
         )) as client:
-            response = client.delete("/v1/models/sensevoice-small-local")
+            response = client.delete("/v1/models/stt-sensevoice-small-int8")
         self.assertEqual(response.status_code, 400)
         self.assertIn("loaded by the running service", response.json()["error"]["message"])
 
@@ -157,7 +227,7 @@ class ApiTests(unittest.TestCase):
 
         with self.make_client() as client:
             client.app.state.model_jobs = Jobs()
-            started = client.post("/v1/models/sensevoice-small-local/download")
+            started = client.post("/v1/models/stt-sensevoice-small-int8/download")
             self.assertEqual(started.status_code, 202)
             self.assertEqual(started.json()["job_id"], "job-123")
             self.assertEqual(client.get("/v1/jobs/job-123").json()["status"], "completed")
@@ -168,7 +238,7 @@ class ApiTests(unittest.TestCase):
 
         with self.make_client() as client:
             settings = client.app.state.settings
-            spec = get_model_spec("sensevoice-small-local")
+            spec = get_model_spec("stt-sensevoice-small-int8")
             model_dir = settings.models_dir / spec.id
             model_dir.mkdir(parents=True)
             files = {}
@@ -236,10 +306,10 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "sensevoice-small-local", "language": "en"},
+                data={"model": "stt-sensevoice-small-int8", "language": "en"},
             )
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.json()["model"], "sensevoice-small-local")
+            self.assertEqual(response.json()["model"], "stt-sensevoice-small-int8")
 
     def test_tts_returns_wav_and_metadata_headers(self):
         with self.make_client() as client:
@@ -266,10 +336,10 @@ class ApiTests(unittest.TestCase):
         provider = FakeProvider()
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             response = client.post("/v1/audio/speech", json={
-                "model": "piper-fr-fr-siwis-medium-local", "input": "Bonjour", "language": "fr",
+                "model": "tts-piper-fr-fr-siwis-medium-int8", "input": "Bonjour", "language": "fr",
             })
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(provider.synthesize_call, ("Bonjour", "piper-fr-fr-siwis-medium-local", "fr"))
+        self.assertEqual(provider.synthesize_call, ("Bonjour", "tts-piper-fr-fr-siwis-medium-int8", "fr"))
 
     def test_tts_detects_japanese_and_korean_scripts(self):
         from smartvoice.api.v1.routes import _tts_script_language

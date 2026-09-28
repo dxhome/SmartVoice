@@ -18,7 +18,7 @@ class ModelJobTests(unittest.TestCase):
         directory.mkdir(parents=True)
         manager = ModelJobManager(Settings(data_dir=directory))
         with patch("smartvoice.services.model_jobs.install_model", return_value=directory / "installed"):
-            job = manager.start_download("sensevoice-small-local")
+            job = manager.start_download("stt-sensevoice-small-int8")
             deadline = time.monotonic() + 2
             while manager.get(job["job_id"])["status"] not in {"completed", "failed"} and time.monotonic() < deadline:
                 time.sleep(0.01)
@@ -34,9 +34,9 @@ class ModelJobTests(unittest.TestCase):
             raise ModelDownloadCancelled("canceled")
 
         with patch("smartvoice.services.model_jobs.install_model", side_effect=blocked):
-            job = manager.start_download("sensevoice-small-local")
+            job = manager.start_download("stt-sensevoice-small-int8")
             with self.assertRaises(InvalidRequestError):
-                manager.start_download("sensevoice-small-local")
+                manager.start_download("stt-sensevoice-small-int8")
             manager.cancel(job["job_id"])
             deadline = time.monotonic() + 2
             while manager.get(job["job_id"])["status"] not in {"canceled", "failed"} and time.monotonic() < deadline:

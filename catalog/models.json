@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "models": [
     {
-      "id": "whisper-base-multilingual-local",
+      "id": "stt-whisper-base-multilingual-int8",
       "task": "transcription",
       "name": "Whisper Base Multilingual INT8",
       "languages": ["auto", "en", "zh", "ja", "ko", "fr", "de"],
@@ -28,7 +28,7 @@
       "model_type": "whisper"
     },
     {
-      "id": "sensevoice-small-local",
+      "id": "stt-sensevoice-small-int8",
       "task": "transcription",
       "name": "SenseVoice Small INT8",
       "languages": ["zh", "en", "yue", "ja", "ko"],
@@ -43,7 +43,7 @@
       "model_type": "sense_voice"
     },
     {
-      "id": "melo-tts-zh-en-local",
+      "id": "tts-melo-zh-en",
       "task": "speech",
       "name": "MeloTTS Chinese and English VITS ONNX",
       "languages": ["zh", "en"],
@@ -59,7 +59,7 @@
       "model_type": "vits"
     },
     {
-      "id": "supertonic-3-multilingual-local",
+      "id": "tts-supertonic-v3-multilingual-int8",
       "task": "speech",
       "name": "Supertonic 3 Multilingual INT8",
       "languages": ["en", "fr", "de", "ja", "ko"],
@@ -75,7 +75,7 @@
       "model_type": "supertonic"
     },
     {
-      "id": "piper-fr-fr-siwis-medium-local",
+      "id": "tts-piper-fr-fr-siwis-medium-int8",
       "task": "speech",
       "name": "Piper French (France) Siwis Medium INT8",
       "languages": ["fr"],
@@ -92,7 +92,7 @@
       "model_type": "vits"
     },
     {
-      "id": "piper-de-de-thorsten-medium-local",
+      "id": "tts-piper-de-de-thorsten-medium-int8",
       "task": "speech",
       "name": "Piper German Thorsten Medium INT8",
       "languages": ["de"],

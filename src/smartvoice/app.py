@@ -1,11 +1,13 @@
 """Application assembly for the local SmartVoice API."""
 
 import logging
+import json
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -49,7 +51,62 @@ def _validation_details(exc: RequestValidationError) -> list[dict[str, str]]:
     return details
 
 
-def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
+HTTP_DEBUG_FIELD_LIMIT_BYTES = 128
+
+
+def _compact_json_size(value) -> int:
+    return len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+
+def _debug_value_size(value) -> int:
+    return len(value.encode("utf-8")) if isinstance(value, str) else _compact_json_size(value)
+
+
+def _summarize_large_json_values(value):
+    if isinstance(value, dict):
+        summarized = {}
+        for key, item in value.items():
+            item = _summarize_large_json_values(item)
+            size = _debug_value_size(item)
+            summarized[key] = f"<content omitted: {size} bytes>" if size > HTTP_DEBUG_FIELD_LIMIT_BYTES else item
+        return summarized
+    if isinstance(value, list):
+        summarized = []
+        for item in value:
+            item = _summarize_large_json_values(item)
+            size = _debug_value_size(item)
+            summarized.append(f"<content omitted: {size} bytes>" if size > HTTP_DEBUG_FIELD_LIMIT_BYTES else item)
+        return summarized
+    return value
+
+
+def _format_http_body(body: bytes) -> str:
+    try:
+        decoded = body.decode("utf-8")
+    except UnicodeDecodeError:
+        return f"<binary body omitted: {len(body)} bytes>"
+    try:
+        value = json.loads(decoded)
+    except json.JSONDecodeError:
+        if len(body) > HTTP_DEBUG_FIELD_LIMIT_BYTES:
+            return f"<body omitted: {len(body)} bytes>"
+        return decoded
+    if not isinstance(value, (dict, list)):
+        if len(body) > HTTP_DEBUG_FIELD_LIMIT_BYTES:
+            return f"<body omitted: {len(body)} bytes>"
+        return decoded
+    return json.dumps(_summarize_large_json_values(value), ensure_ascii=False, separators=(",", ":"))
+
+
+def _debug_headers(headers) -> dict[str, str]:
+    sensitive = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
+    return {
+        key.decode("latin-1"): "[REDACTED]" if key.decode("latin-1").lower() in sensitive else value.decode("latin-1")
+        for key, value in headers
+    }
+
+
+def create_app(settings: Settings | None = None, provider=None, *, debug_http: bool = False) -> FastAPI:
     settings = settings or Settings.from_env()
     if provider is None:
         from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
@@ -60,7 +117,7 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
         yield
         application.state.model_jobs.cancel_all()
 
-    logger.setLevel(getattr(logging, settings.log_level, logging.INFO))
+    logger.setLevel(logging.DEBUG if debug_http else getattr(logging, settings.log_level, logging.INFO))
     app = FastAPI(
         title="SmartVoice API",
         description=OPENAPI_DESCRIPTION,
@@ -107,8 +164,8 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
     async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         request_id = getattr(request.state, "request_id", "unknown")
         details = _validation_details(exc)
-        logger.warning(
-            "request_validation_failed request_id=%s method=%s path=%s details=%s",
+        logger.error(
+            "request_validation_failed request_id=%s method=%s path=%s internal_reason=%s",
             request_id, request.method, request.url.path, details,
         )
         return JSONResponse(
@@ -125,11 +182,11 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
 
     @app.exception_handler(SmartVoiceError)
     async def smartvoice_error_handler(request: Request, exc: SmartVoiceError) -> JSONResponse:
-        log_method = logger.error if exc.http_status >= 500 else logger.warning
-        log_method(
-            "smartvoice_error request_id=%s method=%s path=%s status=%d code=%s diagnostic=%s",
+        logger.error(
+            "smartvoice_error request_id=%s method=%s path=%s status=%d code=%s internal_reason=%s",
             getattr(request.state, "request_id", "unknown"), request.method, request.url.path,
-            exc.http_status, exc.code, exc.detail or "-",
+            exc.http_status, exc.code, exc.detail or str(exc) or type(exc).__name__,
+            exc_info=(type(exc), exc, exc.__traceback__) if exc.http_status >= 500 else None,
         )
         return JSONResponse(
             status_code=exc.http_status,
@@ -141,6 +198,15 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
                 }
             },
         )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        logger.error(
+            "http_request_error request_id=%s method=%s path=%s status=%d internal_reason=%s",
+            getattr(request.state, "request_id", "unknown"), request.method, request.url.path,
+            exc.status_code, exc.detail,
+        )
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail}, headers=exc.headers)
 
     @app.exception_handler(Exception)
     async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -163,6 +229,13 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
     @app.middleware("http")
     async def attach_request_id(request: Request, call_next):
         request.state.request_id = get_request_id(request)
+        request_body = await request.body() if debug_http else b""
+        if debug_http:
+            logger.debug(
+                "http_request request_id=%s method=%s url=%s headers=%s body=%s",
+                request.state.request_id, request.method, str(request.url),
+                _debug_headers(request.headers.raw), _format_http_body(request_body),
+            )
         started = time.perf_counter()
         before = process_metrics()
         response = await call_next(request)
@@ -184,6 +257,21 @@ def create_app(settings: Settings | None = None, provider=None) -> FastAPI:
             getattr(request.state, "model_id", "-"), getattr(request.state, "actual_device", "-"),
             cpu_seconds, after.get("working_set_bytes", "unknown"),
         )
+        if debug_http:
+            original_iterator = response.body_iterator
+
+            async def log_response_body():
+                chunks = []
+                async for chunk in original_iterator:
+                    chunks.append(chunk if isinstance(chunk, bytes) else str(chunk).encode())
+                    yield chunk
+                logger.debug(
+                    "http_response request_id=%s status=%d headers=%s body=%s",
+                    request.state.request_id, response.status_code,
+                    _debug_headers(response.raw_headers), _format_http_body(b"".join(chunks)),
+                )
+
+            response.body_iterator = log_response_body()
         return response
 
     @app.get("/health", tags=["service"])
