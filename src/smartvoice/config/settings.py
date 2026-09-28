@@ -9,6 +9,35 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 
 
+DEFAULT_CONFIG = {
+    "server_host": "127.0.0.1",
+    "server_port": 8000,
+    "log_level": "INFO",
+    "max_upload_bytes": 25 * 1024 * 1024,
+    "max_audio_seconds": 600,
+    "max_tts_characters": 4000,
+    "max_tts_audio_seconds": 180,
+    "max_tts_output_bytes": 32 * 1024 * 1024,
+    "num_threads": max(1, min(4, os.cpu_count() or 1)),
+    "provider": "cpu",
+    "max_concurrent_inference": 1,
+    "max_queued_inference": 2,
+    "inference_queue_timeout_seconds": 60,
+    "inference_execution_timeout_seconds": 600,
+}
+
+
+def _ensure_user_config(path: Path) -> None:
+    """Create the editable per-user settings file once without replacing user data."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open("x", encoding="utf-8") as stream:
+            json.dump(DEFAULT_CONFIG, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+    except FileExistsError:
+        pass
+
+
 def default_data_dir() -> Path:
     explicit = os.environ.get("SMARTVOICE_HOME")
     if explicit:
@@ -43,10 +72,23 @@ class Settings:
         return self.data_dir / "models"
 
     @classmethod
-    def from_env(cls, config_path: Path | None = None) -> "Settings":
-        selected_config = config_path or (Path(os.environ["SMARTVOICE_CONFIG"]) if os.environ.get("SMARTVOICE_CONFIG") else None)
+    def from_env(
+        cls,
+        config_path: Path | None = None,
+        data_dir_override: Path | None = None,
+        *,
+        initialize_user_config: bool = False,
+    ) -> "Settings":
+        explicit_config = config_path or (Path(os.environ["SMARTVOICE_CONFIG"]) if os.environ.get("SMARTVOICE_CONFIG") else None)
+        initial_data_dir = (
+            data_dir_override
+            or (Path(os.environ["SMARTVOICE_HOME"]).expanduser() if os.environ.get("SMARTVOICE_HOME") else default_data_dir())
+        ).expanduser().resolve()
+        selected_config = explicit_config or initial_data_dir / "smartvoice.json"
+        if explicit_config is None and (selected_config.is_file() or initialize_user_config):
+            _ensure_user_config(selected_config)
         config: dict[str, object] = {}
-        if selected_config:
+        if explicit_config is not None or selected_config.is_file():
             config = json.loads(selected_config.read_text(encoding="utf-8"))
             if not isinstance(config, dict):
                 raise ValueError("SmartVoice configuration must be a JSON object")
@@ -60,7 +102,7 @@ class Settings:
             return cast(value)
 
         settings = cls(
-            data_dir=Path(setting("data_dir", "SMARTVOICE_HOME", default_data_dir(), Path)).expanduser().resolve(),
+            data_dir=(data_dir_override or Path(setting("data_dir", "SMARTVOICE_HOME", default_data_dir(), Path))).expanduser().resolve(),
             server_host=setting("server_host", "SMARTVOICE_HOST", "127.0.0.1", str),
             server_port=setting("server_port", "SMARTVOICE_PORT", 8000, int),
             log_level=setting("log_level", "SMARTVOICE_LOG_LEVEL", "INFO", str).upper(),
@@ -80,4 +122,6 @@ class Settings:
             raise ValueError("log_level must be DEBUG, INFO, WARNING, ERROR, or CRITICAL")
         if not 1 <= settings.server_port <= 65535:
             raise ValueError("server_port must be between 1 and 65535")
+        if initialize_user_config:
+            _ensure_user_config(settings.data_dir / "smartvoice.json")
         return settings

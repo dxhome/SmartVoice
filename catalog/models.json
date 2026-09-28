@@ -43,6 +43,40 @@
       "model_type": "sense_voice"
     },
     {
+      "id": "stt-qwen3-asr-600m-int8",
+      "task": "transcription",
+      "name": "Qwen3-ASR 0.6B INT8",
+      "languages": ["auto", "zh", "en", "yue", "ar", "de", "fr", "es", "pt", "id", "it", "ko", "ru", "th", "vi", "ja", "tr", "hi", "ms", "nl", "sv", "da", "fi", "pl", "cs", "fil", "fa", "el", "hu", "mk", "ro"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2",
+      "archive_name": "qwen3-asr-0.6b-int8.tar.bz2",
+      "archive_sha256": null,
+      "required_files": ["conv_frontend.onnx", "encoder.int8.onnx", "decoder.int8.onnx", "tokenizer/merges.txt", "tokenizer/tokenizer_config.json", "tokenizer/vocab.json"],
+      "required_dirs": ["tokenizer"],
+      "file_sources": {
+        "conv_frontend.onnx": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/conv_frontend.onnx",
+        "encoder.int8.onnx": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/encoder.int8.onnx",
+        "decoder.int8.onnx": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/decoder.int8.onnx",
+        "tokenizer/merges.txt": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/tokenizer/merges.txt",
+        "tokenizer/tokenizer_config.json": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/tokenizer/tokenizer_config.json",
+        "tokenizer/vocab.json": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/tokenizer/vocab.json"
+      },
+      "file_sha256": {
+        "conv_frontend.onnx": "d22dc4423e0940e49884e903d2ea2f7e5567c14fc1aed97e4e26d6b8f208ef9e",
+        "encoder.int8.onnx": "60748d3e6744a57c9c91e1b17424a6c2990567e8adceb0783940c03ed98fa9d9",
+        "decoder.int8.onnx": "4f6885be5959ae26af3089d38ee7972c5fafbeeb1cf8d5e76eab6d8b61ca5771",
+        "tokenizer/merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "tokenizer/tokenizer_config.json": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c",
+        "tokenizer/vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "model_file": "conv_frontend.onnx",
+      "decoder_file": "decoder.int8.onnx",
+      "tokens_file": "tokenizer",
+      "minimum_free_bytes": 2200000000,
+      "license_note": "The Qwen3-ASR upstream is Apache-2.0; review the sherpa-onnx conversion notices and derived artifacts before redistribution.",
+      "model_type": "qwen3_asr"
+    },
+    {
       "id": "tts-melo-zh-en",
       "task": "speech",
       "name": "MeloTTS Chinese and English VITS ONNX",
@@ -59,10 +93,55 @@
       "model_type": "vits"
     },
     {
+      "id": "tts-kokoro-multilingual-v1-1-zh-en",
+      "task": "speech",
+      "name": "Kokoro 1.1 Chinese and English (103 voices)",
+      "languages": ["zh", "en"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_1.tar.bz2",
+      "archive_name": "kokoro-multi-lang-v1_1.tar.bz2",
+      "archive_sha256": "a3f4c73d043860e3fd2e5b06f36795eb81de0fc8e8de6df703245edddd87dbad",
+      "required_files": ["model.onnx", "voices.bin", "tokens.txt", "lexicon-us-en.txt", "lexicon-zh.txt"],
+      "required_dirs": ["espeak-ng-data"],
+      "model_file": "model.onnx",
+      "tokens_file": "tokens.txt",
+      "voices_file": "voices.bin",
+      "voice_count": 103,
+      "lexicon_file": "lexicon-us-en.txt,lexicon-zh.txt",
+      "data_dir": "espeak-ng-data",
+      "license_note": "Review the source model and voice licenses before use or redistribution.",
+      "model_type": "kokoro"
+    },
+    {
+      "id": "tts-matcha-zh-baker",
+      "task": "speech",
+      "name": "Matcha Icefall Baker Chinese",
+      "languages": ["zh"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-baker.tar.bz2",
+      "archive_name": "matcha-icefall-zh-baker.tar.bz2",
+      "archive_sha256": "20de2ec034b55562609d6362771c934905dfe11d0f41ec103d593427ad9a7efb",
+      "required_files": ["model-steps-3.onnx", "tokens.txt", "lexicon.txt", "phone.fst", "date.fst", "number.fst", "vocos-22khz-univ.onnx"],
+      "model_file": "model-steps-3.onnx",
+      "tokens_file": "tokens.txt",
+      "lexicon_file": "lexicon.txt",
+      "vocoder_file": "vocos-22khz-univ.onnx",
+      "voice_count": 1,
+      "rule_fsts": "phone.fst,date.fst,number.fst",
+      "extra_files": {
+        "vocos-22khz-univ.onnx": {
+          "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx",
+          "sha256": "0574a135aa1db2de6e181050db2ec528496cacd4a4701fc5d7faf9f9804c0081"
+        }
+      },
+      "license_note": "Review the Matcha checkpoint and Vocos vocoder licenses before use or redistribution.",
+      "model_type": "matcha"
+    },
+    {
       "id": "tts-supertonic-v3-multilingual-int8",
       "task": "speech",
       "name": "Supertonic 3 Multilingual INT8",
-      "languages": ["en", "fr", "de", "ja", "ko"],
+      "languages": ["en", "fr", "de", "ja", "ko", "ar", "bg", "cs", "da", "el", "es", "et", "fi", "hi", "hr", "hu", "id", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi"],
       "backend": "sherpa-onnx",
       "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2",
       "archive_name": "supertonic-3-multilingual-int8.tar.bz2",
@@ -73,40 +152,6 @@
       "tts_files": ["duration_predictor.int8.onnx", "text_encoder.int8.onnx", "vector_estimator.int8.onnx", "vocoder.int8.onnx", "tts.json", "unicode_indexer.bin", "voice.bin"],
       "license_note": "Model weights are subject to OpenRAIL-M; review the bundled license for usage and redistribution terms.",
       "model_type": "supertonic"
-    },
-    {
-      "id": "tts-piper-fr-fr-siwis-medium-int8",
-      "task": "speech",
-      "name": "Piper French (France) Siwis Medium INT8",
-      "languages": ["fr"],
-      "backend": "sherpa-onnx",
-      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium-int8.tar.bz2",
-      "archive_name": "piper-fr-fr-siwis-medium-int8.tar.bz2",
-      "archive_sha256": "3909cff9b3cfd4820c66aa13bf554315c82e34899c161f0b446ece372bc4b5ec",
-      "required_files": ["fr_FR-siwis-medium.onnx", "tokens.txt", "LICENSE"],
-      "required_dirs": ["espeak-ng-data"],
-      "model_file": "fr_FR-siwis-medium.onnx",
-      "tokens_file": "tokens.txt",
-      "data_dir": "espeak-ng-data",
-      "license_note": "Review the voice model license included in the downloaded archive before redistribution.",
-      "model_type": "vits"
-    },
-    {
-      "id": "tts-piper-de-de-thorsten-medium-int8",
-      "task": "speech",
-      "name": "Piper German Thorsten Medium INT8",
-      "languages": ["de"],
-      "backend": "sherpa-onnx",
-      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium-int8.tar.bz2",
-      "archive_name": "piper-de-de-thorsten-medium-int8.tar.bz2",
-      "archive_sha256": "07e240b7b9c1fc9211d5a69512f8cbe11b3286c2ed79c15c076ac6ed427fdf13",
-      "required_files": ["de_DE-thorsten-medium.onnx", "tokens.txt", "LICENSE"],
-      "required_dirs": ["espeak-ng-data"],
-      "model_file": "de_DE-thorsten-medium.onnx",
-      "tokens_file": "tokens.txt",
-      "data_dir": "espeak-ng-data",
-      "license_note": "Review the voice model license included in the downloaded archive before redistribution.",
-      "model_type": "vits"
     }
   ]
 }

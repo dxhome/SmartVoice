@@ -116,8 +116,11 @@ class ProviderContractTests(unittest.TestCase):
                     transcription = client.post(
                         "/v1/audio/transcriptions",
                         files={"file": ("sample.wav", b"fixture", "audio/wav")},
+                        data={"model": "stt-smartvoice-auto", "language": "zh"},
                     )
-                    speech = client.post("/v1/audio/speech", json={"input": "Hello"})
+                    speech = client.post("/v1/audio/speech", json={
+                        "model": "tts-smartvoice-auto", "input": "Hello", "language": "en",
+                    })
                     self.assertEqual(transcription.status_code, 200)
                     self.assertEqual(transcription.json()["text"], "contract")
                     self.assertEqual(speech.status_code, 200)

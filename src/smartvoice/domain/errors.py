@@ -51,6 +51,13 @@ class InvalidRequestError(SmartVoiceError):
     http_status = 400
 
 
+class UnsupportedFeatureError(InvalidRequestError):
+    """The request asks for a valid capability this release does not implement."""
+
+    code = "not_implemented"
+    http_status = 501
+
+
 class InferenceError(SmartVoiceError):
     code = "inference_failed"
     http_status = 500

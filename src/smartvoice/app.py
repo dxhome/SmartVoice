@@ -4,7 +4,10 @@ import logging
 import json
 import time
 from contextlib import asynccontextmanager
+from email import policy
+from email.parser import BytesParser
 from pathlib import Path
+from urllib.parse import parse_qsl
 
 from fastapi import FastAPI, Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -19,6 +22,7 @@ from smartvoice.domain.errors import SmartVoiceError
 from smartvoice.services.host_metrics import process_metrics
 from smartvoice.services.inference_queue import InferenceQueue
 from smartvoice.services.model_jobs import ModelJobManager
+from smartvoice.services.model_router import ModelRouter
 
 logger = logging.getLogger("smartvoice.api")
 if not logger.handlers:
@@ -64,23 +68,76 @@ def _debug_value_size(value) -> int:
 
 def _summarize_large_json_values(value):
     if isinstance(value, dict):
-        summarized = {}
-        for key, item in value.items():
-            item = _summarize_large_json_values(item)
-            size = _debug_value_size(item)
-            summarized[key] = f"<content omitted: {size} bytes>" if size > HTTP_DEBUG_FIELD_LIMIT_BYTES else item
-        return summarized
+        # Objects are containers: decide which nested field values to omit,
+        # rather than dropping an object because its combined JSON is large.
+        return {key: _summarize_large_json_values(item) for key, item in value.items()}
     if isinstance(value, list):
-        summarized = []
-        for item in value:
-            item = _summarize_large_json_values(item)
-            size = _debug_value_size(item)
-            summarized.append(f"<content omitted: {size} bytes>" if size > HTTP_DEBUG_FIELD_LIMIT_BYTES else item)
-        return summarized
+        size = _debug_value_size(value)
+        if size > HTTP_DEBUG_FIELD_LIMIT_BYTES:
+            return f"<content omitted: {size} bytes>"
+        return [_summarize_large_json_values(item) for item in value]
+    if isinstance(value, str):
+        size = _debug_value_size(value)
+        if size > HTTP_DEBUG_FIELD_LIMIT_BYTES:
+            return f"<content omitted: {size} bytes>"
     return value
 
 
-def _format_http_body(body: bytes) -> str:
+def _format_multipart_body(body: bytes, content_type: str) -> str:
+    headers = (
+        f"Content-Type: {content_type}\r\n"
+        "MIME-Version: 1.0\r\n\r\n"
+    ).encode("latin-1")
+    message = BytesParser(policy=policy.default).parsebytes(headers + body)
+    if not message.is_multipart():
+        return f"<multipart body could not be parsed: {len(body)} bytes>"
+
+    fields = {}
+    for index, part in enumerate(message.iter_parts(), start=1):
+        name = part.get_param("name", header="content-disposition") or f"part_{index}"
+        payload = part.get_payload(decode=True) or b""
+        size = len(payload)
+        if size > HTTP_DEBUG_FIELD_LIMIT_BYTES:
+            value = f"<content omitted: {size} bytes>"
+        elif part.get_filename() is not None:
+            value = f"<binary content: {size} bytes>"
+        else:
+            charset = part.get_content_charset() or "utf-8"
+            try:
+                value = payload.decode(charset)
+            except (LookupError, UnicodeDecodeError):
+                value = f"<binary content: {size} bytes>"
+        if name in fields:
+            if not isinstance(fields[name], list):
+                fields[name] = [fields[name]]
+            fields[name].append(value)
+        else:
+            fields[name] = value
+    return json.dumps(fields, ensure_ascii=False, separators=(",", ":"))
+
+
+def _format_http_body(body: bytes, content_type: str | None = None) -> str:
+    media_type = (content_type or "").split(";", 1)[0].strip().lower()
+    if media_type == "multipart/form-data":
+        return _format_multipart_body(body, content_type)
+    if media_type == "application/x-www-form-urlencoded":
+        try:
+            decoded = body.decode("utf-8")
+        except UnicodeDecodeError:
+            return f"<binary body omitted: {len(body)} bytes>"
+        fields = {}
+        for key, value in parse_qsl(decoded, keep_blank_values=True):
+            field_value = (
+                f"<content omitted: {len(value.encode('utf-8'))} bytes>"
+                if len(value.encode("utf-8")) > HTTP_DEBUG_FIELD_LIMIT_BYTES else value
+            )
+            if key in fields:
+                if not isinstance(fields[key], list):
+                    fields[key] = [fields[key]]
+                fields[key].append(field_value)
+            else:
+                fields[key] = field_value
+        return json.dumps(fields, ensure_ascii=False, separators=(",", ":"))
     try:
         decoded = body.decode("utf-8")
     except UnicodeDecodeError:
@@ -100,10 +157,19 @@ def _format_http_body(body: bytes) -> str:
 
 def _debug_headers(headers) -> dict[str, str]:
     sensitive = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
-    return {
-        key.decode("latin-1"): "[REDACTED]" if key.decode("latin-1").lower() in sensitive else value.decode("latin-1")
-        for key, value in headers
-    }
+    summarized = {}
+    for raw_key, raw_value in headers:
+        key = raw_key.decode("latin-1")
+        if key.lower() in sensitive:
+            summarized[key] = "[REDACTED]"
+            continue
+        value = raw_value.decode("latin-1")
+        size = len(raw_value)
+        summarized[key] = (
+            f"<content omitted: {size} bytes>"
+            if size > HTTP_DEBUG_FIELD_LIMIT_BYTES else value
+        )
+    return summarized
 
 
 def create_app(settings: Settings | None = None, provider=None, *, debug_http: bool = False) -> FastAPI:
@@ -131,6 +197,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
         settings.max_concurrent_inference, settings.max_queued_inference
     )
     app.state.model_jobs = ModelJobManager(settings)
+    app.state.model_router = ModelRouter(settings)
     app.include_router(v1_router)
 
     logo_path = Path(__file__).resolve().parents[2] / "assets" / "smartvoice-logo.png"
@@ -164,16 +231,20 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         request_id = getattr(request.state, "request_id", "unknown")
         details = _validation_details(exc)
+        unsupported = any(error.get("type") in {"literal_error", "extra_forbidden"} for error in exc.errors())
+        status_code = 501 if unsupported else 422
+        error_code = "not_implemented" if unsupported else "validation_error"
+        message = "The requested feature or value is not supported." if unsupported else "Request validation failed."
         logger.error(
-            "request_validation_failed request_id=%s method=%s path=%s internal_reason=%s",
-            request_id, request.method, request.url.path, details,
+            "request_validation_failed request_id=%s method=%s path=%s status=%d internal_reason=%s",
+            request_id, request.method, request.url.path, status_code, details,
         )
         return JSONResponse(
-            status_code=422,
+            status_code=status_code,
             content={
                 "error": {
-                    "code": "validation_error",
-                    "message": "Request validation failed.",
+                    "code": error_code,
+                    "message": message,
                     "details": details,
                     "request_id": request_id,
                 }
@@ -183,10 +254,13 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     @app.exception_handler(SmartVoiceError)
     async def smartvoice_error_handler(request: Request, exc: SmartVoiceError) -> JSONResponse:
         logger.error(
-            "smartvoice_error request_id=%s method=%s path=%s status=%d code=%s internal_reason=%s",
+            "smartvoice_error request_id=%s method=%s path=%s status=%d code=%s mode=%s model=%s router_sha256=%s language=%s candidates=%s internal_reason=%s",
             getattr(request.state, "request_id", "unknown"), request.method, request.url.path,
-            exc.http_status, exc.code, exc.detail or str(exc) or type(exc).__name__,
-            exc_info=(type(exc), exc, exc.__traceback__) if exc.http_status >= 500 else None,
+            exc.http_status, exc.code, getattr(request.state, "model_mode", "-"),
+            getattr(request.state, "model_id", "-"), getattr(request.state, "router_sha256", "-"),
+            getattr(request.state, "route_language", "-"), getattr(request.state, "route_candidates", []),
+            exc.detail or str(exc) or type(exc).__name__,
+            exc_info=(type(exc), exc, exc.__traceback__) if exc.http_status >= 500 and exc.http_status != 501 else None,
         )
         return JSONResponse(
             status_code=exc.http_status,
@@ -234,7 +308,8 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
             logger.debug(
                 "http_request request_id=%s method=%s url=%s headers=%s body=%s",
                 request.state.request_id, request.method, str(request.url),
-                _debug_headers(request.headers.raw), _format_http_body(request_body),
+                _debug_headers(request.headers.raw),
+                _format_http_body(request_body, request.headers.get("content-type")),
             )
         started = time.perf_counter()
         before = process_metrics()
@@ -252,9 +327,11 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
                 response.headers[header] = str(after[key])
         log_method = logger.warning if response.status_code >= 400 else logger.info
         log_method(
-            "request_completed request_id=%s method=%s path=%s status=%d duration_ms=%.1f model=%s device=%s cpu_seconds=%.4f working_set_bytes=%s",
+            "request_completed request_id=%s method=%s path=%s status=%d duration_ms=%.1f mode=%s model=%s router_sha256=%s language=%s candidates=%s device=%s cpu_seconds=%.4f working_set_bytes=%s",
             request.state.request_id, request.method, request.url.path, response.status_code, duration_ms,
-            getattr(request.state, "model_id", "-"), getattr(request.state, "actual_device", "-"),
+            getattr(request.state, "model_mode", "-"), getattr(request.state, "model_id", "-"),
+            getattr(request.state, "router_sha256", "-"), getattr(request.state, "route_language", "-"),
+            getattr(request.state, "route_candidates", []), getattr(request.state, "actual_device", "-"),
             cpu_seconds, after.get("working_set_bytes", "unknown"),
         )
         if debug_http:
@@ -268,7 +345,8 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
                 logger.debug(
                     "http_response request_id=%s status=%d headers=%s body=%s",
                     request.state.request_id, response.status_code,
-                    _debug_headers(response.raw_headers), _format_http_body(b"".join(chunks)),
+                    _debug_headers(response.raw_headers),
+                    _format_http_body(b"".join(chunks), response.headers.get("content-type")),
                 )
 
             response.body_iterator = log_response_body()

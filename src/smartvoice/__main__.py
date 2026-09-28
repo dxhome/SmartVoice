@@ -18,9 +18,8 @@ import uvicorn
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import SmartVoiceError
 from smartvoice.services.model_catalog import (
-    ModelDownloadCancelled, catalog_models, clear_default_model, export_model,
-    get_model_spec, import_model, install_model, uninstall_model,
-    set_default_model,
+    ModelDownloadCancelled, catalog_models, export_model, get_model_spec,
+    import_model, install_model, uninstall_model,
 )
 
 
@@ -49,9 +48,8 @@ def _format_model_list(models: list[dict[str, object]]) -> str:
                 backend = model.get("backend", "Unknown")
                 size = model.get("installed_size_bytes")
                 size_label = f"{float(size) / 1024**2:.0f} MiB" if isinstance(size, int) else "Not installed"
-                default_label = " | Default" if model.get("default") else ""
                 status_label = " | Invalid files" if model.get("status") == "invalid" else ""
-                lines.append(f"    - {name} ({model_id}) | {languages} | {backend} | {size_label}{default_label}{status_label}")
+                lines.append(f"    - {name} ({model_id}) | {languages} | {backend} | {size_label}{status_label}")
     return "\n".join(lines)
 
 
@@ -83,14 +81,14 @@ def _serve(args: list[str]) -> None:
     parser.add_argument("--debug", action="store_true", help="Log HTTP request/response headers and bodies and enable DEBUG logging")
     parsed = parser.parse_args(args)
     try:
-        settings = Settings.from_env(parsed.config)
+        settings = Settings.from_env(parsed.config, parsed.data_dir, initialize_user_config=True)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(f"Invalid configuration: {exc}")
     settings = replace(
         settings,
         server_host=parsed.host or settings.server_host,
         server_port=parsed.port or settings.server_port,
-        data_dir=parsed.data_dir.expanduser().resolve() if parsed.data_dir else settings.data_dir,
+        data_dir=settings.data_dir,
         num_threads=max(1, parsed.num_threads) if parsed.num_threads else settings.num_threads,
         log_level="DEBUG" if parsed.debug else settings.log_level,
     )
@@ -133,12 +131,6 @@ def _models(args: list[str]) -> None:
     install_parser.add_argument("model_id")
     uninstall_parser = subparsers.add_parser("uninstall", aliases=["remove"], help="Remove an installed model")
     uninstall_parser.add_argument("model_id")
-    default_parser = subparsers.add_parser("default", help="Manage default STT and TTS models")
-    default_actions = default_parser.add_subparsers(dest="default_action", required=True)
-    set_default_parser = default_actions.add_parser("set", help="Set the default model for its task")
-    set_default_parser.add_argument("model_id")
-    clear_default_parser = default_actions.add_parser("clear", help="Clear a task's default model")
-    clear_default_parser.add_argument("task", choices=("transcription", "speech"))
     export_parser = subparsers.add_parser("export", help="Create a portable offline model package")
     export_parser.add_argument("model_id")
     export_parser.add_argument("destination", type=Path)
@@ -167,22 +159,6 @@ def _models(args: list[str]) -> None:
         except (OSError, ValueError, SmartVoiceError) as exc:
             parser.error(str(exc))
         print(f"Removed {parsed.model_id}; released {size / 1024**2:.1f} MiB.")
-        return
-    if parsed.action == "default" and parsed.default_action == "set":
-        try:
-            defaults = set_default_model(settings, parsed.model_id)
-        except (OSError, ValueError, SmartVoiceError) as exc:
-            parser.error(str(exc))
-        task = get_model_spec(parsed.model_id).task
-        print(f"Default model for {task}: {defaults[task]}")
-        return
-    if parsed.action == "default" and parsed.default_action == "clear":
-        try:
-            defaults = clear_default_model(settings, parsed.task)
-        except (OSError, ValueError, SmartVoiceError) as exc:
-            parser.error(str(exc))
-        label = defaults.get(parsed.task, "none")
-        print(f"Default model for {parsed.task}: {label}")
         return
     if parsed.action == "export":
         try:
@@ -226,10 +202,46 @@ def _models(args: list[str]) -> None:
     print(f"\nInstalled at: {destination}")
 
 
+def _router(args: list[str]) -> None:
+    parser = argparse.ArgumentParser(prog="python -m smartvoice router")
+    parser.add_argument("--config", type=Path, default=None, help="Optional JSON configuration file")
+    parser.add_argument("--host", default=None, help="Running service bind address")
+    parser.add_argument("--port", type=int, default=None, help="Running service port")
+    actions = parser.add_subparsers(dest="action", required=True)
+    actions.add_parser("reload", help="Reload router.json in the running SmartVoice service")
+    parsed = parser.parse_args(args)
+    try:
+        settings = Settings.from_env(parsed.config)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        parser.error(f"Invalid configuration: {exc}")
+    host = parsed.host or settings.server_host
+    port = parsed.port or settings.server_port
+    if not _is_loopback(host):
+        parser.error("Router reload is restricted to a local SmartVoice service.")
+    display_host = f"[{host}]" if ":" in host else host
+    address = f"http://{display_host}:{port}/v1/router/reload"
+    try:
+        request = urllib.request.Request(address, data=b"{}", headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        try:
+            payload = json.loads(exc.read().decode("utf-8"))
+            message = payload.get("error", {}).get("message", payload)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            message = exc.reason
+        parser.error(f"Router reload failed: {message}")
+    except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+        parser.error(f"Could not reload router configuration from the running service at {address}: {exc}")
+    print(f"Router configuration reloaded (sha256 {payload.get('sha256', 'unknown')}).")
+
+
 def main() -> None:
     args = sys.argv[1:]
     if args and args[0] == "models":
         _models(args[1:])
+    elif args and args[0] == "router":
+        _router(args[1:])
     else:
         _serve(args)
 

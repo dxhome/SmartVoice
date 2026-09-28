@@ -22,13 +22,16 @@ This document describes the HTTP API implemented by the current source code. The
 
 | Method and path | Query parameters | Success response |
 |---|---|---|
-| `GET /v1/capabilities` | Optional `task`: `transcription` or `speech` | Provider capability document. Current fields: `api_version`, `capability_schema_version`, `backend`, and `tasks`. Each task entry includes task, model, languages, `streaming` (currently false), and `voices` for speech models. |
-| `GET /v1/runtime` | None | Runtime document with backend/device/provider status, installed model count, default models, runtime version, host, system memory and process metrics. Some metrics can be `null` or omitted on unsupported platforms. |
-| `GET /v1/models` | None | OpenAI-style `{ "object": "list", "data": [...] }` list of installed models, extended with SmartVoice task, language, backend, installation, default and license metadata. |
-| `GET /v1/models/{model_id}` | Path: installed model ID | One OpenAI-style model object with SmartVoice metadata. Unknown or uninstalled IDs return `404`. |
-| `GET /v1/catalog` | Optional `task`: `transcription` or `speech` | `{ "data": [...], "storage": {...} }`. Catalog entries include model ID, task, languages, backend, install status, source/archive metadata, default state, installed size, required files and license note. Storage reports installed, free and total bytes. |
+| `GET /v1/capabilities` | Optional `task`: `transcription` or `speech` | Provider capability document. Current fields: `api_version`, `capability_schema_version`, `backend`, and `tasks`. Each task entry includes task, model, languages, `streaming` (currently false), and `voices` for speech models; Kokoro also reports `voice_count`. |
+| `GET /v1/runtime` | None | Runtime document with backend/device/provider status, installed model count, router status/candidates, runtime version, host, system memory and process metrics. Some metrics can be `null` or omitted on unsupported platforms. |
+| `GET /v1/models` | None | OpenAI-style `{ "object": "list", "data": [...] }` list of installed models and virtual routing models, extended with SmartVoice metadata. Results are grouped by task (transcription, then speech); each task's virtual model appears first, followed by installed models sorted alphabetically by name. |
+| `GET /v1/models/{model_id}` | Path: installed or virtual model ID | One OpenAI-style model object. Unknown or uninstalled concrete IDs return `404`. |
+| `GET /v1/catalog` | Optional `task`: `transcription` or `speech` | `{ "data": [...], "storage": {...} }`. Catalog entries include model ID, task, languages, backend, install status, source/archive metadata, installed size, required files and license note. Storage reports installed, free and total bytes. |
+| `POST /v1/router/reload` | Empty JSON object | Reloads `router.json`; invalid configuration returns an error and leaves the active configuration unchanged. Intended for local CLI use. |
 
 The `task` query parameter is a SmartVoice extension; omit it to list all tasks. Task names are `transcription` for STT and `speech` for TTS.
+
+The router reads `<data_dir>/router.json`, initializing it from the built-in `catalog/router.json` on first run. Edit the JSON directly, then run `python -m smartvoice router reload`. The command accepts the same `--config` option as the service and optional `--host`/`--port` overrides. Routing candidates are ordered per task and Whisper language code; the first installed and verified candidate is selected. Requests using `stt-smartvoice-auto` or `tts-smartvoice-auto` use routing. Requests using a concrete model ID continue to invoke that model directly. A model inference failure does not cause a second candidate to be tried.
 
 ## Model management
 
@@ -37,8 +40,6 @@ The `task` query parameter is a SmartVoice extension; omit it to list all tasks.
 | `POST /v1/models/{model_id}/download` | No body; `{model_id}` must be in the built-in catalog. | `202`; model job document. A download for the same model cannot be started while another is queued, running or canceling. |
 | `GET /v1/jobs/{job_id}` | No body. | `200`; job document containing `job_id`, `model_id`, `status`, `downloaded_bytes`, `total_bytes`, `error`, and, on success, `result`. Status is `queued`, `running`, `canceling`, `completed`, `failed`, or `canceled`. |
 | `DELETE /v1/jobs/{job_id}` | No body. | `200`; updated job document. A completed or otherwise inactive job is returned unchanged. |
-| `PUT /v1/models/{model_id}/default` | No body; model must be installed and verified. | `200`; `{ "default_models": { "transcription": "...", "speech": "..." } }` with whichever task defaults are selected. |
-| `DELETE /v1/models/{model_id}/default` | No body. | `200`; same `default_models` object. Clears this model's default only if it is the selected default. |
 | `DELETE /v1/models/{model_id}` | No body; model must be in the catalog and not loaded by this service process. | `200`; `{ "id": "<model_id>", "removed_bytes": <integer> }`. |
 | `GET /v1/models/{model_id}/export` | No body; model must be installed and valid. | `200`; verified model package as `application/zip`, named `<model_id>.smartvoice.zip`. |
 | `POST /v1/models/import` | Multipart field `file`: exported `.smartvoice.zip` package. Maximum upload size is 2 GiB. | `201`; `{ "id": "<model_id>", "status": "installed" }`. |
@@ -52,12 +53,12 @@ Send `multipart/form-data`:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `file` | file | Required | Audio in WAV, MP3, M4A or FLAC format. Default upload limit: 25 MiB. Default duration limit: 600 seconds. |
-| `model` | string | Selected task default, or first installed model if no defaults file exists | Installed STT model ID. |
-| `language` | string | `auto` | `auto` or a language supported by the selected model. |
+| `model` | string | Required | `stt-smartvoice-auto` routes by language, or specify an installed STT model ID for direct inference. |
+| `language` | string | `auto` | `auto` or a Whisper language code. `auto` uses a supported installed model for language detection before routing. STT automatic detection makes at most three attempts to obtain a language with a configured route. TTS text detection accepts confidence >= 0.70 immediately; after three lower-confidence results, it routes using the highest-confidence result. |
 | `response_format` | string | `json` | `json`, `text` or `verbose_json`. |
 | `timestamps` | boolean | `false` | Include token-level `segments` when true and when the model returns aligned tokens/timestamps. |
 
-Other form fields are rejected. Success is `200`. `text` returns UTF-8 plain text. `json` returns an object with `text`, `language`, `duration`, `model`, `device`, `processing_seconds`, `rtf`, `request_processing_seconds`, and `queue_wait_seconds`. `verbose_json` uses the same object; `segments` is included only when `timestamps=true` and aligned segment data is available. With `response_format=json`, segments are omitted regardless of `timestamps`.
+Other form fields are rejected. Success is `200`. `text` returns UTF-8 plain text with model metadata headers. `json` returns an object with `text`, `language`, `duration`, `model` (actual model ID), `requested_model`, `model_mode` (`router` or `direct`), `language_source`, `router_sha256`, `route_candidates`, `device`, `processing_seconds`, `rtf`, `request_processing_seconds`, and `queue_wait_seconds`. `verbose_json` uses the same object; `segments` is included only when `timestamps=true` and aligned segment data is available. With `response_format=json`, segments are omitted regardless of `timestamps`.
 
 ### `POST /v1/audio/speech`
 
@@ -66,13 +67,13 @@ Send a JSON object. Unknown fields are rejected.
 | Field | Type | Default | Constraints |
 |---|---|---|---|
 | `input` | string | Required | Non-whitespace; 1–4,000 characters. |
-| `model` | string or null | Selected task default, or first installed model if no defaults file exists | Installed TTS model ID. |
-| `voice` | string | `default` | Current provider accepts `default` or `0`. |
-| `language` | string or null | `auto` | Must be supported by the selected model. |
+| `model` | string | Required | `tts-smartvoice-auto` routes by text/request language, or specify an installed TTS model ID for direct inference. |
+| `voice` | string | `default` | Most models accept `default` or `0`. Kokoro accepts `default` or a speaker ID from `0` to `102`; its default speaker follows the resolved language. |
+| `language` | string or null | `auto` | `auto` detects text language offline. Explicit Whisper language codes take precedence over detected text script. |
 | `response_format` | string | `wav` | Only `wav` is accepted. |
 | `speed` | number | `1.0` | Inclusive range 0.5–2.0. |
 
-Success is `200` with `audio/wav` mono WAV data. Response headers include `X-Audio-Sample-Rate`, `X-Audio-Duration`, `X-Model-Id`, `X-Inference-Time-Seconds`, `X-Queue-Wait-Seconds`, `X-Real-Time-Factor`, `X-Requested-Language`, and `X-Text-Language`. Default generated-audio limits are 180 seconds and 32 MiB; exceeding either returns `413`.
+Success is `200` with `audio/wav` mono WAV data. Response headers include `X-Audio-Sample-Rate`, `X-Audio-Duration`, `X-Model-Id` (actual model ID), `X-Requested-Model`, `X-Model-Mode`, `X-Resolved-Language`, `X-Language-Source`, `X-Language-Confidence`, `X-Router-SHA256`, `X-Route-Candidates`, `X-Inference-Time-Seconds`, `X-Queue-Wait-Seconds`, `X-Real-Time-Factor`, `X-Requested-Language`, and `X-Text-Language`. Default generated-audio limits are 180 seconds and 32 MiB; exceeding either returns `413`.
 
 ## Errors
 
@@ -90,7 +91,9 @@ Application errors have the following shape (validation errors additionally incl
 
 | HTTP status | `error.code` | Meaning |
 |---:|---|---|
-| `400` | `invalid_request` | Unsupported value, invalid operation, unknown job ID, or invalid/unavailable catalog operation. |
+| `400` | `invalid_request` | Malformed request, invalid operation, unknown job ID, or invalid/unavailable catalog operation. |
+| `400` | `router_config_invalid` | Router configuration is invalid or could not be read during reload. |
+| `400` | `language_detection_failed` | TTS language detection is unavailable, for example because the offline language detector dependency is missing. |
 | `413` | `file_too_large` | STT audio upload exceeds the configured byte limit. |
 | `413` | `payload_too_large` | Imported model package exceeds 2 GiB. |
 | `413` | `speech_output_too_large` | Generated TTS audio exceeds its configured duration or byte limit. |
@@ -98,13 +101,16 @@ Application errors have the following shape (validation errors additionally incl
 | `422` | `validation_error` | Request shape, field value, or field limit is invalid. `details` is an array of `{ "field", "message", "type" }`. |
 | `500` | `inference_failed` | Inference failed. |
 | `500` | `internal_error` | Unexpected server error. |
-| `503` | `model_unavailable` | No installed model is available for the requested task. |
+| `501` | `not_implemented` | The requested language, task, model capability, voice, response format, device, or request option is not supported by this release. A valid language without a configured route also returns this status. |
+| `503` | `model_unavailable` | A supported model or automatic language detector is configured but not installed, verified, or available in the active provider. |
 | `503` | `inference_overloaded` | The inference queue is full. |
 | `504` | `inference_timeout` | Queue wait or inference exceeded its configured timeout. |
 
 Some standard HTTP errors, such as a missing installed model on `GET /v1/models/{model_id}` (`404`), use `{ "detail": "..." }` instead of the application error envelope.
 
 ## Default limits and configuration
+
+On first startup, SmartVoice creates `<data_dir>/smartvoice.json` with all default service settings. The service reads this file on later startups, so users can edit it directly. An explicit `--config` path (or `SMARTVOICE_CONFIG`) selects a separate JSON file; environment variables override values from JSON. `SMARTVOICE_HOME` or the serve command's `--data-dir` selects the user data directory. The tracked `config/smartvoice.example.json` is an example of the generated settings file.
 
 | Setting | Default | Configuration key / environment variable |
 |---|---:|---|

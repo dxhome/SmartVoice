@@ -15,7 +15,10 @@
   "models": [
     {"id": "stt-whisper-base-multilingual-int8", "task": "transcription", "languages": ["en", "zh"]},
     {"id": "stt-sensevoice-small-int8", "task": "transcription", "languages": ["en", "zh"]},
+    {"id": "stt-qwen3-asr-600m-int8", "task": "transcription", "languages": ["en", "zh"]},
     {"id": "tts-melo-zh-en", "task": "speech", "languages": ["en", "zh"]},
+    {"id": "tts-kokoro-multilingual-v1-1-zh-en", "task": "speech", "languages": ["en", "zh"]},
+    {"id": "tts-matcha-zh-baker", "task": "speech", "languages": ["zh"]},
     {"id": "tts-supertonic-v3-multilingual-int8", "task": "speech", "languages": ["en"]}
   ],
   "tts_quality_judge_model_id": "stt-sensevoice-small-int8",

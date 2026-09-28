@@ -65,7 +65,7 @@ class RealInferenceTests(unittest.TestCase):
                     stt = client.post(
                         "/v1/audio/transcriptions",
                         files={"file": (sample.name, audio, "audio/wav")},
-                        data={"language": language, "response_format": "verbose_json", "timestamps": "true"},
+                        data={"model": "stt-smartvoice-auto", "language": language, "response_format": "verbose_json", "timestamps": "true"},
                     )
                 self.assertEqual(stt.status_code, 200, stt.text)
                 self.assertTrue(stt.json()["text"])
@@ -82,7 +82,7 @@ class RealInferenceTests(unittest.TestCase):
                 response = client.post(
                     "/v1/audio/transcriptions",
                     files={"file": (filename, audio_bytes, content_type)},
-                    data={"language": "zh"},
+                    data={"model": "stt-smartvoice-auto", "language": "zh"},
                 )
                 self.assertEqual(response.status_code, 200, f"{filename}: {response.text}")
                 self.assertTrue(response.json()["text"], filename)
@@ -90,7 +90,7 @@ class RealInferenceTests(unittest.TestCase):
             invalid_audio = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("broken.wav", b"not an audio file", "audio/wav")},
-                data={"language": "zh"},
+                data={"model": "stt-smartvoice-auto", "language": "zh"},
             )
             self.assertEqual(invalid_audio.status_code, 422)
             self.assertEqual(invalid_audio.json()["error"]["code"], "invalid_audio")
@@ -100,7 +100,9 @@ class RealInferenceTests(unittest.TestCase):
                 ("en", "Hello, this is a local SmartVoice speech synthesis test."),
                 ("zh", "这是一个用于验证长文本语音合成分段处理的测试。" * 24),
             ):
-                tts = client.post("/v1/audio/speech", json={"input": text, "language": language})
+                tts = client.post("/v1/audio/speech", json={
+                    "model": "tts-smartvoice-auto", "input": text, "language": language,
+                })
                 self.assertEqual(tts.status_code, 200, tts.text)
                 self.assertEqual(tts.headers["content-type"], "audio/wav")
                 self.assertEqual(tts.headers["x-requested-language"], language)

@@ -26,10 +26,10 @@ Local speech tools often require separate runtimes, model formats, and APIs for 
 |---|---|
 | Platform | Windows x64 and macOS Apple Silicon, run from source; no packaged macOS installer |
 | Inference | sherpa-onnx adapter, CPU provider only |
-| STT | SenseVoice Small INT8: Chinese, English, Cantonese, Japanese, Korean; Whisper Base multilingual INT8: English, Chinese, Japanese, Korean, French, German |
-| TTS | Melo VITS ONNX: Chinese and English; Supertonic 3 INT8: English, French, German, Japanese, Korean; Piper VITS: French and German; WAV output |
+| STT | SenseVoice Small INT8: Chinese, English, Cantonese, Japanese, Korean; Whisper Base multilingual INT8: English, Chinese, Japanese, Korean, French, German; Qwen3-ASR 0.6B INT8: 30 languages and Chinese dialects |
+| TTS | Melo VITS ONNX: Chinese and English; Kokoro 1.1: Chinese and English, 103 speakers; Matcha Baker: Chinese; Supertonic 3 INT8: 31 languages; WAV output |
 | API | OpenAPI/Swagger UI, file transcription, speech synthesis, model/catalog and runtime status |
-| Model management | Catalog, resumable install jobs, one default per task, uninstall, and offline import/export; no GUI |
+| Model management | Catalog, resumable install jobs, uninstall, and offline import/export; static language routing; no GUI |
 | GPU | No GPU provider |
 | Streaming | No streaming API |
 | Other platforms and adapters | No Linux, Android, streaming, or MCP support |
@@ -38,22 +38,25 @@ Local speech tools often require separate runtimes, model formats, and APIs for 
 
 The built-in catalog contains the following STT and TTS models. All use the sherpa-onnx adapter and CPU provider.
 
-Canonical model IDs follow `<task>-<family>-<size-or-version>[-<variant>][-<precision>]`: `stt` is transcription and `tts` is speech synthesis. Include language or voice details when they distinguish a model package, and include precision when it distinguishes the model artifact. Runtime backend and `local` are omitted because they are not part of the model's identity. The catalog, API, CLI, install directory, defaults, and offline package all use these IDs directly; only IDs listed in the catalog are accepted.
+Canonical model IDs follow `<task>-<family>-<size-or-version>[-<variant>][-<precision>]`: `stt` is transcription and `tts` is speech synthesis. Include language or voice details when they distinguish a model package, and include precision when it distinguishes the model artifact. Runtime backend and `local` are omitted because they are not part of the model's identity. The catalog, API, CLI, install directory, and offline package use these IDs directly; only IDs listed in the catalog are accepted. The virtual routing IDs `stt-smartvoice-auto` and `tts-smartvoice-auto` follow the same task prefix rule but do not identify downloadable model artifacts.
 
 | Model ID | Task and model type | Languages listed in catalog | Format / notes |
 |---|---|---|---|
 | `stt-whisper-base-multilingual-int8` | STT — Whisper Base multilingual encoder-decoder | Automatic detection; English, Chinese, Japanese, Korean, French, German | INT8 ONNX; general multilingual transcription |
 | `stt-sensevoice-small-int8` | STT — SenseVoice Small | Chinese, English, Cantonese, Japanese, Korean | INT8 ONNX; multilingual recognition |
+| `stt-qwen3-asr-600m-int8` | STT — Qwen3-ASR 0.6B | 30 languages, Cantonese and supported Chinese dialects | INT8 ONNX; automatic language detection; about 1 GB of model files |
 | `tts-melo-zh-en` | TTS — MeloTTS VITS | Chinese, English | VITS ONNX; WAV output |
-| `tts-supertonic-v3-multilingual-int8` | TTS — Supertonic 3 | English, French, German, Japanese, Korean | INT8 ONNX model components; WAV output |
-| `tts-piper-fr-fr-siwis-medium-int8` | TTS — Piper VITS, Siwis Medium voice | French (France) | INT8 ONNX; includes French phonemizer data |
-| `tts-piper-de-de-thorsten-medium-int8` | TTS — Piper VITS, Thorsten Medium voice | German | INT8 ONNX; includes German phonemizer data |
+| `tts-kokoro-multilingual-v1-1-zh-en` | TTS — Kokoro 1.1 | Chinese, English | ONNX; 103 speakers; `voice` accepts a speaker ID from 0 to 102 |
+| `tts-matcha-zh-baker` | TTS — Matcha Baker | Chinese | ONNX; single female voice; includes the Vocos vocoder |
+| `tts-supertonic-v3-multilingual-int8` | TTS — Supertonic 3 | 31 languages, excluding Chinese | INT8 ONNX model components; WAV output |
 
-Install a model with `python -m smartvoice models install <model-id>`. See [`catalog/models.json`](catalog/models.json) for the pinned source, integrity metadata, and model-specific license notes. Language availability does not guarantee equal quality, and third-party model/voice licenses are separate from the SmartVoice source license.
+Install a model with `python -m smartvoice models install <model-id>`. Qwen3-ASR requires about 1 GB of model files and extra temporary disk space while installing. See [`catalog/models.json`](catalog/models.json) for pinned sources, integrity metadata, and model-specific license notes. Language availability does not guarantee equal quality, and third-party model/voice licenses are separate from the SmartVoice source license.
 
 Catalog language coverage does not imply equal quality across languages. Models and their bundled assets have separate licenses. Review each model's included license before use or redistribution. SmartVoice code is licensed under Apache-2.0.
 
 ## Quick start (macOS and Windows)
+
+### Start SmartVoice
 
 Requires Python 3.11 or newer. Inference runs on CPU and does not require a GPU or CUDA installation.
 
@@ -77,21 +80,30 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m smartvoice models list
 .\.venv\Scripts\python.exe -m smartvoice models install stt-sensevoice-small-int8
 .\.venv\Scripts\python.exe -m smartvoice models install tts-melo-zh-en
-# Optional multilingual models and French/German voices
+# Optional multilingual STT/TTS models
 .\.venv\Scripts\python.exe -m smartvoice models install stt-whisper-base-multilingual-int8
 .\.venv\Scripts\python.exe -m smartvoice models install tts-supertonic-v3-multilingual-int8
-.\.venv\Scripts\python.exe -m smartvoice models install tts-piper-fr-fr-siwis-medium-int8
-.\.venv\Scripts\python.exe -m smartvoice models install tts-piper-de-de-thorsten-medium-int8
+\.venv\Scripts\python.exe -m smartvoice models install stt-qwen3-asr-600m-int8
+\.venv\Scripts\python.exe -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
+\.venv\Scripts\python.exe -m smartvoice models install tts-matcha-zh-baker
 .\.venv\Scripts\python.exe -m smartvoice --host 127.0.0.1 --port 8000
 ```
 
-For persistent settings, copy [`config/smartvoice.example.json`](config/smartvoice.example.json), edit it, and start with `--config path\to\smartvoice.json`. The same config can be selected for model commands using `python -m smartvoice models --config path\to\smartvoice.json list`.
+On first start, SmartVoice creates `<data_dir>/smartvoice.json` with the default service settings. Edit that file to persistently change settings; subsequent starts read it automatically. The tracked [`config/smartvoice.example.json`](config/smartvoice.example.json) documents the same settings. To use a separate settings file, pass `--config path\to\smartvoice.json` or set `SMARTVOICE_CONFIG`; environment variables override JSON values. The same explicit config can be selected for model commands using `python -m smartvoice models --config path\to\smartvoice.json list`.
 
 The first model install requires internet access. Once the model files are installed, transcription and synthesis run locally without a network connection. Model weights are stored outside the repository in the user data directory (`~/Library/Application Support/SmartVoice` on macOS, `%LOCALAPPDATA%\SmartVoice` on Windows); set `SMARTVOICE_HOME` to use another location.
 
 `models list` prints a readable summary by default. Add `--json` when piping catalog output to scripts.
 
 Model artifacts are downloaded from fixed HTTPS URLs declared in [`catalog/models.json`](catalog/models.json). SmartVoice checks each archive or individually downloaded model file against its catalog-pinned SHA-256, validates archive paths and size limits where applicable, and records installed file hashes. Model sources are pinned to immutable versions, and catalog changes should be reviewed carefully.
+
+### Connect an agent or application
+
+In the client, select **OpenAI-compatible** mode and set the SmartVoice API URL to:
+
+```text
+http://127.0.0.1:8000/v1
+```
 
 ## API
 
@@ -101,7 +113,8 @@ Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive AP
 |---|---|
 | Service health | `GET /health`, `GET /ready` |
 | Runtime discovery | `GET /v1/capabilities`, `GET /v1/runtime` |
-| Model discovery and management | `GET /v1/models`, `GET /v1/models/{model_id}`, `GET /v1/catalog`, model download jobs, defaults, import, export and uninstall |
+| Model discovery and management | `GET /v1/models`, `GET /v1/models/{model_id}`, `GET /v1/catalog`, model download jobs, import, export and uninstall |
+| Smart routing | `stt-smartvoice-auto` / `tts-smartvoice-auto`; edit `router.json`, then run `python -m smartvoice router reload` |
 | Speech | `POST /v1/audio/transcriptions`, `POST /v1/audio/speech` |
 
 The audio routes follow a supported subset of the OpenAI Audio API conventions. For request fields, response schemas, status codes, errors, and default limits for every endpoint, see the [API specification](doc/api-spec.md). `task` filters use `transcription` for STT and `speech` for TTS.
@@ -128,19 +141,18 @@ curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
   --output speech.wav
 ```
 
-TTS models return mono WAV audio. Pass `model` and `language` to select an installed multilingual model or voice; French and German are available through Supertonic 3 and the corresponding Piper voice packs.
+TTS models return mono WAV audio. Pass `model` and `language` to select an installed model. Supertonic 3 supports 31 listed languages but not Chinese. Kokoro's `default` voice selects a Chinese or English speaker based on the resolved language; set `voice` to an integer speaker ID from 0 to 102 to choose a specific Kokoro voice.
 
 TTS input is limited to 4,000 characters per request. The generated audio is limited to 180 seconds or 32 MiB, whichever limit is reached first. Requests that exceed the input limit are rejected; synthesis that exceeds an output limit returns HTTP 413 with error code `speech_output_too_large`. The audio duration and output byte limits can be changed with `SMARTVOICE_MAX_TTS_AUDIO_SECONDS` and `SMARTVOICE_MAX_TTS_OUTPUT_BYTES`.
 
-An explicit TTS `language` is checked against the selected model and returned as request metadata. Script checks detect Chinese, Japanese, and Korean; Latin text alone cannot distinguish English, French, and German, so specify the language for those cases.
+Use `stt-smartvoice-auto` or `tts-smartvoice-auto` to enable static language routing. Pass a concrete model ID to invoke that model directly. Requests use Whisper language codes; when TTS `language` is `auto`, an offline text-language detector tries up to three times, accepts confidence >= 0.70 immediately, and otherwise routes using the highest-confidence result.
 
 ### Manage models
 
-The CLI supports `models list`, `install`, `default set`, `default clear`, `uninstall`, `export`, and `import`. One default STT model and one default TTS model can be selected independently. Interrupted downloads retain a partial archive and resume on a subsequent `install` when the HTTPS server supports byte ranges. The API uses background jobs for downloads; use the job ID to poll status or cancel. Uninstall is refused while the running service has the model loaded. Model archives and offline packages are validated before being made available.
+The CLI supports `models list`, `install`, `uninstall`, `export`, `import`, and `router reload`. The editable `<data_dir>/router.json` file controls model selection by task and Whisper language code; candidates are attempted in listed order based on installation/verification status. Edit the JSON and reload it without restarting the service. Model inference failures are returned and logged; the service does not retry another candidate. Interrupted downloads retain a partial archive and resume on a subsequent `install` when the HTTPS server supports byte ranges. The API uses background jobs for downloads; use the job ID to poll status or cancel. Uninstall is refused while the running service has the model loaded. Model archives and offline packages are validated before being made available.
 
 ```powershell
-python -m smartvoice models default set stt-sensevoice-small-int8
-python -m smartvoice models default clear transcription
+python -m smartvoice router reload
 python -m smartvoice models export stt-sensevoice-small-int8 .\sensevoice.smartvoice.zip
 python -m smartvoice models import .\sensevoice.smartvoice.zip
 python -m smartvoice models uninstall stt-sensevoice-small-int8

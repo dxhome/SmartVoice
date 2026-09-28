@@ -17,9 +17,9 @@ from dataclasses import replace
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import InvalidRequestError
 from smartvoice.services.model_catalog import (
-    ModelDownloadCancelled, _download, _safe_extract, clear_default_model, default_model_ids,
+    ModelDownloadCancelled, _download, _safe_extract,
     export_model, get_model_spec, import_model, install_model, installed_models, load_catalog,
-    set_default_model, uninstall_model,
+    uninstall_model,
 )
 
 
@@ -30,7 +30,8 @@ class ModelCatalogTests(unittest.TestCase):
         for retired_id in (
             "whisper-base-multilingual-local", "sensevoice-small-local", "melo-tts-zh-en-local",
             "supertonic-3-multilingual-local", "piper-fr-fr-siwis-medium-local",
-            "piper-de-de-thorsten-medium-local",
+            "piper-de-de-thorsten-medium-local", "tts-piper-fr-fr-siwis-medium-int8",
+            "tts-piper-de-de-thorsten-medium-int8",
         ):
             with self.assertRaises(InvalidRequestError):
                 get_model_spec(retired_id)
@@ -43,8 +44,6 @@ class ModelCatalogTests(unittest.TestCase):
             "https://huggingface.co/k2-fsa/sherpa-models/resolve/",
             "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/",
         )) for spec in specs))
-        self.assertEqual(get_model_spec("tts-piper-fr-fr-siwis-medium-int8").languages, ("fr",))
-        self.assertEqual(get_model_spec("tts-piper-de-de-thorsten-medium-int8").languages, ("de",))
         self.assertIn("ja", get_model_spec("tts-supertonic-v3-multilingual-int8").languages)
         self.assertEqual(get_model_spec("stt-whisper-base-multilingual-int8").model_type, "whisper")
         self.assertEqual(get_model_spec("stt-sensevoice-small-int8").languages[:2], ("zh", "en"))
@@ -83,7 +82,7 @@ class ModelCatalogTests(unittest.TestCase):
         self.assertEqual(list(settings.models_dir.glob(".import-*.tmp")), [])
         self.assertFalse((settings.models_dir.parent / "escape.txt").exists())
 
-    def test_setting_default_rejects_tampered_model_file(self):
+    def test_installed_models_reject_tampered_model_manifest(self):
         test_dir = Path.cwd() / ".smartvoice-dev" / f"tampered-model-{uuid.uuid4().hex}"
         model_dir = test_dir / "data" / "models" / "stt-sensevoice-small-int8"
         model_dir.mkdir(parents=True)
@@ -102,8 +101,8 @@ class ModelCatalogTests(unittest.TestCase):
         }), encoding="utf-8")
         (model_dir / spec.required_files[0]).write_bytes(b"tampered")
 
-        with self.assertRaisesRegex(InvalidRequestError, "failed verification"):
-            set_default_model(Settings(data_dir=test_dir / "data"), spec.id)
+        (model_dir / "smartvoice-model.json").write_text("not json", encoding="utf-8")
+        self.assertEqual(installed_models(Settings(data_dir=test_dir / "data")), [])
 
     def test_uninstall_refuses_a_model_loaded_by_the_provider(self):
         test_dir = Path.cwd() / ".smartvoice-dev" / f"loaded-uninstall-{uuid.uuid4().hex}"
@@ -205,8 +204,7 @@ class ModelCatalogTests(unittest.TestCase):
             destination = install_model(settings, "stt-sensevoice-small-int8")
             self.assertTrue((destination / "smartvoice-model.json").is_file())
             self.assertEqual([entry["id"] for entry in installed_models(settings)], ["stt-sensevoice-small-int8"])
-            self.assertTrue(installed_models(settings)[0]["default"])
-            self.assertEqual(set_default_model(settings, "stt-sensevoice-small-int8")["transcription"], "stt-sensevoice-small-int8")
+            self.assertNotIn("default", installed_models(settings)[0])
 
             package = test_dir / "offline-model.zip"
             export_model(settings, "stt-sensevoice-small-int8", package)
@@ -216,18 +214,7 @@ class ModelCatalogTests(unittest.TestCase):
 
             restored = import_model(settings, package)
             self.assertTrue((restored / "smartvoice-model.json").is_file())
-            self.assertEqual(set_default_model(settings, "stt-sensevoice-small-int8")["transcription"], "stt-sensevoice-small-int8")
             self.assertEqual(uninstall_model(settings, "stt-sensevoice-small-int8"), released)
-
-    def test_default_selection_migrates_legacy_active_model_file(self):
-        test_dir = Path.cwd() / ".smartvoice-dev" / f"legacy-default-{uuid.uuid4().hex}"
-        data_dir = test_dir / "data"
-        data_dir.mkdir(parents=True)
-        (data_dir / "active_models.json").write_text(json.dumps({"transcription": "stt-sensevoice-small-int8"}), encoding="utf-8")
-        settings = Settings(data_dir=data_dir)
-        self.assertEqual(default_model_ids(settings)["transcription"], "stt-sensevoice-small-int8")
-        self.assertEqual(clear_default_model(settings, "transcription"), {})
-        self.assertTrue((data_dir / "default_models.json").is_file())
 
 
 if __name__ == "__main__":

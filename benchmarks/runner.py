@@ -11,6 +11,7 @@ import os
 import platform
 import random
 import socket
+import statistics
 import subprocess
 import sys
 import threading
