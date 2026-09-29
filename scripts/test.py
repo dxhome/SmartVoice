@@ -28,7 +28,7 @@ def _regression_prerequisites() -> list[str]:
     settings = Settings.from_env()
     required_models = {
         "stt-sensevoice-small-int8": ("zh.wav", "en.wav"),
-        "tts-melo-zh-en": (),
+        "tts-kokoro-multilingual-v1-1-zh-en": (),
     }
     for model_id, required_samples in required_models.items():
         directory = model_directory(settings, model_id)

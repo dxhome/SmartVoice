@@ -67,7 +67,7 @@ def _download_once(
     class SafeHttpsRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, req, fp, code, msg, headers, newurl):
             parsed = urlparse(newurl)
-            allowed_hosts = {"github.com", "release-assets.githubusercontent.com", "huggingface.co", "cdn-lfs.huggingface.co", "cas-bridge.xethub.hf.co", "us.aws.cdn.hf.co"}
+            allowed_hosts = {"github.com", "release-assets.githubusercontent.com", "huggingface.co", "cdn-lfs.huggingface.co", "cas-bridge.xethub.hf.co", "us.aws.cdn.hf.co", urlparse(url).hostname}
             if parsed.scheme != "https" or parsed.hostname not in allowed_hosts or parsed.username or parsed.password:
                 raise ValueError("Model download redirected outside the approved HTTPS hosts")
             return super().redirect_request(req, fp, code, msg, headers, newurl)
@@ -96,7 +96,7 @@ def _download_once(
             expected_part = int(content_length) if content_length and content_length.isdigit() else None
             expected = offset + expected_part if expected_part is not None else None
             if expected and expected > MAX_ARCHIVE_BYTES:
-                raise ValueError("Model archive exceeds the 2 GiB download limit")
+                raise ValueError("Model archive exceeds the 3 GiB download limit")
             downloaded = offset
             if progress:
                 progress(downloaded, expected)
@@ -108,7 +108,7 @@ def _download_once(
                     break
                 downloaded += len(block)
                 if downloaded > MAX_ARCHIVE_BYTES:
-                    raise ValueError("Model archive exceeds the 2 GiB download limit")
+                    raise ValueError("Model archive exceeds the 3 GiB download limit")
                 output.write(block)
                 if progress:
                     progress(downloaded, expected)
@@ -146,13 +146,37 @@ def _safe_extract(archive_path: Path, destination: Path) -> None:
                 shutil.copyfileobj(source, output, length=1024 * 1024)
 
 
+def _download_urls(spec, source: str | None) -> list[str]:
+    """Resolve catalog-pinned Hugging Face URLs against an explicitly selected base URL."""
+    urls = list(spec.file_sources.values()) if spec.file_sources else [spec.source]
+    urls.extend(metadata["source"] for metadata in (spec.extra_files or {}).values())
+    if source is None:
+        return urls
+    base = urlparse(source)
+    if base.scheme != "https" or not base.hostname or base.username or base.password or base.query or base.fragment:
+        raise InvalidRequestError("A model source must be an HTTPS base URL without credentials, query, or fragment.")
+    if not urls or any(urlparse(url).scheme != "https" or urlparse(url).hostname != "huggingface.co" for url in urls):
+        raise InvalidRequestError(
+            f"Model {spec.id!r} does not have all required files on a Hugging Face-compatible source. "
+            "Omit --source to use the catalog URLs."
+        )
+    base_path = base.path.rstrip("/")
+    return [
+        f"{base.scheme}://{base.netloc}{base_path}{urlparse(url).path}"
+        for url in urls
+    ]
+
+
 def install_model(
     settings: Settings,
     model_id: str,
     progress: Callable[[int, int | None], None] | None = None,
     cancel_event: threading.Event | None = None,
+    *,
+    source: str | None = None,
 ) -> Path:
     spec = get_model_spec(model_id)
+    resolved_urls = _download_urls(spec, source)
     settings.models_dir.mkdir(parents=True, exist_ok=True)
     destination = settings.models_dir / spec.id
     if destination.exists():
@@ -174,7 +198,7 @@ def install_model(
         if spec.file_sources:
             # A previous catalog entry used this path for a non-ONNX archive.
             archive_path.unlink(missing_ok=True)
-            for filename, url in spec.file_sources.items():
+            for (filename, _), url in zip(spec.file_sources.items(), resolved_urls):
                 part_path = download_dir / f"{spec.id}-{filename}.part"
                 part_path.parent.mkdir(parents=True, exist_ok=True)
                 component_parts.append(part_path)
@@ -188,7 +212,7 @@ def install_model(
             archive_digest = None
         else:
             if not archive_path.is_file() or _sha256(archive_path) != spec.archive_sha256:
-                _download(spec.source, archive_path, progress, cancel_event)
+                _download(resolved_urls[0], archive_path, progress, cancel_event)
             archive_digest = _sha256(archive_path)
             if archive_digest != spec.archive_sha256:
                 archive_path.unlink(missing_ok=True)
@@ -199,7 +223,8 @@ def install_model(
             part_path = download_dir / f"{spec.id}-{Path(filename).name}.part"
             component_parts.append(part_path)
             if not part_path.is_file() or _sha256(part_path) != metadata["sha256"]:
-                _download(metadata["source"], part_path, progress, cancel_event)
+                extra_url_index = (len(spec.file_sources) if spec.file_sources else 1) + list((spec.extra_files or {}).keys()).index(filename)
+                _download(resolved_urls[extra_url_index], part_path, progress, cancel_event)
             if _sha256(part_path) != metadata["sha256"]:
                 part_path.unlink(missing_ok=True)
                 raise ValueError(f"Model file SHA-256 mismatch for {spec.id}: {filename}")
@@ -229,7 +254,8 @@ def install_model(
                         file_map[child_rel] = child_rel
         manifest = {
             "schema_version": "1.0", "id": spec.id, "task": spec.task,
-            "source": spec.source, "archive_sha256": archive_digest,
+            "source": spec.source, "download_source": source or "catalog",
+            "archive_sha256": archive_digest,
             "hash_scope": (
                 "each required model file verified against its SHA-256 pinned in the SmartVoice source catalog"
                 if spec.file_sources else

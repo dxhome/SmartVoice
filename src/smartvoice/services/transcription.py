@@ -69,10 +69,12 @@ class TranscriptionService:
 
         detected_language = ""
         detection_failure = ""
+        runtime_wait = 0.0
         if self.language_identifier is not None:
             try:
                 detected = self.language_identifier.identify_language(audio)
                 detected_language = str(detected.get("language") or "").lower()
+                runtime_wait += float(detected.get("runtime_wait_seconds") or 0.0)
                 logger.debug("language_detection_completed model=%s language=%s", detected.get("model"), detected_language or "unknown")
             except InvalidAudioError:
                 raise
@@ -100,6 +102,9 @@ class TranscriptionService:
                     f"STT language detection failed ({detection_failure}); no installed and verified STT model supports auto mode."
                 )
             result = self.provider.transcribe(audio, "auto", auto_spec.id)
+            result["runtime_wait_seconds"] = round(
+                runtime_wait + float(result.get("runtime_wait_seconds") or 0.0), 4
+            )
             resolved = result.get("language")
             states = ({"model": auto_spec.id, "installed": True},)
             logger.warning("language_detection_fallback model=%s reason=%s", auto_spec.id, detection_failure)
@@ -107,6 +112,9 @@ class TranscriptionService:
 
         selected, states = self.model_router.choose("transcription", detected_language, list(installed), config=router_config)
         result = self.provider.transcribe(audio, detected_language, selected)
+        result["runtime_wait_seconds"] = round(
+            runtime_wait + float(result.get("runtime_wait_seconds") or 0.0), 4
+        )
         return TranscriptionOutcome(result, selected, detected_language, tuple(states), "model_detection")
 
     @staticmethod

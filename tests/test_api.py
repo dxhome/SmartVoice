@@ -26,7 +26,7 @@ class FakeProvider:
     def installed_models(self):
         return [
             {"id": "stt-sensevoice-small-int8", "task": "transcription"},
-            {"id": "tts-melo-zh-en", "task": "speech"},
+            {"id": "tts-kokoro-multilingual-v1-1-zh-en", "task": "speech"},
             {"id": "tts-supertonic-v3-multilingual-int8", "task": "speech"},
             {"id": "stt-whisper-base-multilingual-int8", "task": "transcription"},
         ]
@@ -72,7 +72,7 @@ class ApiTests(unittest.TestCase):
     def set_english_tts_router(self):
         (self.data_dir / "router.json").write_text(json.dumps({
             "schema_version": "1.0",
-            "tasks": {"transcription": {}, "speech": {"en": ["tts-melo-zh-en"]}},
+            "tasks": {"transcription": {}, "speech": {"en": ["tts-kokoro-multilingual-v1-1-zh-en"]}},
         }), encoding="utf-8")
 
     def set_router(self, transcription=None, speech=None):
@@ -502,7 +502,7 @@ class ApiTests(unittest.TestCase):
             })
         self.assertEqual(response.status_code, 501)
         self.assertEqual(response.json()["error"]["code"], "not_implemented")
-        self.assertIn("tts-melo-zh-en", response.json()["error"]["message"])
+        self.assertIn("tts-kokoro-multilingual-v1-1-zh-en", response.json()["error"]["message"])
 
     def test_transcription_rejects_unsupported_language_code(self):
         with self.make_client() as client:
@@ -533,7 +533,7 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(response.json()["error"]["code"], "not_implemented")
 
     def test_unknown_or_wrong_task_model_returns_not_implemented(self):
-        for model_id in ("stt-no-such-model", "tts-melo-zh-en"):
+        for model_id in ("stt-no-such-model", "tts-kokoro-multilingual-v1-1-zh-en"):
             with self.subTest(model_id=model_id), self.make_client() as client:
                 response = client.post(
                     "/v1/audio/transcriptions",
@@ -641,7 +641,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.headers["x-language-confidence"], "0.310")
         self.assertEqual(detect.call_count, 1)
         self.assertEqual(detect.call_args.args[0], "Hi Hi Hi Hi Hi")
-        self.assertEqual(provider.synthesize_call, ("Hi", "tts-melo-zh-en", "en"))
+        self.assertEqual(provider.synthesize_call, ("Hi", "tts-kokoro-multilingual-v1-1-zh-en", "en"))
 
     def test_tts_accepts_explicit_french_with_supertonic(self):
         provider = FakeProvider()

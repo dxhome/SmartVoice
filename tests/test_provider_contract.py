@@ -14,7 +14,7 @@ from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvide
 
 class ProviderContractTests(unittest.TestCase):
     def test_spoken_language_identifier_uses_sherpa_whisper_tiny_api(self):
-        from types import SimpleNamespace
+        from types import ModuleType, SimpleNamespace
         from unittest.mock import Mock, patch
         import numpy as np
 
@@ -38,8 +38,9 @@ class ProviderContractTests(unittest.TestCase):
         )
         provider._sherpa = lambda: sherpa
         provider._decode_audio = lambda *_args: np.zeros(1600, dtype=np.float32)
-        with patch("smartvoice.adapters.inference.sherpa_onnx.provider.installed_language_id_model_dir", return_value=Path("/lid")):
-            result = provider.identify_language(b"fixture")
+        with patch.dict("sys.modules", {"av": ModuleType("av")}):
+            with patch("smartvoice.adapters.inference.sherpa_onnx.provider.installed_language_id_model_dir", return_value=Path("/lid")):
+                result = provider.identify_language(b"fixture")
 
         self.assertEqual(calls["whisper"], {"encoder": "/lid/tiny-encoder.int8.onnx", "decoder": "/lid/tiny-decoder.int8.onnx"})
         self.assertEqual(calls["config"]["num_threads"], provider.settings.num_threads)
@@ -117,7 +118,7 @@ class ProviderContractTests(unittest.TestCase):
             def installed_models(self):
                 return [
                     {"id": "stt-sensevoice-small-int8", "task": "transcription"},
-                    {"id": "tts-melo-zh-en", "task": "speech"},
+                    {"id": "tts-kokoro-multilingual-v1-1-zh-en", "task": "speech"},
                 ]
 
             def runtime(self):
@@ -139,6 +140,12 @@ class ProviderContractTests(unittest.TestCase):
             with self.subTest(provider=provider_type.backend):
                 data_dir = Path.cwd() / ".smartvoice-dev" / f"provider-contract-{uuid.uuid4().hex}"
                 data_dir.mkdir(parents=True)
+                (data_dir / "router.json").write_text(
+                    '{"schema_version":"1.0","tasks":'
+                    '{"transcription":{"zh":["stt-sensevoice-small-int8"]},'
+                    '"speech":{"en":["tts-kokoro-multilingual-v1-1-zh-en"]}}}',
+                    encoding="utf-8",
+                )
                 app = create_app(settings=Settings(data_dir=data_dir), provider=provider_type())
                 with TestClient(app) as client:
                     models = client.get("/v1/models")

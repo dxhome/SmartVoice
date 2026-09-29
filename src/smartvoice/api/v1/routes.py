@@ -249,7 +249,7 @@ async def import_model_route(request: Request, file: UploadFile = File(...)) -> 
             while chunk := await file.read(1024 * 1024):
                 total += len(chunk)
                 if total > MAX_ARCHIVE_BYTES:
-                    raise PayloadTooLargeError("Offline model package exceeds the 2 GiB import limit.")
+                    raise PayloadTooLargeError("Offline model package exceeds the 3 GiB import limit.")
                 temporary.write(chunk)
         return await run_in_threadpool(request.app.state.model_management.import_archive, temporary_path)
     finally:
@@ -305,6 +305,7 @@ async def transcriptions(
     (result, actual_model, resolved_language, route_candidates, resolved_language_source), queue_wait = await _run_request_inference(request, transcribe_request)
     result["request_processing_seconds"] = round(time.perf_counter() - inference_started - queue_wait, 4)
     result["queue_wait_seconds"] = round(queue_wait, 4)
+    result["runtime_wait_seconds"] = round(float(result.get("runtime_wait_seconds") or 0.0), 4)
     result["requested_model"] = requested_model
     result["model_mode"] = "router" if routed else "direct"
     result["language_source"] = resolved_language_source if resolved_language else "undetermined"
@@ -374,6 +375,7 @@ async def speech(request: Request, payload: SpeechRequest) -> Response:
             "X-Model-Mode": "router" if routed else "direct",
             "X-Inference-Time-Seconds": f"{inference_seconds:.4f}",
             "X-Queue-Wait-Seconds": f"{queue_wait:.4f}",
+            "X-Runtime-Wait-Seconds": f"{outcome.runtime_wait_seconds:.4f}",
             "X-Real-Time-Factor": f"{inference_seconds / duration:.4f}" if duration else "0",
             "X-Requested-Language": payload.language or "auto",
             "X-Resolved-Language": requested_language,

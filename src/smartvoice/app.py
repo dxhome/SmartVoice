@@ -181,9 +181,17 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     settings = settings or Settings.from_env()
     model_repository = CatalogModelRepository(settings)
     if provider is None:
+        from smartvoice.adapters.inference.composite_provider import CompositeInferenceProvider
+        from smartvoice.adapters.inference.qwen_tts.provider import QwenTTSProvider
         from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 
-        provider = SherpaOnnxProvider(settings, model_repository)
+        provider = CompositeInferenceProvider(
+            {
+                "sherpa-onnx": SherpaOnnxProvider(settings, model_repository),
+                "qwen-tts": QwenTTSProvider(settings, model_repository),
+            },
+            model_repository,
+        )
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         yield
@@ -405,6 +413,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
             status_code=503 if missing else 200,
             content={
                 "status": "not_ready" if missing else "ready",
+                "version": __version__,
                 "inference_backend": runtime.get("backend"),
                 "available_tasks": available_tasks,
                 "available_models": [str(model.get("id")) for model in installed],

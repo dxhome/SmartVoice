@@ -32,7 +32,7 @@ jobs:
             exit 1
           fi
       - name: Run unit and API tests
-        run: python -m unittest discover -s tests -v
+        run: python scripts/test.py ci
       - name: Build and validate distributions
         run: |
           python -m pip install build twine

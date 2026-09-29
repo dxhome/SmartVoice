@@ -7,6 +7,7 @@ import os
 import shutil
 import uuid
 import zipfile
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
@@ -15,6 +16,12 @@ from smartvoice.domain.errors import InvalidRequestError
 from smartvoice.services.model_catalog_constants import MAX_EXTRACTED_BYTES
 from smartvoice.services.file_integrity import sha256 as _sha256
 from smartvoice.services.model_registry import get_model_spec, load_catalog
+
+
+@lru_cache(maxsize=4096)
+def _cached_sha256(path: str, size: int, mtime_ns: int) -> str:
+    """Reuse integrity checks until a model file's size or modification time changes."""
+    return _sha256(Path(path))
 
 
 def model_directory(settings: Settings, model_id: str) -> Path:
@@ -59,7 +66,11 @@ def installed_models(settings: Settings) -> list[dict[str, object]]:
                 for required, expected in spec.file_sha256.items():
                     relative = file_map.get(required)
                     resolved = (root / relative).resolve() if isinstance(relative, str) else root
-                    if not resolved.is_relative_to(root.resolve()) or not resolved.is_file() or _sha256(resolved) != expected:
+                    if not resolved.is_relative_to(root.resolve()) or not resolved.is_file():
+                        valid = False
+                        break
+                    stat = resolved.stat()
+                    if _cached_sha256(str(resolved), stat.st_size, stat.st_mtime_ns) != expected:
                         valid = False
                         break
         except (OSError, KeyError, AttributeError, TypeError, json.JSONDecodeError):

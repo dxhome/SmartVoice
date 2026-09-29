@@ -22,10 +22,12 @@ def load_catalog() -> list[ModelSpec]:
         if not MODEL_ID_PATTERN.fullmatch(model_id) or not expected_prefix or not model_id.startswith(f"{expected_prefix}-"):
             raise RuntimeError(f"Invalid canonical model ID {model_id!r}; expected the {expected_prefix or 'stt/tts'}-... format")
         source = item["source"]
+        qwen_tts_source_prefix = "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice/resolve/85e237c12c027371202489a0ec509ded67b5e4b5/"
         allowed_source_prefixes = (
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/",
             "https://huggingface.co/k2-fsa/sherpa-models/resolve/6eed21873e424aa3b01b52c767d9d3bd3cca94d8/",
             "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/",
+            qwen_tts_source_prefix,
         )
         qwen_source_prefix = "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/"
         allowed_file_prefixes = (*allowed_source_prefixes, qwen_source_prefix)

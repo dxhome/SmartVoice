@@ -1,5 +1,7 @@
 # SmartVoice Local STT/TTS Service: Requirements Specification
 
+> **Requirements baseline, not a description of shipped behavior.** This document records product goals and candidate requirements. Its first-release platform targets and model recommendations may differ from the implementation. Use [README.md](../README.md) and [the API specification](api-spec.md) for current support and behavior.
+
 - **Version:** 0.1 (post-research requirements baseline)
 - **Date:** 2026-09-27
 - **Status:** Revised after the user's goal update on 2026-09-27

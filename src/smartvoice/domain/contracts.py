@@ -22,6 +22,7 @@ class TranscriptionResult(TypedDict, total=False):
     model: str
     device: str
     processing_seconds: float
+    runtime_wait_seconds: float
     rtf: float | None
     segments: list[dict[str, object]]
 
@@ -30,6 +31,7 @@ class ProviderCapabilityDocument(TypedDict, total=False):
     api_version: str
     capability_schema_version: str
     backend: str
+    backends: list[str]
     tasks: list[dict[str, object]]
     language_identification: dict[str, object]
     router: dict[str, object]
@@ -40,10 +42,12 @@ class SynthesizedSpeech:
     audio: bytes
     sample_rate: int
     duration: float
+    runtime_wait_seconds: float = 0.0
 
 
 class LanguageIdentificationResult(TypedDict, total=False):
     language: str
     model: str
     processing_seconds: float
+    runtime_wait_seconds: float
     confidence: float

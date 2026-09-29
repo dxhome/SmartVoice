@@ -6,7 +6,7 @@ The release version is defined once in `src/smartvoice/_version.py`. Package met
 
 ## Create a GitHub release
 
-1. Merge the release changes into `main` after CI passes.
+1. Merge the release changes into `main` after the required checks pass. While the CI workflow is paused in repository settings, run `python scripts/test.py ci` and the distribution build/check locally; re-enable CI if you want GitHub to enforce those checks on the release branch.
 2. Update `__version__` in `src/smartvoice/_version.py` to the release version.
 3. Create and push the matching tag, including the `v` prefix. For example, for `0.1.0`:
 

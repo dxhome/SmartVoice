@@ -26,20 +26,23 @@ from smartvoice.services.spoken_language_identifier import installed_language_id
 from smartvoice.adapters.platform.host_metrics import host_info, process_metrics, system_memory_info
 
 STT_MODEL_ID = "stt-sensevoice-small-int8"
-TTS_MODEL_ID = "tts-melo-zh-en"
+DEFAULT_TTS_MODEL_ID = "tts-kokoro-multilingual-v1-1-zh-en"
 TARGET_SAMPLE_RATE = 16000
 
 
 class SherpaOnnxProvider:
-    """Loads models on first use and serializes inference to bound CPU/memory use."""
+    """Loads models lazily and bounds concurrent use of runtime instances."""
 
     def __init__(self, settings: Settings, model_repository: ModelRepository | None = None):
         self.settings = settings
         self.model_repository = model_repository or CatalogModelRepository(settings)
-        self._lock = threading.RLock()
+        self._cache_lock = threading.RLock()
         self._recognizers: dict[tuple[str, str], object] = {}
+        self._recognizer_locks: dict[str, threading.Lock] = {}
         self._language_identifier = None
+        self._language_identifier_lock = threading.Lock()
         self._tts: dict[str, object] = {}
+        self._tts_locks: dict[str, threading.Lock] = {}
         self._verified_files: dict[str, tuple[int, int, str]] = {}
 
     def identify_language(self, audio: bytes) -> LanguageIdentificationResult:
@@ -62,7 +65,7 @@ class SherpaOnnxProvider:
             ) from exc
         if samples.size == 0:
             raise InvalidAudioError("The uploaded audio is empty.")
-        with self._lock:
+        with self._cache_lock:
             try:
                 if self._language_identifier is None:
                     sherpa_onnx = self._sherpa()
@@ -75,16 +78,26 @@ class SherpaOnnxProvider:
                         provider=self.settings.provider,
                     )
                     self._language_identifier = sherpa_onnx.SpokenLanguageIdentification(config)
-                start = time.perf_counter()
-                stream = self._language_identifier.create_stream()
-                stream.accept_waveform(sample_rate=TARGET_SAMPLE_RATE, waveform=samples.astype(np.float32, copy=False))
-                language = self._language_identifier.compute(stream)
-                elapsed = time.perf_counter() - start
             except Exception as exc:
                 raise InferenceError("Spoken language identification failed.", detail=type(exc).__name__) from exc
+            identifier = self._language_identifier
+        wait_started = time.perf_counter()
+        self._language_identifier_lock.acquire()
+        runtime_wait = time.perf_counter() - wait_started
+        try:
+            start = time.perf_counter()
+            stream = identifier.create_stream()
+            stream.accept_waveform(sample_rate=TARGET_SAMPLE_RATE, waveform=samples.astype(np.float32, copy=False))
+            language = identifier.compute(stream)
+            elapsed = time.perf_counter() - start
+        except Exception as exc:
+            raise InferenceError("Spoken language identification failed.", detail=type(exc).__name__) from exc
+        finally:
+            self._language_identifier_lock.release()
         return {
             "language": self._normalize_language(str(language)) or "",
             "processing_seconds": round(elapsed, 4),
+            "runtime_wait_seconds": round(runtime_wait, 4),
             "model": "sherpa-onnx-whisper-tiny-int8-language-id",
         }
 
@@ -92,7 +105,10 @@ class SherpaOnnxProvider:
         return installed_language_id_model_dir(self.settings) is not None
 
     def installed_models(self) -> list[InstalledModel]:
-        available = self.model_repository.installed_models()
+        available = [
+            model for model in self.model_repository.installed_models()
+            if model.get("backend") == "sherpa-onnx"
+        ]
         verified = []
         for model in available:
             try:
@@ -103,7 +119,7 @@ class SherpaOnnxProvider:
         return verified
 
     def is_model_loaded(self, model_id: str) -> bool:
-        with self._lock:
+        with self._cache_lock:
             return any(key[0] == model_id for key in self._recognizers) or model_id in self._tts
 
     def runtime(self) -> dict[str, object]:
@@ -160,17 +176,25 @@ class SherpaOnnxProvider:
         if duration > self.settings.max_audio_seconds:
             raise InvalidAudioError(f"Audio duration exceeds the {self.settings.max_audio_seconds:g} second limit.")
 
-        with self._lock:
-            try:
-                recognizer = self._get_recognizer(spec.model_type, model_path, decoder_path, tokens_path, language)
-                stream = recognizer.create_stream()
-                stream.accept_waveform(TARGET_SAMPLE_RATE, samples)
-                start = time.perf_counter()
-                recognizer.decode_stream(stream)
-                elapsed = time.perf_counter() - start
-                result = stream.result
-            except Exception as exc:
-                raise InferenceError("Speech recognition failed.", detail=type(exc).__name__) from exc
+        # Recognizers can be language-specific cached instances for one model;
+        # serialize the model as a whole to avoid parallel duplicate sessions.
+        cache_key = model_dir.name
+        recognizer_lock = self._model_lock(self._recognizer_locks, cache_key)
+        recognizer = self._get_recognizer(spec.model_type, model_path, decoder_path, tokens_path, language)
+        wait_started = time.perf_counter()
+        recognizer_lock.acquire()
+        runtime_wait = time.perf_counter() - wait_started
+        try:
+            stream = recognizer.create_stream()
+            stream.accept_waveform(TARGET_SAMPLE_RATE, samples)
+            start = time.perf_counter()
+            recognizer.decode_stream(stream)
+            elapsed = time.perf_counter() - start
+            result = stream.result
+        except Exception as exc:
+            raise InferenceError("Speech recognition failed.", detail=type(exc).__name__) from exc
+        finally:
+            recognizer_lock.release()
         output: dict[str, object] = {
             "text": result.text,
             "language": self._normalize_language(getattr(result, "lang", None)) or (language if language != "auto" else None),
@@ -178,6 +202,7 @@ class SherpaOnnxProvider:
             "model": model_id,
             "device": "cpu",
             "processing_seconds": round(elapsed, 3),
+            "runtime_wait_seconds": round(runtime_wait, 4),
             "rtf": round(elapsed / duration, 4) if duration else None,
         }
         timestamps = list(getattr(result, "timestamps", []) or [])
@@ -219,7 +244,7 @@ class SherpaOnnxProvider:
             container.close()
 
     def synthesize(
-        self, text: str, voice: str = "default", speed: float = 1.0, model_id: str = TTS_MODEL_ID,
+        self, text: str, voice: str = "default", speed: float = 1.0, model_id: str = DEFAULT_TTS_MODEL_ID,
         language: str = "auto",
     ) -> SynthesizedSpeech:
         import numpy as np
@@ -228,6 +253,8 @@ class SherpaOnnxProvider:
         model_id = spec.id
         if spec.task != "speech":
             raise UnsupportedFeatureError(f"Model {model_id!r} does not support speech synthesis.")
+        if language not in {"auto", *spec.languages}:
+            raise UnsupportedFeatureError(f"Model {model_id!r} does not support language {language!r}.")
         if spec.model_type == "kokoro":
             if voice == "default":
                 sid = 3 if language == "zh" else 0
@@ -258,42 +285,47 @@ class SherpaOnnxProvider:
         rule_fsts = ",".join(
             str(self._manifest_path(model_dir, name)) for name in spec.rule_fsts.split(",")
         ) if spec.rule_fsts else None
-        with self._lock:
-            try:
-                tts = self._get_tts(model_id, spec.model_type, model_files or {"model": model_path}, lexicon_path, tokens_path, data_dir, rule_fsts)
-                start = time.perf_counter()
-                text_chunks = self._split_tts_text(text, 200)
-                audio_chunks = []
-                sample_rate = 0
-                total_samples = 0
-                for text_chunk in text_chunks:
-                    if spec.model_type == "supertonic":
-                        config = self._sherpa().GenerationConfig()
-                        config.sid = sid
-                        config.speed = speed
-                        config.num_steps = 8
-                        config.extra["lang"] = language if language != "auto" else "en"
-                        generated = tts.generate(text_chunk, config=config)
-                    else:
-                        generated = tts.generate(text_chunk, sid=sid, speed=speed)
-                    chunk_samples = np.asarray(generated.samples, dtype=np.float32)
-                    chunk_sample_rate = int(generated.sample_rate)
-                    if chunk_samples.size == 0 or chunk_sample_rate <= 0:
-                        raise InferenceError("The TTS runtime returned empty audio.")
-                    if sample_rate and chunk_sample_rate != sample_rate:
-                        raise InferenceError("The TTS runtime changed sample rate between text segments.")
-                    sample_rate = chunk_sample_rate
-                    total_samples += chunk_samples.size
-                    duration_so_far = total_samples / sample_rate
-                    pcm_bytes_so_far = total_samples * 2 + 44
-                    if duration_so_far > self.settings.max_tts_audio_seconds or pcm_bytes_so_far > self.settings.max_tts_output_bytes:
-                        raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio output limit.")
-                    audio_chunks.append(chunk_samples)
-                elapsed = time.perf_counter() - start
-            except SpeechOutputTooLargeError:
-                raise
-            except Exception as exc:
-                raise InferenceError("Speech synthesis failed.", detail=type(exc).__name__) from exc
+        tts_lock = self._model_lock(self._tts_locks, model_id)
+        tts = self._get_tts(model_id, spec.model_type, model_files or {"model": model_path}, lexicon_path, tokens_path, data_dir, rule_fsts)
+        wait_started = time.perf_counter()
+        tts_lock.acquire()
+        runtime_wait = time.perf_counter() - wait_started
+        try:
+            start = time.perf_counter()
+            text_chunks = self._split_tts_text(text, 200)
+            audio_chunks = []
+            sample_rate = 0
+            total_samples = 0
+            for text_chunk in text_chunks:
+                if spec.model_type == "supertonic":
+                    config = self._sherpa().GenerationConfig()
+                    config.sid = sid
+                    config.speed = speed
+                    config.num_steps = 8
+                    config.extra["lang"] = "en" if language == "auto" else language
+                    generated = tts.generate(text_chunk, config=config)
+                else:
+                    generated = tts.generate(text_chunk, sid=sid, speed=speed)
+                chunk_samples = np.asarray(generated.samples, dtype=np.float32)
+                chunk_sample_rate = int(generated.sample_rate)
+                if chunk_samples.size == 0 or chunk_sample_rate <= 0:
+                    raise InferenceError("The TTS runtime returned empty audio.")
+                if sample_rate and chunk_sample_rate != sample_rate:
+                    raise InferenceError("The TTS runtime changed sample rate between text segments.")
+                sample_rate = chunk_sample_rate
+                total_samples += chunk_samples.size
+                duration_so_far = total_samples / sample_rate
+                pcm_bytes_so_far = total_samples * 2 + 44
+                if duration_so_far > self.settings.max_tts_audio_seconds or pcm_bytes_so_far > self.settings.max_tts_output_bytes:
+                    raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio output limit.")
+                audio_chunks.append(chunk_samples)
+            elapsed = time.perf_counter() - start
+        except SpeechOutputTooLargeError:
+            raise
+        except Exception as exc:
+            raise InferenceError("Speech synthesis failed.", detail=type(exc).__name__) from exc
+        finally:
+            tts_lock.release()
         samples = np.concatenate(audio_chunks)
         duration = samples.size / sample_rate
         pcm = np.clip(samples, -1.0, 1.0)
@@ -304,7 +336,10 @@ class SherpaOnnxProvider:
             wav.setsampwidth(2)
             wav.setframerate(sample_rate)
             wav.writeframes(pcm.tobytes())
-        return SynthesizedSpeech(audio=output.getvalue(), sample_rate=sample_rate, duration=duration)
+        return SynthesizedSpeech(
+            audio=output.getvalue(), sample_rate=sample_rate, duration=duration,
+            runtime_wait_seconds=runtime_wait,
+        )
 
     @staticmethod
     def _split_tts_text(text: str, max_characters: int) -> list[str]:
@@ -325,36 +360,39 @@ class SherpaOnnxProvider:
 
     def _get_recognizer(self, model_type: str, model_path: Path, decoder_path: Path | None, tokens_path: Path, language: str):
         key = (model_path.parent.name, language)
-        if key not in self._recognizers:
-            sherpa_onnx = self._sherpa()
-            if model_type == "sense_voice":
-                recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
-                    model=str(model_path), tokens=str(tokens_path), num_threads=self.settings.num_threads,
-                    provider=self.settings.provider, language=language, use_itn=True,
-                )
-            elif model_type == "whisper" and decoder_path:
-                recognizer = sherpa_onnx.OfflineRecognizer.from_whisper(
-                    encoder=str(model_path), decoder=str(decoder_path), tokens=str(tokens_path),
-                    num_threads=self.settings.num_threads, provider=self.settings.provider,
-                    language="" if language == "auto" else language, task="transcribe",
-                )
-            elif model_type == "qwen3_asr":
-                if decoder_path is None:
-                    raise UnsupportedFeatureError("Qwen3-ASR requires its encoder and decoder assets.")
-                recognizer = sherpa_onnx.OfflineRecognizer.from_qwen3_asr(
-                    conv_frontend=str(model_path),
-                    encoder=str(self._manifest_path(model_path.parent, "encoder.int8.onnx")),
-                    decoder=str(decoder_path), tokenizer=str(tokens_path),
-                    num_threads=self.settings.num_threads, feature_dim=128,
-                    max_new_tokens=512, provider=self.settings.provider,
-                )
-            else:
-                raise UnsupportedFeatureError(f"Unsupported sherpa-onnx STT model type {model_type!r}.")
-            self._recognizers[key] = recognizer
-        return self._recognizers[key]
+        with self._cache_lock:
+            if key not in self._recognizers:
+                sherpa_onnx = self._sherpa()
+                if model_type == "sense_voice":
+                    recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+                        model=str(model_path), tokens=str(tokens_path), num_threads=self.settings.num_threads,
+                        provider=self.settings.provider, language=language, use_itn=True,
+                    )
+                elif model_type == "whisper" and decoder_path:
+                    recognizer = sherpa_onnx.OfflineRecognizer.from_whisper(
+                        encoder=str(model_path), decoder=str(decoder_path), tokens=str(tokens_path),
+                        num_threads=self.settings.num_threads, provider=self.settings.provider,
+                        language="" if language == "auto" else language, task="transcribe",
+                    )
+                elif model_type == "qwen3_asr":
+                    if decoder_path is None:
+                        raise UnsupportedFeatureError("Qwen3-ASR requires its encoder and decoder assets.")
+                    recognizer = sherpa_onnx.OfflineRecognizer.from_qwen3_asr(
+                        conv_frontend=str(model_path),
+                        encoder=str(self._manifest_path(model_path.parent, "encoder.int8.onnx")),
+                        decoder=str(decoder_path), tokenizer=str(tokens_path),
+                        num_threads=self.settings.num_threads, feature_dim=128,
+                        max_new_tokens=512, provider=self.settings.provider,
+                    )
+                else:
+                    raise UnsupportedFeatureError(f"Unsupported sherpa-onnx STT model type {model_type!r}.")
+                self._recognizers[key] = recognizer
+            return self._recognizers[key]
 
     def _get_tts(self, model_id: str, model_type: str, paths: dict[str, Path], lexicon_path: str | None, tokens_path: Path | None, data_dir: Path | None, rule_fsts: str | None = None):
-        if model_id not in self._tts:
+        with self._cache_lock:
+            if model_id in self._tts:
+                return self._tts[model_id]
             sherpa_onnx = self._sherpa()
             if model_type == "supertonic":
                 model = sherpa_onnx.OfflineTtsSupertonicModelConfig(
@@ -398,7 +436,11 @@ class SherpaOnnxProvider:
             if not config.validate():
                 raise ValueError("Invalid sherpa-onnx TTS model configuration")
             self._tts[model_id] = sherpa_onnx.OfflineTts(config)
-        return self._tts[model_id]
+            return self._tts[model_id]
+
+    def _model_lock(self, locks: dict[str, threading.Lock], key: str) -> threading.Lock:
+        with self._cache_lock:
+            return locks.setdefault(key, threading.Lock())
 
     def _model_dir(self, model_id: str) -> Path:
         if self.settings.provider != "cpu":
@@ -417,13 +459,14 @@ class SherpaOnnxProvider:
                 checked = self._manifest_path(directory, relative)
                 stat = checked.stat()
                 signature = (stat.st_size, stat.st_mtime_ns)
-                cached = self._verified_files.get(str(checked))
-                if cached and cached[:2] == signature:
-                    digest = cached[2]
-                else:
-                    with checked.open("rb") as stream:
-                        digest = hashlib.file_digest(stream, "sha256").hexdigest()
-                    self._verified_files[str(checked)] = (*signature, digest)
+                with self._cache_lock:
+                    cached = self._verified_files.get(str(checked))
+                    if cached and cached[:2] == signature:
+                        digest = cached[2]
+                    else:
+                        with checked.open("rb") as stream:
+                            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+                        self._verified_files[str(checked)] = (*signature, digest)
                 if digest != expected_hash:
                     raise ModelUnavailableError(f"Installed model integrity check failed for {relative!r}.")
         except (OSError, json.JSONDecodeError) as exc:

@@ -16,14 +16,14 @@ This document describes the HTTP API implemented by the current source code. The
 | Method and path | Success response |
 |---|---|
 | `GET /health` | `200`; `{"status":"ok","version":"<version>"}`. Confirms that the HTTP process responds. |
-| `GET /ready` | `200` when at least one verified installed model is available for both transcription and speech; otherwise `503`. Returns `status`, `inference_backend`, `available_tasks`, `available_models`, and `reasons`. |
+| `GET /ready` | `200` when at least one verified installed model is available for both transcription and speech; otherwise `503`. Returns `status`, `version`, `inference_backend`, `available_tasks`, `available_models`, and `reasons`. |
 
 ## Runtime and model discovery
 
 | Method and path | Query parameters | Success response |
 |---|---|---|
-| `GET /v1/capabilities` | Optional `task`: `transcription` or `speech` | Provider capability document with `api_version`, `capability_schema_version`, `backend`, `tasks`, router status, and `language_identification`. The latter reports whether spoken-language detection is supported by the provider and whether optional assets are installed; it includes an install command when applicable. Each task entry includes task, model, languages, `streaming` (currently false), and `voices` for speech models; Kokoro also reports `voice_count`. |
-| `GET /v1/runtime` | None | Runtime document with backend/device/provider status, installed model count, router status/candidates, runtime version, host, system memory and process metrics. Some metrics can be `null` or omitted on unsupported platforms. |
+| `GET /v1/capabilities` | Optional `task`: `transcription` or `speech` | Provider capability document with `api_version`, `capability_schema_version`, `backend`, `backends`, `tasks`, router status, and `language_identification`. The latter reports whether spoken-language detection is supported by the provider and whether optional assets are installed; it includes an install command when applicable. Each task entry includes task, model, backend, languages, `available`, and `streaming` (currently false); speech entries include `voices` and may report `speed_control`. |
+| `GET /v1/runtime` | None | Runtime document with top-level backend and per-adapter runtime status, installed model count, router status/candidates, runtime version, host, system memory and process metrics. Some metrics can be `null` or omitted on unsupported platforms. |
 | `GET /v1/models` | None | OpenAI-style `{ "object": "list", "data": [...] }` list of installed models and the `smartvoice-auto` virtual model, extended with SmartVoice metadata. `smartvoice-auto` is always first; installed models follow grouped by task and sorted alphabetically by name. |
 | `GET /v1/models/{model_id}` | Path: installed or virtual model ID | One OpenAI-style model object. Unknown or uninstalled concrete IDs return `404`. |
 | `GET /v1/catalog` | Optional `task`: `transcription` or `speech` | `{ "data": [...], "storage": {...} }`. Catalog entries include model ID, task, languages, backend, install status, source/archive metadata, installed size, required files and license note. Storage reports installed, free and total bytes. |
@@ -44,7 +44,7 @@ The dedicated spoken-language detector is optional. The service does not downloa
 | `DELETE /v1/jobs/{job_id}` | No body. | `200`; updated job document. A completed or otherwise inactive job is returned unchanged. |
 | `DELETE /v1/models/{model_id}` | No body; model must be in the catalog and not loaded by this service process. | `200`; `{ "id": "<model_id>", "removed_bytes": <integer> }`. |
 | `GET /v1/models/{model_id}/export` | No body; model must be installed and valid. | `200`; verified model package as `application/zip`, named `<model_id>.smartvoice.zip`. |
-| `POST /v1/models/import` | Multipart field `file`: exported `.smartvoice.zip` package. Maximum upload size is 2 GiB. | `201`; `{ "id": "<model_id>", "status": "installed" }`. |
+| `POST /v1/models/import` | Multipart field `file`: exported `.smartvoice.zip` package. Maximum upload size is 3 GiB. | `201`; `{ "id": "<model_id>", "status": "installed" }`. |
 
 ## Audio
 
@@ -60,7 +60,7 @@ Send `multipart/form-data`:
 | `response_format` | string | `json` | `json`, `text` or `verbose_json`. |
 | `timestamps` | boolean | `false` | Include token-level `segments` when true and when the model returns aligned tokens/timestamps. |
 
-Other form fields are rejected. Success is `200`. `text` returns UTF-8 plain text with model metadata headers. `json` returns an object with `text`, `language`, `duration`, `model` (actual model ID), `requested_model`, `model_mode` (`router` or `direct`), `language_source`, `router_sha256`, `route_candidates`, `device`, `processing_seconds`, `rtf`, `request_processing_seconds`, and `queue_wait_seconds`. `verbose_json` uses the same object; `segments` is included only when `timestamps=true` and aligned segment data is available. With `response_format=json`, segments are omitted regardless of `timestamps`.
+Other form fields are rejected. Success is `200`. `text` returns UTF-8 plain text with model metadata headers. `json` returns an object with `text`, `language`, `duration`, `model` (actual model ID), `requested_model`, `model_mode` (`router` or `direct`), `language_source`, `router_sha256`, `route_candidates`, `device`, `processing_seconds`, `rtf`, `request_processing_seconds`, `queue_wait_seconds`, and `runtime_wait_seconds` (time waiting for a provider runtime instance; zero when there is no wait). `verbose_json` uses the same object; `segments` is included only when `timestamps=true` and aligned segment data is available. With `response_format=json`, segments are omitted regardless of `timestamps`.
 
 ### `POST /v1/audio/speech`
 
@@ -70,12 +70,12 @@ Send a JSON object. Unknown fields are rejected.
 |---|---|---|---|
 | `input` | string | Required | Non-whitespace; 1–4,000 characters. |
 | `model` | string | Required | `smartvoice-auto` routes by text/request language, or specify an installed TTS model ID for direct inference. |
-| `voice` | string | `default` | Most models accept `default` or `0`. Kokoro accepts `default` or a speaker ID from `0` to `102`; its default speaker follows the resolved language. |
+| `voice` | string | `default` | Most models accept `default` or `0`. Kokoro accepts `default` or a speaker ID from `0` to `102`; its default speaker follows the resolved language. Qwen3-TTS accepts `default` or one of its nine named preset speakers. |
 | `language` | string or null | `auto` | `auto` detects text language offline using text and script cues. Short text is repeated for detection when needed; synthesis always uses the original input. An explicit catalog-supported language code takes precedence over detected text script. |
 | `response_format` | string | `wav` | Only `wav` is accepted. |
-| `speed` | number | `1.0` | Inclusive range 0.5–2.0. |
+| `speed` | number | `1.0` | Inclusive range 0.5–2.0. Qwen3-TTS currently supports only `1.0`; other values return `501 not_implemented`. |
 
-Success is `200` with `audio/wav` mono WAV data. Response headers include `X-Audio-Sample-Rate`, `X-Audio-Duration`, `X-Model-Id` (actual model ID), `X-Requested-Model`, `X-Model-Mode`, `X-Resolved-Language`, `X-Language-Source`, `X-Language-Confidence`, `X-Router-SHA256`, `X-Route-Candidates`, `X-Inference-Time-Seconds`, `X-Queue-Wait-Seconds`, `X-Real-Time-Factor`, `X-Requested-Language`, and `X-Text-Language`. Default generated-audio limits are 180 seconds and 32 MiB; exceeding either returns `413`.
+Success is `200` with `audio/wav` mono WAV data. Response headers include `X-Audio-Sample-Rate`, `X-Audio-Duration`, `X-Model-Id` (actual model ID), `X-Requested-Model`, `X-Model-Mode`, `X-Resolved-Language`, `X-Language-Source`, `X-Language-Confidence`, `X-Router-SHA256`, `X-Route-Candidates`, `X-Inference-Time-Seconds`, `X-Queue-Wait-Seconds`, `X-Runtime-Wait-Seconds` (time waiting for a provider runtime instance), `X-Real-Time-Factor`, `X-Requested-Language`, and `X-Text-Language`. Default generated-audio limits are 180 seconds and 32 MiB; exceeding either returns `413`.
 
 ## Errors
 
@@ -97,7 +97,7 @@ Application errors have the following shape (validation errors additionally incl
 | `404` | `not_found` | A model job ID does not exist. Unknown or uninstalled model IDs on the model detail endpoint return `404` with the standard HTTP error body. |
 | `400` | `router_config_invalid` | Router configuration is invalid or could not be read during reload. |
 | `413` | `file_too_large` | STT audio upload exceeds the configured byte limit. |
-| `413` | `payload_too_large` | Imported model package exceeds 2 GiB. |
+| `413` | `payload_too_large` | Imported model package exceeds 3 GiB. |
 | `413` | `speech_output_too_large` | Generated TTS audio exceeds its configured duration or byte limit. |
 | `422` | `invalid_audio` | STT audio cannot be decoded, is empty, or exceeds the configured duration limit. |
 | `422` | `validation_error` | Request shape, field value, or field limit is invalid. `details` is an array of `{ "field", "message", "type" }`. |
@@ -121,6 +121,6 @@ On first startup, SmartVoice creates `<data_dir>/smartvoice.json` with all defau
 | TTS input | 4,000 characters | `max_tts_characters` / `SMARTVOICE_MAX_TTS_CHARACTERS`; the API field also has a fixed 4,000-character maximum |
 | TTS output duration | 180 seconds | `max_tts_audio_seconds` / `SMARTVOICE_MAX_TTS_AUDIO_SECONDS` |
 | TTS output size | 32 MiB | `max_tts_output_bytes` / `SMARTVOICE_MAX_TTS_OUTPUT_BYTES` |
-| Model import package | 2 GiB | Fixed by the model catalog implementation |
+| Model import package | 3 GiB | Fixed by the model catalog implementation |
 
 For inference overload and timeout behavior, see `max_concurrent_inference`, `max_queued_inference`, `inference_queue_timeout_seconds`, and `inference_execution_timeout_seconds` in the service configuration.

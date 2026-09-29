@@ -20,7 +20,7 @@ _dependencies_ready = all(importlib.util.find_spec(name) is not None for name in
 _require_real_inference = os.environ.get("SMARTVOICE_RUN_REAL_INFERENCE") == "1"
 _models_ready = all(
     (model_directory(_settings, model_id) / "smartvoice-model.json").is_file()
-    for model_id in ("stt-sensevoice-small-int8", "tts-melo-zh-en")
+    for model_id in ("stt-sensevoice-small-int8", "tts-kokoro-multilingual-v1-1-zh-en")
 ) and installed_language_id_model_dir(_settings) is not None
 
 
@@ -86,7 +86,7 @@ class RealInferenceTests(unittest.TestCase):
         self.assertEqual(models.status_code, 200)
         model_ids = {item["id"] for item in models.json()["data"]}
         self.assertIn("stt-sensevoice-small-int8", model_ids)
-        self.assertIn("tts-melo-zh-en", model_ids)
+        self.assertIn("tts-kokoro-multilingual-v1-1-zh-en", model_ids)
         self.assertTrue(capabilities.json()["language_identification"]["available"])
 
     def test_real_stt_transcribes_chinese_and_english_with_segments(self):
@@ -157,7 +157,7 @@ class RealInferenceTests(unittest.TestCase):
     def test_real_tts_supports_direct_and_routed_chinese_english_and_long_text(self):
         cases = (
             ("你好，这是 SmartVoice 的本地语音合成测试。", "zh", "smartvoice-auto"),
-            ("Hello, this is a local SmartVoice speech synthesis test.", "en", "tts-melo-zh-en"),
+            ("Hello, this is a local SmartVoice speech synthesis test.", "en", "tts-kokoro-multilingual-v1-1-zh-en"),
             ("这是一个用于验证长文本语音合成分段处理的测试。" * 24, "zh", "smartvoice-auto"),
         )
         for text, language, model in cases:

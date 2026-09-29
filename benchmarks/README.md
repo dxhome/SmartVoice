@@ -27,8 +27,9 @@ FLEURS is a public multilingual speech corpus; its Hugging Face dataset card dec
 
 ### Concurrency
 
-- Closed-loop concurrent clients run at configured worker levels and report requests/second, p50/p95/p99 request latency, queue wait, inference and CPU time, successes/failures, and observed RSS peak.
-- A sustained phase runs a fixed number of workers for a configured duration and reports latency/queue/CPU/RTF summaries, RSS range, and estimated RSS growth per minute.
+- Closed-loop concurrent clients run at configured worker levels and report requests/second, p50/p95/p99 request latency, admission queue wait, provider runtime-instance wait, inference and CPU time, successes/failures, and observed RSS peak. Admission wait and runtime-instance wait are separate measurements.
+- Mixed-model scenarios send requests for multiple models through one server process. They report the same per-request and resource summaries, including per-model latency and wait, to reveal cross-model blocking.
+- A sustained phase runs a fixed number of workers for a configured duration and reports latency, admission/runtime wait, CPU/RTF summaries, RSS range, and estimated RSS growth per minute.
 - These are observations, not SLA thresholds. Compare only runs with matching model, language, platform, profile, service settings, and dataset/config fingerprints.
 
 ## Git and local data policy
@@ -54,7 +55,7 @@ The adapter downloads the pinned FLEURS test Parquet shards as data, without exe
 Quick pipeline check using a small sample set, two workers, and a short soak:
 
 ```bash
-python -m benchmarks.runner --profile smoke --model stt-sensevoice-small-int8 --model tts-melo-zh-en
+python -m benchmarks.runner --profile smoke --model stt-sensevoice-small-int8 --model tts-kokoro-multilingual-v1-1-zh-en
 ```
 
 Standard comparison (100 quality samples/language, 20 warm performance iterations, up to 4 concurrent workers, 60-second soak):
@@ -71,7 +72,19 @@ Full comparison uses all available FLEURS test samples, 50 warm iterations, conc
 
 Run selected categories only with `--category <name>`; the supported values are `quality`, `performance`, and `concurrency`. Repeat the flag to run more than one category. For example, `--category quality` skips performance and load tests while measuring all quality samples in the selected model-language combinations.
 
-The runner starts and stops an isolated local SmartVoice server per model/language case. It requires selected models and the configured TTS judge model to be installed. It honors the current SmartVoice settings for inference threads and queue limits, which are recorded in the report.
+The runner starts and stops an isolated local SmartVoice server per model/language case and a shared server for each configured mixed-model scenario. It requires selected models and the configured TTS judge model to be installed. It honors the current SmartVoice settings for inference threads and queue limits, which are recorded in the report. Set `SMARTVOICE_MAX_CONCURRENT_INFERENCE` and `SMARTVOICE_NUM_THREADS` in the environment to run controlled concurrency comparisons; these are recorded in the report.
+
+Example mixed workload for two STT models and an STT/TTS pair:
+
+```bash
+SMARTVOICE_MAX_CONCURRENT_INFERENCE=2 SMARTVOICE_NUM_THREADS=1 \
+  python -m benchmarks.runner --profile smoke --category concurrency \
+  --model stt-whisper-base-multilingual-int8 \
+  --model stt-sensevoice-small-int8 \
+  --model tts-kokoro-multilingual-v1-1-zh-en
+```
+
+For a controlled code comparison, `--server-source <checkout>` selects the source tree used by server subprocesses while the benchmark runner and report remain in the current checkout. Use the same model files, settings, and workloads for each source tree.
 
 ## TTS listening
 

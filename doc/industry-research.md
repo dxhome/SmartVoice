@@ -1,5 +1,7 @@
 # Local STT/TTS Inference: Industry Research
 
+> **Research snapshot dated 2026-09-27.** Model availability, dependencies, licensing, and performance can change; treat this as decision history rather than current installation guidance. See [README.md](../README.md) and `catalog/models.json` for the maintained model catalog.
+
 **Research date:** 2026-09-27
 
 **Scope:** Edge devices including PCs and smartphones; long-term support for Windows, macOS, Linux, and Android, with Windows first. Focus on lightweight offline inference, extensible multilingual support with Chinese and English first, STT/TTS web APIs, agent interoperability, model distribution, and licensing.

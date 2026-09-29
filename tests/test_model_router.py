@@ -94,10 +94,10 @@ class ModelRouterTests(unittest.TestCase):
         original = json.loads(self.config_path.read_text(encoding="utf-8"))
         cases = []
         unknown_language = json.loads(json.dumps(original))
-        unknown_language["tasks"]["speech"]["en-US"] = ["tts-melo-zh-en"]
+        unknown_language["tasks"]["speech"]["en-US"] = ["tts-kokoro-multilingual-v1-1-zh-en"]
         cases.append(unknown_language)
         duplicate = json.loads(json.dumps(original))
-        duplicate["tasks"]["speech"]["en"] = ["tts-melo-zh-en", "tts-melo-zh-en"]
+        duplicate["tasks"]["speech"]["en"] = ["tts-kokoro-multilingual-v1-1-zh-en", "tts-kokoro-multilingual-v1-1-zh-en"]
         cases.append(duplicate)
         wrong_task = json.loads(json.dumps(original))
         wrong_task["tasks"]["speech"]["zh"] = ["stt-sensevoice-small-int8"]

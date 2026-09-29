@@ -38,9 +38,9 @@ Choose a virtual model ID to use language-aware routing, or specify a concrete m
 | Area | Current support |
 |---|---|
 | Platforms | Windows x64 and macOS Apple Silicon, run from source |
-| Inference | sherpa-onnx, CPU only |
+| Inference | sherpa-onnx and optional Qwen3-TTS PyTorch adapter, CPU only |
 | STT | Whisper Base multilingual, SenseVoice Small, Qwen3-ASR 0.6B |
-| TTS | MeloTTS, Kokoro 1.1, Matcha Baker, Supertonic 3 |
+| TTS | Kokoro 1.1, Matcha Baker, Supertonic 3, Qwen3-TTS 0.6B |
 | API | OpenAPI docs, transcription, speech synthesis, model catalog and runtime status |
 | Model management | Install, uninstall, offline import/export, and resumable downloads |
 | Not yet supported | GPU inference, streaming, Linux/Android, remote access, packaged installers, MCP |
@@ -49,19 +49,21 @@ SmartVoice supports a subset of OpenAI Audio API conventions; this is not a clai
 
 ## Model catalog
 
-All listed models use the sherpa-onnx adapter. Language availability describes catalog capability, not comparative quality; model and voice licenses may differ from SmartVoice's license. Based on the available quality and performance benchmarks, the recommended STT models are SenseVoice and Qwen3-ASR. For TTS, Matcha Baker is recommended for Chinese only, and Supertonic 3 for its supported non-Chinese languages. These recommendations balance measured recognition quality and CPU performance; benchmark coverage varies by language, and TTS listening quality has not been rated with MOS.
+Models use the inference adapter identified in the catalog. Language availability describes catalog capability, not comparative quality; model and voice licenses may differ from SmartVoice's license. Based on available quality and performance benchmarks, the recommended STT models are SenseVoice and Qwen3-ASR. For Chinese TTS, Matcha Baker and Kokoro are the lightweight choices; Qwen3-TTS is an optional multilingual alternative with a larger download and separate runtime dependencies. Supertonic 3 does not support Chinese. Benchmark coverage varies by language, and TTS listening quality has not been rated with MOS.
 
 | Model ID | Task | Languages / voices | Recommendation |
 |---|---|---|---|
 | `stt-whisper-base-multilingual-int8` | STT | Auto detection; English, Chinese, Japanese, Korean, French, German | — |
 | `stt-sensevoice-small-int8` | STT | Chinese, English, Cantonese, Japanese, Korean | Recommended |
 | `stt-qwen3-asr-600m-int8` | STT | 30 language codes including Cantonese; automatic detection | Recommended |
-| `tts-melo-zh-en` | TTS | Chinese, English | — |
 | `tts-kokoro-multilingual-v1-1-zh-en` | TTS | Chinese, English; 103 speakers | — |
 | `tts-matcha-zh-baker` | TTS | Chinese; one voice | Recommended for Chinese only |
-| `tts-supertonic-v3-multilingual-int8` | TTS | 31 languages; no Chinese | Recommended |
+| `tts-supertonic-v3-multilingual-int8` | TTS | 31 languages; no Chinese | Recommended for its supported languages |
+| `tts-qwen3-0-6b-customvoice` | TTS | 10 languages; 9 preset voices | — |
 
-Install models from the catalog with `python -m smartvoice models install <model-id>`. Qwen3-ASR needs about 1 GB for model files, plus temporary disk space during installation. See [`catalog/models.json`](catalog/models.json) for the exact language codes, sources, and model details.
+Qwen3-ASR needs about 1 GB for model files. Qwen3-TTS 0.6B needs about 2.5 GB for model files and at least 6 GiB free disk space during installation. See [`catalog/models.json`](catalog/models.json) for the exact language codes, sources, and model details.
+
+Melo TTS has been removed from the supported catalog, and Supertonic 3 does not support Chinese. Existing model files are left on disk. If an older `<data_dir>/router.json` references the removed Melo model or routes Supertonic for Chinese, SmartVoice rejects that saved routing table, uses the built-in router, and reports a warning. Remove those stale entries and run `python -m smartvoice router reload` to clear the warning.
 
 For routed STT requests with `language=auto`, SmartVoice can use an optional dedicated spoken-language detector. Install it explicitly with `python -m smartvoice models install-language-id`; without it, SmartVoice falls back to an installed STT model that supports automatic language detection. The detector is not downloaded during service startup. Its availability is reported by `/v1/capabilities`.
 
@@ -76,8 +78,15 @@ After the first PyPI release, install the published package and inference depend
 ```bash
 python -m pip install "smartvoice[inference]"
 python -m smartvoice models install stt-sensevoice-small-int8
-python -m smartvoice models install tts-melo-zh-en
+python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
 python -m smartvoice --host 127.0.0.1 --port 8000
+```
+
+To add Qwen3-TTS, install the optional runtime dependencies and model before starting SmartVoice:
+
+```bash
+python -m pip install "smartvoice[inference,qwen-tts]"
+python -m smartvoice models install tts-qwen3-0-6b-customvoice
 ```
 
 Upgrade an existing installation with `python -m pip install --upgrade "smartvoice[inference]"`. The package includes the built-in model catalog, router table, web page, and default `smartvoice.json`; model weights are downloaded separately.
@@ -89,9 +98,11 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[inference]"
 python -m smartvoice models install stt-sensevoice-small-int8
-python -m smartvoice models install tts-melo-zh-en
+python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
 python -m smartvoice --host 127.0.0.1 --port 8000
 ```
+
+To run Qwen3-TTS from a source checkout, install both extras with `python -m pip install -e ".[inference,qwen-tts]"`, then install `tts-qwen3-0-6b-customvoice` from the model catalog.
 
 On Windows x64, use PowerShell:
 
@@ -99,10 +110,13 @@ On Windows x64, use PowerShell:
 py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[inference]"
 .\.venv\Scripts\python.exe -m smartvoice models install stt-sensevoice-small-int8
-.\.venv\Scripts\python.exe -m smartvoice models install tts-melo-zh-en
+.\.venv\Scripts\python.exe -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
 # Optional multilingual models
 .\.venv\Scripts\python.exe -m smartvoice models install stt-qwen3-asr-600m-int8
 .\.venv\Scripts\python.exe -m smartvoice models install tts-supertonic-v3-multilingual-int8
+# Optional Qwen3-TTS runtime (installs additional Python dependencies)
+.\.venv\Scripts\python.exe -m pip install -e ".[inference,qwen-tts]"
+# Then install tts-qwen3-0-6b-customvoice from the model catalog
 .\.venv\Scripts\python.exe -m smartvoice --host 127.0.0.1 --port 8000
 ```
 
@@ -152,6 +166,14 @@ TTS returns mono WAV audio. Requests support up to 4,000 characters; generated a
 
 The CLI supports `models list`, `install`, `uninstall`, `export`, and `import`. Models can also be installed through API download jobs. Exported model packages can be transferred to offline machines and imported there. An installed model cannot be uninstalled while the service is using it.
 
+Install a model with `python -m smartvoice models install <model-id>`. By default, SmartVoice uses the model's catalog source. For Hugging Face models, pass `--source` with a compatible mirror base URL to use another source, such as:
+
+```bash
+python -m smartvoice models install stt-qwen3-asr-600m-int8 --source https://hf-mirror.com
+```
+
+The base URL is combined with the catalog-pinned repository, revision, and file paths. This option is available only when all required model files are hosted on Hugging Face. Downloaded files are still checked against their catalog SHA-256 values.
+
 ```bash
 python -m smartvoice models list
 python -m smartvoice models export stt-sensevoice-small-int8 ./sensevoice.smartvoice.zip
@@ -172,13 +194,17 @@ Client / Agent ──► Versioned HTTP API ──► Application services
                        Inference port                      Model repository port
                                │                                   │
                                ▼                                   ▼
-                    sherpa-onnx adapter                 Filesystem catalog adapter
-                               │
-                               ▼
-                      Platform diagnostics adapter
+                    Composite inference provider       Filesystem catalog adapter
+                       ┌───────┴────────┐
+                       ▼                ▼
+                sherpa-onnx       optional Qwen-TTS
+                   adapter            adapter
+                       │
+                       ▼
+              Platform diagnostics adapter
 ```
 
-Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The current release supports CPU inference on Windows x64 and macOS Apple Silicon when run from source. GPU providers, streaming, Linux and Android runtimes are not available.
+Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The current source deployment supports CPU inference on Windows x64 and macOS Apple Silicon. Qwen3-TTS is an optional backend and requires the separate `[qwen-tts]` extra. GPU providers, streaming, Linux and Android runtimes are not available.
 
 ## Development
 
@@ -187,7 +213,7 @@ python -m pip install -e ".[inference,dev]"
 python scripts/test.py ci
 ```
 
-Run `python scripts/test.py regression` to execute the full functional suite including real STT/TTS inference. It requires the `stt-sensevoice-small-int8` and `tts-melo-zh-en` models to be installed. See [`doc/testing.md`](doc/testing.md) for prerequisites and details. See [`benchmarks/README.md`](benchmarks/README.md) for model quality, latency, and concurrency comparisons.
+Run `python scripts/test.py regression` to execute the full functional suite including real STT/TTS inference. It requires the `stt-sensevoice-small-int8` and `tts-kokoro-multilingual-v1-1-zh-en` models to be installed. See [`doc/testing.md`](doc/testing.md) for prerequisites and details. See [`benchmarks/README.md`](benchmarks/README.md) for model quality, latency, and concurrency comparisons.
 See [`doc/releasing.md`](doc/releasing.md) for versioning, GitHub Releases, and optional PyPI publishing.
 
 ## Repository layout
@@ -198,7 +224,7 @@ src/           API/CLI entry points, application services, domain contracts, por
 tests/         Unit, API, and optional real-inference tests
 benchmarks/    Benchmark code, configurations, and results
 config/        Example service settings
-doc/           API specification, requirements, and design notes
+doc/           API specification, testing, release, requirements, and design notes
 assets/        Project logo
 ```
 

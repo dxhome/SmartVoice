@@ -12,7 +12,7 @@ python scripts/test.py ci
 
 This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The real inference test is explicitly skipped, even if model files happen to be present locally.
 
-CI installs the development dependencies and runs this entry point on every pull request and push to `main`.
+The repository contains a GitHub Actions CI workflow that installs the development dependencies and runs this entry point on pull requests and pushes to `main`. CI is currently paused in the GitHub repository settings; until it is re-enabled, run this command locally before merging and do not expect a remote check to appear.
 
 ## Full regression tests
 
@@ -22,14 +22,14 @@ Run the same complete functional suite and require real CPU inference through th
 python scripts/test.py regression
 ```
 
-The regression entry point checks for the `[inference]` dependencies, the `stt-sensevoice-small-int8` model and its `zh.wav`/`en.wav` samples, the `tts-melo-zh-en` model, and verified Whisper Tiny language-ID assets before starting. Missing prerequisites cause a clear failure instead of silently skipping real inference.
+The regression entry point checks for the `[inference]` dependencies, the `stt-sensevoice-small-int8` model and its `zh.wav`/`en.wav` samples, the `tts-kokoro-multilingual-v1-1-zh-en` model, and verified Whisper Tiny language-ID assets before starting. Missing prerequisites cause a clear failure instead of silently skipping real inference.
 
 Install dependencies and models first:
 
 ```bash
 python -m pip install -e ".[inference,dev]"
 python -m smartvoice models install stt-sensevoice-small-int8
-python -m smartvoice models install tts-melo-zh-en
+python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
 python -m smartvoice models install-language-id
 ```
 

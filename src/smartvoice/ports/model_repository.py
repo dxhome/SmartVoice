@@ -18,7 +18,13 @@ class ModelRepository(Protocol):
 
     def storage_summary(self) -> dict[str, int]: ...
 
-    def install_model(self, model_id: str, progress: Callable[[int, int | None], None] | None = None) -> Path: ...
+    def install_model(
+        self,
+        model_id: str,
+        progress: Callable[[int, int | None], None] | None = None,
+        *,
+        source: str | None = None,
+    ) -> Path: ...
 
     def uninstall_model(self, model_id: str, *, loaded: bool = False) -> int: ...
 

@@ -26,6 +26,7 @@ class SpeechOutcome:
     language_confidence: float | None
     candidates: tuple[dict[str, object], ...]
     text_language: str | None
+    runtime_wait_seconds: float
 
 
 class SpeechService:
@@ -105,4 +106,5 @@ class SpeechService:
             confidence,
             candidates,
             text_language,
+            synthesized.runtime_wait_seconds,
         )

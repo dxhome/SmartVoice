@@ -1,6 +1,10 @@
 # SmartVoice Implementation Plan
 
-## Goals and Current Constraints
+> **Planning record, not a current support matrix.** This document preserves the original phased plan and design decisions. Some early-phase targets and proposals below have been superseded by implementation. For current supported platforms, models, and commands, see [README.md](../README.md); for current API behavior, see [api-spec.md](api-spec.md). Headings marked as pending confirmation are historical prototype material, not outstanding release decisions.
+
+## Original Goals and Constraints
+
+These bullets record the plan's initial assumptions. The current implementation status and support matrix may differ; see the notice above and [README.md](../README.md).
 
 - The first release is a local service that can be run from source on Windows x64. An installer or standalone packaged application is not currently planned.
 - Chinese and English are the first priorities. The initial models, runtime, and performance targets must be confirmed through evaluation.
@@ -20,7 +24,7 @@ Compare sherpa-onnx with relevant alternatives. Evaluate Chinese and English STT
 
 **Deliverable:** Backend decision record, initial model catalog, and compatibility matrix. Mark a model as verified only after measurement and license review.
 
-**Current prototype choice:** sherpa-onnx is the first runnable prototype backend, with SenseVoice Small INT8 for STT and Melo VITS ONNX for Chinese/English TTS. The official Python APIs and Windows wheels are available, and both inference paths have run locally. This supports end-to-end validation but does not establish final performance, model quality, or redistribution rights. References: [SenseVoice Python API](https://k2-fsa.github.io/sherpa/onnx/sense-voice/python-api.html) and [Melo VITS model documentation](https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits.html).
+**Initial prototype choice:** sherpa-onnx was the first runnable backend, with SenseVoice Small INT8 for STT and Melo VITS ONNX for Chinese/English TTS. Melo support has since been removed from the catalog; the current TTS catalog is documented in [README.md](../README.md). The prototype results do not establish final performance, model quality, or redistribution rights. Reference: [SenseVoice Python API](https://k2-fsa.github.io/sherpa/onnx/sense-voice/python-api.html).
 
 ## Phase 2: Domain Architecture and API Contracts
 
@@ -46,15 +50,19 @@ Add GPU providers according to the verification matrix and report the actual dev
 
 **Deliverable:** A Windows source release that meets the first-release baseline, with a reproducible acceptance report.
 
-### sherpa-onnx Concurrency Limitation (Deferred)
+### sherpa-onnx Concurrency (Staged Implementation)
 
-The current `SherpaOnnxProvider` uses a provider-wide lock around recognizer stream creation, audio submission, and inference. As a result, sherpa-onnx inference is serialized within a process. `num_threads` controls runtime threads for an individual inference; it does not mean the API can perform that many requests concurrently.
+The application-level `InferenceQueue` controls request admission and queuing; inference adapters control safe use of runtime instances. `num_threads` controls compute threads for one runtime instance and does not define API request concurrency. Do not pass sherpa-onnx streams, recognizers, or TTS objects into application services or API routes.
 
-If `max_concurrent_inference` is raised above 1, the queue may admit multiple requests, but they will still wait on the provider lock. This lock wait occurs after a queue slot is acquired, so it is excluded from the current `queue_wait_seconds`; concurrency metrics may count lock wait as inference time. Increasing queue capacity can delay overload rejection but cannot improve sustained throughput under the current lock policy. It also increases request wait and audio-buffer memory.
+The first stage separates provider cache-initialization protection from per-runtime-instance inference protection. API responses and concurrency reports expose `queue_wait_seconds` separately from `runtime_wait_seconds`, which measures waiting for an adapter runtime instance. Different models/tasks can proceed independently when the configured admission limit permits; calls sharing the same recognizer or TTS instance remain serialized until same-instance safety is verified.
 
-Before enabling truly parallel inference, verify sherpa-onnx recognizer/stream thread safety and resource behavior. Design a lock-granularity or recognizer-instance strategy, then measure throughput, latency, rejection rate, and memory with a fixed-arrival-rate concurrency benchmark, and adjust queue-wait timing. **This is deferred. Defaults remain `max_concurrent_inference=1` and `max_queued_inference=2`; this note does not change them.**
+Next, verify same-instance concurrency for the sherpa-onnx `OfflineRecognizer`, each TTS type, and target CPU platforms, or evaluate independent instance pools and their memory cost. ASR `decode_streams()` micro-batching remains a throughput candidate whose added batching latency must be measured. Use a fixed-arrival-rate workload or the repository concurrency benchmark to compare throughput, tail latency, rejection rate, CPU, and peak RSS. **Defaults remain `max_concurrent_inference=1` and `max_queued_inference=2` until target-device evidence supports changing them.**
 
-## Phase 6: Future Extensions
+**Exploratory evidence (2026-09-29, macOS arm64, CPU, sherpa-onnx 1.13.8):** In three paired closed-loop runs with two workers alternating SenseVoice English ASR and Melo English TTS (`num_threads=1`, admission limit 2, two requests per worker), the per-run median throughput was 0.630 req/s on the pre-lock-split baseline and 0.514 req/s after the lock split; median round p95 was 3.64 s and 4.77 s respectively. All requests succeeded, but the lock split did not consistently improve cross-task interactive latency in this small workload. This supersedes the earlier single-run directional result; keep the current lock boundaries for isolation, but do not claim a latency win or raise concurrency defaults from it. Separately, a direct SenseVoice probe compared eight cached English FLEURS clips decoded serially and through `decode_streams()` over five iterations: serial decode averaged 3.60 s per eight clips, while the batch call averaged 5.22 s. Some transcripts differed by small token substitutions between the two runs, so this is not yet a correctness acceptance. This is an exploratory English-only result, not a target-device or Chinese quality evaluation; retain batching as an opt-in research candidate and do not route production requests through it.
+
+## Phase 6: Smart Routing and Future Extensions
+
+Smart routing described below is implemented. The streaming/session capabilities that follow remain future work.
 
 ### Core Feature: Dynamic STT/TTS Model Routing (`smartvoice-auto`)
 
@@ -72,7 +80,7 @@ STT and TTS share one virtual model ID, `smartvoice-auto`. The audio API path de
 - **Resource management:** Load the final statically selected model on demand. Define capacity and eviction for multi-model caches, concurrency, and memory use. Verify protection against removing models in use and consistency between route hot reload and concurrent requests.
 - **Acceptance:** Cover naming, OpenAI/Whisper language validation and model-language mapping, explicit-language priority, STT/TTS automatic language detection, static candidate order, maximum of three candidates, installed-and-verified filtering, no automatic download or inference fallback, direct concrete-model use, JSON edits/hot reload, retention of the previous configuration after invalid updates, removal of default-model behavior, error/log diagnostics, cache, and concurrency behavior.
 
-#### Smart-routing Table Prototype (Pending User Confirmation)
+#### Smart-routing Table Prototype (Historical draft; superseded by implementation)
 
 This JSON illustrates a possible structure and semantics; it does not define the final model ranking. Language keys use Whisper language codes. Configuration loading must validate the code and verify that each candidate model declares support for the corresponding language.
 
@@ -99,10 +107,10 @@ This JSON illustrates a possible structure and semantics; it does not define the
     },
     "speech": {
       "zh": [
-        "tts-melo-zh-en"
+        "tts-matcha-zh-baker",
+        "tts-kokoro-multilingual-v1-1-zh-en"
       ],
       "en": [
-        "tts-melo-zh-en",
         "tts-supertonic-v3-multilingual-int8"
       ],
       "fr": [
@@ -116,7 +124,7 @@ This JSON illustrates a possible structure and semantics; it does not define the
 }
 ```
 
-#### Open Questions for Smart Routing
+#### Historical Open Questions for Smart Routing (resolved or superseded by implementation)
 
 1. **STT automatic-detection boundary:** Which models return reusable language results? Is detection available before the first inference? How are confidence and low-confidence results represented? What error is returned when detection is unreliable?
 2. **TTS detection boundary:** Select a lightweight text classifier and confirm its license, size, and offline behavior. Define confidence thresholds, short-text handling, mixed-language behavior, and conflicts between script and lexical cues.
@@ -125,7 +133,7 @@ This JSON illustrates a possible structure and semantics; it does not define the
 5. **Response compatibility and privacy:** Decide whether requested model, actual model, mode, language source, and selection reason belong in body, headers, or both. Decide whether logs and config digests are sufficient for diagnosis.
 6. **Resources and acceptance targets:** Quantify cache capacity/eviction, model switching overhead, detection latency, and consistency requirements for hot reload during concurrent requests.
 
-#### Recommended Implementation Order
+#### Original Recommended Implementation Order (completed; retained as design history)
 
 1. Confirm virtual ID naming, Whisper language table, and model capability validation. Freeze the semantics: virtual ID triggers routing; concrete IDs call a model directly.
 2. Confirm the JSON schema, routing file location, and default initialization. Define errors for unknown and unconfigured languages.
@@ -155,7 +163,7 @@ This JSON illustrates a possible structure and semantics; it does not define the
 
 **Models, capabilities, and routing:** Whisper, SenseVoice, and Qwen3-ASR are currently cataloged as offline models; this does not establish streaming support. New model metadata must describe online/offline type, input/output modality, streaming support, source/target languages or language pairs, required files, platform/device requirements, and license. Streaming ASR, text translation, speech translation, and TTS may be provided by one model or a compatible model chain. Select a complete feasible chain by session mode and language pair, then pin actual models/policy for the session and report the selection. If automatic source-language detection cannot finish in time, define a waiting state or require an explicit language; never switch language/model silently after output has begun. Extend catalog, in-use model protection, and capability/runtime descriptions to represent these features.
 
-**Concurrency, resources, and failures:** The current provider-wide lock serializes sherpa-onnx inference, and the existing queue serves finite one-shot requests. Long-lived WebSocket sessions must not occupy ordinary inference slots indefinitely, and audio chunks must not be queued without bounds. Design per-session recognizer state, fair scheduling, concurrent session quotas, model sharing/isolation, audio buffer/output queue limits, input backpressure, idle/maximum session lifetime, cancellation/disconnect cleanup, shutdown, overload, and TTS lag behavior. Measure end-to-end sustained real-time factor, queue latency, CPU/memory, and session count.
+**Concurrency, resources, and failures:** The existing queue serves finite one-shot requests. Calls sharing one sherpa-onnx runtime instance are serialized by its adapter lock, while independent runtime instances may proceed concurrently subject to queue limits. Long-lived WebSocket sessions must not occupy ordinary inference slots indefinitely, and audio chunks must not be queued without bounds. Design per-session recognizer state, fair scheduling, concurrent session quotas, model sharing/isolation, audio buffer/output queue limits, input backpressure, idle/maximum session lifetime, cancellation/disconnect cleanup, shutdown, overload, and TTS lag behavior. Measure end-to-end sustained real-time factor, queue latency, CPU/memory, and session count.
 
 **Implementation and acceptance order:**
 
@@ -250,4 +258,4 @@ Set all quality/performance thresholds in Phase 0 using reference hardware and b
 - Model lifecycle operations are available through CLI and REST: activation/deactivation by task, in-use removal protection, background download progress/cancellation, Range resume, offline ZIP import/export, and disk usage. Inference timeout returns 504. Native inference threads cannot be forcibly stopped, so the thread continues to occupy an inference slot until it finishes; this prevents additional inference from overcommitting resources after a timeout.
 - Configuration supports JSON files, environment-variable overrides, and key CLI startup overrides. Startup reports the data directory/service address and can detect an existing service instance.
 - Important acceptance gaps remain: there is no approved, manually transcribed representative Chinese/English STT corpus, so reliable CER/WER and formal quality thresholds are unavailable; TTS has no fixed listening set or blinded human evaluation; performance SLAs have not been set on the final reference hardware. TTS `language` is an expected-language hint. The service checks conflicts against the dominant character script, while actual pronunciation is determined by the text in the bilingual model.
-- Only the SenseVoice/Melo sherpa-onnx CPU path is validated. GPU, other operating systems, alternative models/backends, adapter contract substitution, remote authentication, streaming APIs, and a management UI remain for later phases and are outside the current Windows CPU target.
+- Earlier Windows CPU validation used the SenseVoice/Melo sherpa-onnx path; Melo is no longer supported by the current catalog. GPU, other operating systems, broader model/backend verification, remote authentication, streaming APIs, and a management UI remain for later phases and are outside the current Windows CPU target.

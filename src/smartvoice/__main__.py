@@ -153,6 +153,7 @@ def _models(args: list[str]) -> None:
     list_parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
     install_parser = subparsers.add_parser("install", help="Download and install a catalog model")
     install_parser.add_argument("model_id")
+    install_parser.add_argument("--source", help="Optional HTTPS base URL for a Hugging Face-compatible model mirror")
     uninstall_parser = subparsers.add_parser("uninstall", help="Remove an installed model")
     uninstall_parser.add_argument("model_id")
     export_parser = subparsers.add_parser("export", help="Create a portable offline model package")
@@ -229,13 +230,14 @@ def _models(args: list[str]) -> None:
         last_output = now
 
     spec = model_management.get_spec(parsed.model_id)
+    source_label = parsed.source or "catalog source"
     if spec.file_sources:
-        print("Model files are fetched from fixed HTTPS catalog URLs and each file is checked against its catalog SHA-256.")
+        print(f"Model files are fetched from the {source_label}; each file is checked against its catalog SHA-256.")
     else:
-        print("The archive is fetched from its fixed HTTPS catalog URL and checked against the catalog SHA-256.")
+        print(f"The archive is fetched from the {source_label} and checked against its catalog SHA-256.")
     print("Review the model license before redistribution.")
     try:
-        destination = model_management.install(parsed.model_id, progress)
+        destination = model_management.install(parsed.model_id, progress, source=parsed.source)
     except (OSError, ValueError, SmartVoiceError, ModelDownloadCancelled) as exc:
         parser.error(str(exc))
     print(f"\nInstalled at: {destination}")

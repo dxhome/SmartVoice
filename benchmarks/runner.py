@@ -54,22 +54,28 @@ def _server_port(host: str) -> int:
 
 
 class LocalServer:
-    def __init__(self, host: str, port: int, log_path: Path, timeout: float):
+    def __init__(self, host: str, port: int, log_path: Path, timeout: float, source_root: Path | None = None):
         self.host = host
         self.port = port or _server_port(host)
         self.base_url = f"http://{'[' + host + ']' if ':' in host else host}:{self.port}"
         self.log_path = log_path
         self.timeout = timeout
+        self.source_root = source_root or REPO_ROOT
         self.process: subprocess.Popen | None = None
         self.log_stream = None
 
     def __enter__(self):
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self.log_stream = self.log_path.open("a", encoding="utf-8")
+        env = os.environ.copy()
+        source_python = str(self.source_root / "src")
+        env["PYTHONPATH"] = os.pathsep.join(
+            [source_python, env["PYTHONPATH"]] if env.get("PYTHONPATH") else [source_python]
+        )
         self.process = subprocess.Popen(
             [sys.executable, "-m", "smartvoice", "--host", self.host, "--port", str(self.port)],
-            cwd=REPO_ROOT, stdout=self.log_stream, stderr=subprocess.STDOUT,
-            env=os.environ.copy(),
+            cwd=self.source_root, stdout=self.log_stream, stderr=subprocess.STDOUT,
+            env=env,
         )
         deadline = time.monotonic() + self.timeout
         last_error = None
@@ -131,10 +137,12 @@ def _response_metrics(response: httpx.Response, elapsed: float, task: str) -> di
         payload = response.json()
         inference = float(payload.get("request_processing_seconds", 0))
         queue_wait = float(payload.get("queue_wait_seconds", 0))
+        runtime_wait = float(payload.get("runtime_wait_seconds", 0))
         audio_duration = float(payload.get("duration", 0))
     else:
         inference = float(response.headers.get("x-inference-time-seconds", 0))
         queue_wait = float(response.headers.get("x-queue-wait-seconds", 0))
+        runtime_wait = float(response.headers.get("x-runtime-wait-seconds", 0))
         audio_duration = float(response.headers.get("x-audio-duration", 0))
     cpu = response.headers.get("x-process-cpu-time-seconds")
     rss = response.headers.get("x-process-working-set-bytes")
@@ -143,6 +151,7 @@ def _response_metrics(response: httpx.Response, elapsed: float, task: str) -> di
         "request_wall_seconds": elapsed,
         "inference_seconds": inference,
         "queue_wait_seconds": queue_wait,
+        "runtime_wait_seconds": runtime_wait,
         "audio_duration_seconds": audio_duration,
         "real_time_factor": inference / audio_duration if audio_duration else None,
         "process_cpu_seconds": float(cpu) if cpu else None,
@@ -199,7 +208,7 @@ def _run_performance(base_url: str, model: dict[str, Any], language: str, sample
         "cold_request_over_inference_seconds": round(max(0.0, float(cold["request_wall_seconds"]) - float(cold["inference_seconds"]) - float(cold["queue_wait_seconds"])), 6),
         "warm": {
             metric: numeric_summary([float(row[metric]) for row in measurements if row[metric] is not None])
-            for metric in ("request_wall_seconds", "inference_seconds", "queue_wait_seconds", "real_time_factor", "process_cpu_seconds")
+            for metric in ("request_wall_seconds", "inference_seconds", "queue_wait_seconds", "runtime_wait_seconds", "real_time_factor", "process_cpu_seconds")
         },
         "serial_throughput_requests_per_second": numeric_summary([1 / float(row["request_wall_seconds"]) for row in measurements if row["request_wall_seconds"]]),
         "logical_cpu_utilization_percent": numeric_summary([
@@ -330,9 +339,10 @@ def _run_concurrent(base_url: str, model: dict[str, Any], language: str, sample:
             "requests_per_second": round(len(good) / elapsed, 6) if elapsed else None,
             "request_wall_seconds": numeric_summary([float(row["request_wall_seconds"]) for row in good]),
             "queue_wait_seconds": numeric_summary([float(row["queue_wait_seconds"]) for row in good]),
+            "runtime_wait_seconds": numeric_summary([float(row["runtime_wait_seconds"]) for row in good]),
             "inference_seconds": numeric_summary([float(row["inference_seconds"]) for row in good]),
             "process_cpu_seconds": numeric_summary([float(row["process_cpu_seconds"]) for row in good if row["process_cpu_seconds"] is not None]),
-            "working_set_peak_bytes": max((int(row["working_set_bytes"]) for row in good if row["working_set_bytes"] is not None), default=None),
+            "working_set_peak_bytes": max((int(row["process_peak_working_set_bytes"] or row["working_set_bytes"]) for row in good if row["process_peak_working_set_bytes"] is not None or row["working_set_bytes"] is not None), default=None),
             "errors_by_status": {
                 str(status): sum(1 for row in measurements if not row["ok"] and row.get("status_code") == status)
                 for status in sorted({row.get("status_code") for row in measurements if not row["ok"]}, key=lambda value: str(value))
@@ -373,10 +383,11 @@ def _run_concurrent(base_url: str, model: dict[str, Any], language: str, sample:
             "requests_per_second": round(len(good) / elapsed, 6) if elapsed else None,
             "request_wall_seconds": numeric_summary([float(row["request_wall_seconds"]) for row in good]),
             "queue_wait_seconds": numeric_summary([float(row["queue_wait_seconds"]) for row in good]),
+            "runtime_wait_seconds": numeric_summary([float(row["runtime_wait_seconds"]) for row in good]),
             "inference_seconds": numeric_summary([float(row["inference_seconds"]) for row in good]),
             "process_cpu_seconds": numeric_summary([float(row["process_cpu_seconds"]) for row in good if row["process_cpu_seconds"] is not None]),
             "real_time_factor": numeric_summary([float(row["real_time_factor"]) for row in good if row["real_time_factor"] is not None]),
-            "working_set_peak_bytes": max((int(row["working_set_bytes"]) for row in good if row["working_set_bytes"] is not None), default=None),
+            "working_set_peak_bytes": max((int(row["process_peak_working_set_bytes"] or row["working_set_bytes"]) for row in good if row["process_peak_working_set_bytes"] is not None or row["working_set_bytes"] is not None), default=None),
             "working_set_start_bytes": next((int(row["working_set_bytes"]) for row in chronological if row["working_set_bytes"] is not None), None),
             "working_set_end_bytes": next((int(row["working_set_bytes"]) for row in reversed(chronological) if row["working_set_bytes"] is not None), None),
             "estimated_working_set_growth_bytes_per_minute": _memory_growth_per_minute(records),
@@ -390,6 +401,82 @@ def _run_concurrent(base_url: str, model: dict[str, Any], language: str, sample:
         "workload_model": "closed_loop_fixed_concurrency",
         "levels": levels,
         "soak": soak,
+    }
+
+
+def _run_mixed_concurrent(
+    base_url: str, scenario_id: str, cases: list[tuple[dict[str, Any], str, SpeechSample]], config: dict[str, Any]
+) -> dict[str, Any]:
+    levels = []
+    for workers in config["concurrency_levels"]:
+        count_per_worker = int(config["requests_per_worker"])
+        started = time.perf_counter()
+
+        def worker(worker_index: int):
+            rows = []
+            with httpx.Client(base_url=base_url, timeout=900) as client:
+                for request_index in range(count_per_worker):
+                    case_index = (worker_index * count_per_worker + request_index) % len(cases)
+                    model, language, sample = cases[case_index]
+                    request_started = time.perf_counter()
+                    try:
+                        response, _elapsed = _send_with_client(client, model, language, sample)
+                        row = _response_metrics(response, time.perf_counter() - request_started, model["task"])
+                        row.update({"ok": True, "case_id": model["id"]})
+                    except Exception as exc:
+                        row = {
+                            "request_wall_seconds": time.perf_counter() - request_started,
+                            "queue_wait_seconds": 0.0,
+                            "runtime_wait_seconds": 0.0,
+                            "ok": False,
+                            "case_id": model["id"],
+                            "error_type": type(exc).__name__,
+                            "status_code": getattr(getattr(exc, "response", None), "status_code", None),
+                        }
+                    rows.append(row)
+            return rows
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=int(workers)) as executor:
+            measurements = [row for group in executor.map(worker, range(int(workers))) for row in group]
+        elapsed = time.perf_counter() - started
+        good = [row for row in measurements if row["ok"]]
+        by_case = {}
+        for model, _language, _sample in cases:
+            selected = [row for row in good if row["case_id"] == model["id"]]
+            by_case[model["id"]] = {
+                "request_count": len(selected),
+                "request_wall_seconds": numeric_summary([float(row["request_wall_seconds"]) for row in selected]),
+                "queue_wait_seconds": numeric_summary([float(row["queue_wait_seconds"]) for row in selected]),
+                "runtime_wait_seconds": numeric_summary([float(row["runtime_wait_seconds"]) for row in selected]),
+                "inference_seconds": numeric_summary([float(row["inference_seconds"]) for row in selected]),
+                "process_cpu_seconds": numeric_summary([float(row["process_cpu_seconds"]) for row in selected if row["process_cpu_seconds"] is not None]),
+                "process_peak_working_set_bytes": max((int(row["process_peak_working_set_bytes"] or row["working_set_bytes"]) for row in selected if row["process_peak_working_set_bytes"] is not None or row["working_set_bytes"] is not None), default=None),
+            }
+        levels.append({
+            "workers": int(workers),
+            "requests_per_worker": count_per_worker,
+            "request_count": len(measurements),
+            "success_count": len(good),
+            "failure_count": len(measurements) - len(good),
+            "failure_rate": round((len(measurements) - len(good)) / len(measurements), 6) if measurements else None,
+            "requests_per_second": round(len(good) / elapsed, 6) if elapsed else None,
+            "request_wall_seconds": numeric_summary([float(row["request_wall_seconds"]) for row in good]),
+            "queue_wait_seconds": numeric_summary([float(row["queue_wait_seconds"]) for row in good]),
+            "runtime_wait_seconds": numeric_summary([float(row["runtime_wait_seconds"]) for row in good]),
+            "inference_seconds": numeric_summary([float(row["inference_seconds"]) for row in good]),
+            "process_cpu_seconds": numeric_summary([float(row["process_cpu_seconds"]) for row in good if row["process_cpu_seconds"] is not None]),
+            "working_set_peak_bytes": max((int(row["process_peak_working_set_bytes"] or row["working_set_bytes"]) for row in good if row["process_peak_working_set_bytes"] is not None or row["working_set_bytes"] is not None), default=None),
+            "per_case": by_case,
+            "errors_by_status": {
+                str(status): sum(1 for row in measurements if not row["ok"] and row.get("status_code") == status)
+                for status in sorted({row.get("status_code") for row in measurements if not row["ok"]}, key=lambda value: str(value))
+            },
+            "duration_seconds": round(elapsed, 6),
+        })
+    return {
+        "case": {"scenario_id": scenario_id, "models": [model["id"] for model, _, _ in cases]},
+        "workload_model": "closed_loop_mixed_model_fixed_concurrency",
+        "levels": levels,
     }
 
 
@@ -435,7 +522,7 @@ def _report_runtime(runtime: dict[str, Any]) -> dict[str, Any]:
 def run_benchmark(
     config: dict[str, Any], config_path: Path, *, profile_name: str,
     selected_models: set[str] | None = None, selected_categories: set[str] | None = None,
-    output_path: Path | None = None,
+    output_path: Path | None = None, server_source_root: Path | None = None,
 ) -> Path:
     settings = Settings.from_env()
     profiles = config["profiles"]
@@ -501,7 +588,10 @@ def run_benchmark(
             if not samples:
                 continue
             startup_started = time.perf_counter()
-            with LocalServer(host, 0, log_dir / f"{model['id']}-{language}.log", float(config["server"]["startup_timeout_seconds"])) as server:
+            with LocalServer(
+                host, 0, log_dir / f"{model['id']}-{language}.log",
+                float(config["server"]["startup_timeout_seconds"]), source_root=server_source_root,
+            ) as server:
                 with httpx.Client(base_url=server.base_url, timeout=20) as client:
                     runtime = client.get("/v1/runtime")
                     runtime.raise_for_status()
@@ -541,6 +631,38 @@ def run_benchmark(
                             ratings_rows, str(tts_judge_id), config["languages"][language]["normalization"],
                         ),
                     })
+
+    if "concurrency" in categories and profile.get("mixed_concurrency"):
+        selected_by_id = {str(model["id"]): model for model in models}
+        selected_scenarios = []
+        for scenario in config.get("mixed_concurrency_scenarios", []):
+            model_ids = [str(item["model_id"]) for item in scenario["cases"]]
+            if not set(model_ids) <= selected_by_id.keys():
+                continue
+            cases = []
+            for item in scenario["cases"]:
+                model = selected_by_id[str(item["model_id"])]
+                language = str(item["language"])
+                samples = samples_by_language.get(language, [])
+                if language not in model["languages"] or not samples:
+                    raise ValueError(f"Mixed concurrency case {model['id']} has no sample for language {language!r}.")
+                cases.append((model, language, _select_samples(samples, 1)[0]))
+            selected_scenarios.append((str(scenario["id"]), cases))
+        if selected_scenarios:
+            timeout = float(config["server"]["startup_timeout_seconds"])
+            with LocalServer(host, 0, log_dir / "mixed-concurrency.log", timeout, source_root=server_source_root) as server:
+                with httpx.Client(base_url=server.base_url, timeout=20) as client:
+                    available = {item["id"] for item in client.get("/v1/models").json().get("data", [])}
+                for scenario_id, cases in selected_scenarios:
+                    missing = sorted({str(model["id"]) for model, _, _ in cases} - available)
+                    if missing:
+                        raise RuntimeError(f"Mixed concurrency models unavailable: {', '.join(missing)}")
+                    # Warm model instances serially so measurements focus on contention, not construction.
+                    for model, language, sample in cases:
+                        _send(server.base_url, model, language, sample)
+                    concurrency_results.append(_run_mixed_concurrent(
+                        server.base_url, scenario_id, cases, profile["mixed_concurrency"],
+                    ))
 
     if ratings_rows:
         with (run_dir / "tts-ratings-template.csv").open("w", encoding="utf-8", newline="") as stream:
@@ -596,6 +718,7 @@ def main() -> int:
     parser.add_argument("--profile", choices=("smoke", "standard", "full"), default="smoke")
     parser.add_argument("--category", action="append", choices=("quality", "performance", "concurrency"), help="Category to run; repeat to select multiple (defaults to all)")
     parser.add_argument("--model", action="append", dest="models", help="Model ID to include; repeat to select multiple")
+    parser.add_argument("--server-source", type=Path, help="Source checkout used by benchmark server processes (for controlled code comparisons)")
     parser.add_argument("--output", type=Path, help="Aggregate JSON report path; defaults outside the repository")
     args = parser.parse_args()
     try:
@@ -605,6 +728,7 @@ def main() -> int:
             selected_models=set(args.models) if args.models else None,
             selected_categories=set(args.category) if args.category else None,
             output_path=args.output,
+            server_source_root=args.server_source.resolve() if args.server_source else None,
         )
     except (RuntimeError, ValueError, OSError, httpx.HTTPError) as exc:
         parser.error(str(exc))

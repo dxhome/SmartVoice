@@ -27,8 +27,14 @@ class ModelManagementService:
     def get_spec(self, model_id: str):
         return self.model_repository.get_spec(model_id)
 
-    def install(self, model_id: str, progress=None) -> Path:
-        return self.model_repository.install_model(model_id, progress=progress)
+    def install(
+        self,
+        model_id: str,
+        progress=None,
+        *,
+        source: str | None = None,
+    ) -> Path:
+        return self.model_repository.install_model(model_id, progress=progress, source=source)
 
     def start_download(self, model_id: str) -> dict[str, object]:
         return self.jobs.start_download(self.model_repository.get_spec(model_id).id)

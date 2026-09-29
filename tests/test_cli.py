@@ -23,8 +23,8 @@ class ModelListOutputTests(unittest.TestCase):
                 "installed": True,
             },
             {
-                "id": "tts-melo-zh-en",
-                "name": "Melo TTS",
+                "id": "tts-kokoro-multilingual-v1-1-zh-en",
+                "name": "Kokoro 1.1",
                 "task": "speech",
                 "languages": ["zh", "en"],
                 "backend": "sherpa-onnx",
@@ -48,7 +48,7 @@ class ModelListOutputTests(unittest.TestCase):
         self.assertIn("    - SenseVoice Small INT8 (stt-sensevoice-small-int8) | zh, en | sherpa-onnx", output)
         self.assertNotIn("Default", output)
         self.assertIn("    - Paraformer Chinese (paraformer-zh-local) | zh | funasr", output)
-        self.assertIn("    - Melo TTS (tts-melo-zh-en) | zh, en | sherpa-onnx", output)
+        self.assertIn("    - Kokoro 1.1 (tts-kokoro-multilingual-v1-1-zh-en) | zh, en | sherpa-onnx", output)
         self.assertIn("zh, en", output)
         self.assertNotRegex(output, r"[\u4e00-\u9fff]")
 

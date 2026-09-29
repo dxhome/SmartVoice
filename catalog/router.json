@@ -107,12 +107,10 @@
     "speech": {
       "zh": [
         "tts-matcha-zh-baker",
-        "tts-melo-zh-en",
         "tts-kokoro-multilingual-v1-1-zh-en"
       ],
       "en": [
-        "tts-supertonic-v3-multilingual-int8",
-        "tts-melo-zh-en"
+        "tts-supertonic-v3-multilingual-int8"
       ],
       "fr": [
         "tts-supertonic-v3-multilingual-int8"

@@ -39,8 +39,8 @@ class CatalogModelRepository(ModelRepository):
     def storage_summary(self) -> dict[str, int]:
         return model_storage(self.settings)
 
-    def install_model(self, model_id: str, progress=None) -> Path:
-        return install_model(self.settings, model_id, progress=progress)
+    def install_model(self, model_id: str, progress=None, *, source: str | None = None) -> Path:
+        return install_model(self.settings, model_id, progress=progress, source=source)
 
     def uninstall_model(self, model_id: str, *, loaded: bool = False) -> int:
         return uninstall_model(self.settings, model_id, loaded=loaded)

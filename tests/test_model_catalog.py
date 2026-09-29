@@ -27,6 +27,7 @@ class ModelCatalogTests(unittest.TestCase):
         self.assertTrue(all(spec.id.startswith(("stt-", "tts-")) for spec in specs))
         for retired_id in (
             "whisper-base-multilingual-local", "sensevoice-small-local", "melo-tts-zh-en-local",
+            "tts-melo-zh-en",
             "supertonic-3-multilingual-local", "piper-fr-fr-siwis-medium-local",
             "piper-de-de-thorsten-medium-local", "tts-piper-fr-fr-siwis-medium-int8",
             "tts-piper-de-de-thorsten-medium-int8",
@@ -41,6 +42,7 @@ class ModelCatalogTests(unittest.TestCase):
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/",
             "https://huggingface.co/k2-fsa/sherpa-models/resolve/",
             "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/",
+            "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice/resolve/",
         )) for spec in specs))
         self.assertIn("ja", get_model_spec("tts-supertonic-v3-multilingual-int8").languages)
         self.assertEqual(get_model_spec("stt-whisper-base-multilingual-int8").model_type, "whisper")
