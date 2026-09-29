@@ -1,0 +1,476 @@
+{
+  "schema_version": "2.0",
+  "benchmark_suite": "smartvoice-model-comparison-v1",
+  "profile": "standard",
+  "software": {
+    "smartvoice": "0.1.0",
+    "python": "3.11.9"
+  },
+  "platform": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "processor": "arm"
+  },
+  "dataset": {
+    "repo_id": "google/fleurs",
+    "revision": null,
+    "split": "test",
+    "license": "cc-by-4.0",
+    "languages": {
+      "en": {
+        "repository": "google/fleurs",
+        "revision": "10b20dadef85684efea8561331323382da703432",
+        "config": "en_us",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "e7886f59000714f61fff6c84ee9d87f70460b14d4f877995c03322127fac37e9"
+      },
+      "ar": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "ar_eg",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "99adb7149b5bca6dce202153729c3bd477cb8dd17bc74b24a9ad1375faaf75c3"
+      },
+      "de": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "de_de",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "2780cffd4bdf33ddf1ecf72eaa7b035cf1185e9cb4bd78b9de5be994551c89df"
+      },
+      "es": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "es_419",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "bccf0de0f62b2f9561d43feecf5b12e50c5aac1b7f2b37033b3b93c086751e80"
+      },
+      "fr": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "fr_fr",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "da79f9d47de7875627f104244c652a02bbf262c73ed03c24fe2e4b0d580b11e8"
+      },
+      "hi": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "hi_in",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "012321c7478a9a6b9aac44e390ed9c8e42d3311576409837896c9c002534af5d"
+      },
+      "pt": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "pt_br",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "d6cf998ece72071b835020e3e67d8d70702e86f46a4321bbdd54c0e011b94959"
+      },
+      "ru": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "ru_ru",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "34102de39645aa347d164cd05b131241d082775f7634cce29b69ea4d2d83b4a5"
+      }
+    },
+    "revisions_by_language": {
+      "en": "10b20dadef85684efea8561331323382da703432",
+      "ar": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "de": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "es": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "fr": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "hi": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "pt": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "ru": "d16ac437ac42fb543bf2893b934dac1af970e361"
+    }
+  },
+  "profile_settings": {
+    "quality_sample_limit": 100,
+    "performance_sample_limit": 5,
+    "bootstrap_samples": 1000,
+    "performance": {
+      "warmup_iterations": 3,
+      "iterations": 20
+    },
+    "concurrency": {
+      "concurrency_levels": [
+        1,
+        2,
+        4
+      ],
+      "requests_per_worker": 10,
+      "soak_workers": 4,
+      "soak_seconds": 60
+    }
+  },
+  "service_settings": {
+    "provider": "cpu",
+    "inference_threads": 4,
+    "max_concurrent_inference": 1,
+    "max_queued_inference": 2
+  },
+  "model_id": "tts-supertonic-v3-multilingual-int8",
+  "task": "speech",
+  "supported_languages": [
+    "en",
+    "hi",
+    "es",
+    "ar",
+    "fr",
+    "pt",
+    "ru",
+    "de"
+  ],
+  "unsupported_languages": [
+    "yue"
+  ],
+  "generated_at": "2026-09-29T06:14:18.284327+00:00",
+  "selected_categories": [
+    "quality",
+    "performance",
+    "concurrency"
+  ],
+  "category_run_ids": {
+    "quality": [
+      "20260928T112659Z-a95afa",
+      "20260929T043415Z-7d089d"
+    ],
+    "performance": [
+      "20260928T112659Z-a95afa"
+    ],
+    "concurrency": [
+      "20260928T112659Z-a95afa"
+    ]
+  },
+  "models": [
+    {
+      "id": "tts-supertonic-v3-multilingual-int8"
+    },
+    {
+      "id": "stt-qwen3-asr-600m-int8",
+      "archive_sha256": null,
+      "file_sha256": {
+        "conv_frontend.onnx": "d22dc4423e0940e49884e903d2ea2f7e5567c14fc1aed97e4e26d6b8f208ef9e",
+        "encoder.int8.onnx": "60748d3e6744a57c9c91e1b17424a6c2990567e8adceb0783940c03ed98fa9d9",
+        "decoder.int8.onnx": "4f6885be5959ae26af3089d38ee7972c5fafbeeb1cf8d5e76eab6d8b61ca5771",
+        "tokenizer/merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "tokenizer/tokenizer_config.json": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c",
+        "tokenizer/vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "installed_model_files_bytes": 987015347
+    }
+  ],
+  "categories": {
+    "quality": {
+      "stt": [],
+      "tts": [
+        {
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "en",
+          "metric": "wer",
+          "value": 0.060773,
+          "confidence_interval_95": {
+            "lower_95": 0.045884,
+            "upper_95": 0.077773
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@10b20dadef85684efea8561331323382da703432:en_us/test"
+        },
+        {
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "hi",
+          "evaluation": "human_blind_listening",
+          "generated_samples": 100,
+          "failed_samples": 0,
+          "human_mos": null,
+          "round_trip_asr": {
+            "judge_model_id": "stt-qwen3-asr-600m-int8",
+            "metric": "wer",
+            "value": 0.146617,
+            "confidence_interval_95": {
+              "lower_95": 0.125694,
+              "upper_95": 0.167279
+            },
+            "sample_count": 100,
+            "failed_samples": 0
+          },
+          "note": "Fill the local ratings template, then run aggregate_tts_ratings.py. Audio and rating data stay outside Git.",
+          "source_dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:hi_in/test"
+        },
+        {
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "es",
+          "evaluation": "human_blind_listening",
+          "generated_samples": 100,
+          "failed_samples": 0,
+          "human_mos": null,
+          "round_trip_asr": {
+            "judge_model_id": "stt-qwen3-asr-600m-int8",
+            "metric": "wer",
+            "value": 0.06777,
+            "confidence_interval_95": {
+              "lower_95": 0.049624,
+              "upper_95": 0.087886
+            },
+            "sample_count": 100,
+            "failed_samples": 0
+          },
+          "note": "Fill the local ratings template, then run aggregate_tts_ratings.py. Audio and rating data stay outside Git.",
+          "source_dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:es_419/test"
+        },
+        {
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "ar",
+          "evaluation": "human_blind_listening",
+          "generated_samples": 100,
+          "failed_samples": 0,
+          "human_mos": null,
+          "round_trip_asr": {
+            "judge_model_id": "stt-qwen3-asr-600m-int8",
+            "metric": "wer",
+            "value": 0.181461,
+            "confidence_interval_95": {
+              "lower_95": 0.157388,
+              "upper_95": 0.205114
+            },
+            "sample_count": 100,
+            "failed_samples": 0
+          },
+          "note": "Fill the local ratings template, then run aggregate_tts_ratings.py. Audio and rating data stay outside Git.",
+          "source_dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:ar_eg/test"
+        },
+        {
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "fr",
+          "evaluation": "human_blind_listening",
+          "generated_samples": 100,
+          "failed_samples": 0,
+          "human_mos": null,
+          "round_trip_asr": {
+            "judge_model_id": "stt-qwen3-asr-600m-int8",
+            "metric": "wer",
+            "value": 0.095396,
+            "confidence_interval_95": {
+              "lower_95": 0.076235,
+              "upper_95": 0.115641
+            },
+            "sample_count": 100,
+            "failed_samples": 0
+          },
+          "note": "Fill the local ratings template, then run aggregate_tts_ratings.py. Audio and rating data stay outside Git.",
+          "source_dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:fr_fr/test"
+        },
+        {
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "pt",
+          "evaluation": "human_blind_listening",
+          "generated_samples": 100,
+          "failed_samples": 0,
+          "human_mos": null,
+          "round_trip_asr": {
+            "judge_model_id": "stt-qwen3-asr-600m-int8",
+            "metric": "wer",
+            "value": 0.11071,
+            "confidence_interval_95": {
+              "lower_95": 0.092157,
+              "upper_95": 0.135763
+            },
+            "sample_count": 100,
+            "failed_samples": 0
+          },
+          "note": "Fill the local ratings template, then run aggregate_tts_ratings.py. Audio and rating data stay outside Git.",
+          "source_dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:pt_br/test"
+        },
+        {
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "ru",
+          "evaluation": "human_blind_listening",
+          "generated_samples": 100,
+          "failed_samples": 0,
+          "human_mos": null,
+          "round_trip_asr": {
+            "judge_model_id": "stt-qwen3-asr-600m-int8",
+            "metric": "wer",
+            "value": 0.185963,
+            "confidence_interval_95": {
+              "lower_95": 0.157501,
+              "upper_95": 0.216064
+            },
+            "sample_count": 100,
+            "failed_samples": 0
+          },
+          "note": "Fill the local ratings template, then run aggregate_tts_ratings.py. Audio and rating data stay outside Git.",
+          "source_dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:ru_ru/test"
+        },
+        {
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "de",
+          "evaluation": "human_blind_listening",
+          "generated_samples": 100,
+          "failed_samples": 0,
+          "human_mos": null,
+          "round_trip_asr": {
+            "judge_model_id": "stt-qwen3-asr-600m-int8",
+            "metric": "wer",
+            "value": 0.101312,
+            "confidence_interval_95": {
+              "lower_95": 0.081839,
+              "upper_95": 0.124477
+            },
+            "sample_count": 100,
+            "failed_samples": 0
+          },
+          "note": "Fill the local ratings template, then run aggregate_tts_ratings.py. Audio and rating data stay outside Git.",
+          "source_dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:de_de/test"
+        }
+      ]
+    },
+    "performance": [
+      {
+        "case": {
+          "task": "speech",
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "en"
+        },
+        "cold_request": {
+          "request_wall_seconds": 1.74149,
+          "inference_seconds": 1.6448,
+          "audio_duration_seconds": 4.521,
+          "real_time_factor": 0.363813
+        },
+        "warm": {
+          "request_wall_seconds": {
+            "median": 1.160122,
+            "p50": 1.160122,
+            "p95": 1.170227
+          },
+          "inference_seconds": {
+            "median": 1.06635,
+            "p50": 1.06635
+          },
+          "real_time_factor": {
+            "median": 0.235866,
+            "p50": 0.235866
+          }
+        },
+        "characters_per_inference_second": 59.028006,
+        "resources": {
+          "peak_rss_bytes": 422920192
+        },
+        "service_startup_seconds": 1.237768
+      }
+    ],
+    "concurrency": [
+      {
+        "case": {
+          "task": "speech",
+          "model_id": "tts-supertonic-v3-multilingual-int8",
+          "language": "en"
+        },
+        "workload_model": "closed_loop_fixed_concurrency",
+        "levels": [
+          {
+            "workers": 1,
+            "request_count": 10,
+            "success_count": 10,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 0.834,
+            "errors_by_status": {}
+          },
+          {
+            "workers": 2,
+            "request_count": 20,
+            "success_count": 20,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 0.913,
+            "errors_by_status": {}
+          },
+          {
+            "workers": 4,
+            "request_count": 40,
+            "success_count": 30,
+            "failure_count": 10,
+            "failure_rate": 0.25,
+            "requests_per_second": 0.8996,
+            "errors_by_status": {
+              "503": 10
+            }
+          }
+        ],
+        "soak": {
+          "workers": 4,
+          "target_seconds": 60,
+          "success_count": 54,
+          "failure_count": 562,
+          "failure_rate": 0.91107,
+          "success_requests_per_second": 0.8568,
+          "errors_by_status": {
+            "503": 562
+          }
+        }
+      }
+    ]
+  },
+  "quality_completeness": {
+    "languages_measured": [
+      "ar",
+      "de",
+      "en",
+      "es",
+      "fr",
+      "hi",
+      "pt",
+      "ru"
+    ],
+    "human_mos": "not_collected",
+    "note": "Automatic round-trip ASR metrics were measured for all TTS languages shown; MOS requires human listening ratings and is not inferred."
+  },
+  "interpretation": "Observed comparison results only; not an acceptance threshold or cross-platform ranking.",
+  "config_sha256_by_run": {
+    "20260928T112659Z-a95afa": null,
+    "20260929T043415Z-7d089d": "acfe3dcea9ab943f3327d671a767ab6a26826bd3dc82f0e3992f952e07073d6c"
+  },
+  "quality_judge_model_by_language": {
+    "en": "stt-sensevoice-small-int8",
+    "hi": "stt-qwen3-asr-600m-int8",
+    "es": "stt-qwen3-asr-600m-int8",
+    "ar": "stt-qwen3-asr-600m-int8",
+    "fr": "stt-qwen3-asr-600m-int8",
+    "pt": "stt-qwen3-asr-600m-int8",
+    "ru": "stt-qwen3-asr-600m-int8",
+    "de": "stt-qwen3-asr-600m-int8"
+  },
+  "local_artifacts": {
+    "tts_listening_files_generated": true,
+    "run_id": "20260929T043415Z-7d089d",
+    "languages": [
+      "ar",
+      "de",
+      "es",
+      "fr",
+      "hi",
+      "pt",
+      "ru"
+    ]
+  }
+}

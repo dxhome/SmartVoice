@@ -16,6 +16,11 @@ class ModelUnavailableError(SmartVoiceError):
     http_status = 503
 
 
+class ResourceNotFoundError(SmartVoiceError):
+    code = "not_found"
+    http_status = 404
+
+
 class InferenceOverloadedError(SmartVoiceError):
     code = "inference_overloaded"
     http_status = 503

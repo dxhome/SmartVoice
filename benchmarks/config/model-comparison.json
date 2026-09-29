@@ -4,24 +4,32 @@
   "seed": 20260928,
   "dataset": {
     "repo_id": "google/fleurs",
-    "revision": "10b20dadef85684efea8561331323382da703432",
+    "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
     "split": "test",
     "license": "cc-by-4.0"
   },
   "languages": {
     "en": {"display_name": "English", "dataset_config": "en_us", "normalization": "latin_wer"},
-    "zh": {"display_name": "Chinese (Simplified)", "dataset_config": "cmn_hans_cn", "normalization": "han_cer"}
+    "zh": {"display_name": "Chinese (Simplified)", "dataset_config": "cmn_hans_cn", "normalization": "han_cer"},
+    "hi": {"display_name": "Hindi", "dataset_config": "hi_in", "normalization": "whitespace_wer"},
+    "es": {"display_name": "Spanish", "dataset_config": "es_419", "normalization": "latin_wer"},
+    "ar": {"display_name": "Arabic", "dataset_config": "ar_eg", "normalization": "whitespace_wer"},
+    "fr": {"display_name": "French", "dataset_config": "fr_fr", "normalization": "latin_wer"},
+    "pt": {"display_name": "Portuguese (Brazilian)", "dataset_config": "pt_br", "normalization": "latin_wer"},
+    "ru": {"display_name": "Russian", "dataset_config": "ru_ru", "normalization": "whitespace_wer"},
+    "de": {"display_name": "German", "dataset_config": "de_de", "normalization": "latin_wer"},
+    "yue": {"display_name": "Cantonese", "dataset_config": "yue_hant_hk", "normalization": "han_cer"}
   },
   "models": [
-    {"id": "stt-whisper-base-multilingual-int8", "task": "transcription", "languages": ["en", "zh"]},
-    {"id": "stt-sensevoice-small-int8", "task": "transcription", "languages": ["en", "zh"]},
-    {"id": "stt-qwen3-asr-600m-int8", "task": "transcription", "languages": ["en", "zh"]},
+    {"id": "stt-whisper-base-multilingual-int8", "task": "transcription", "languages": ["en", "zh", "fr", "de"]},
+    {"id": "stt-sensevoice-small-int8", "task": "transcription", "languages": ["en", "zh", "yue"]},
+    {"id": "stt-qwen3-asr-600m-int8", "task": "transcription", "languages": ["en", "zh", "hi", "es", "ar", "fr", "pt", "ru", "de", "yue"]},
     {"id": "tts-melo-zh-en", "task": "speech", "languages": ["en", "zh"]},
     {"id": "tts-kokoro-multilingual-v1-1-zh-en", "task": "speech", "languages": ["en", "zh"]},
     {"id": "tts-matcha-zh-baker", "task": "speech", "languages": ["zh"]},
-    {"id": "tts-supertonic-v3-multilingual-int8", "task": "speech", "languages": ["en"]}
+    {"id": "tts-supertonic-v3-multilingual-int8", "task": "speech", "languages": ["en", "hi", "es", "ar", "fr", "pt", "ru", "de"]}
   ],
-  "tts_quality_judge_model_id": "stt-sensevoice-small-int8",
+  "tts_quality_judge_model_id": "stt-qwen3-asr-600m-int8",
   "server": {"host": "127.0.0.1", "startup_timeout_seconds": 90},
   "profiles": {
     "smoke": {

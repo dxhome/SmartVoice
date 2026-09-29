@@ -140,7 +140,7 @@ class ModelCatalogTests(unittest.TestCase):
 
         payload = b"def"
         opener = Opener()
-        with patch("smartvoice.services.model_catalog.urllib.request.build_opener", return_value=opener):
+        with patch("smartvoice.services.model_download.urllib.request.build_opener", return_value=opener):
             _download("https://models.example/model", partial, None)
         self.assertEqual(partial.read_bytes(), b"abcdef")
         self.assertEqual(opener.request.headers["Range"], "bytes=3-")
@@ -170,7 +170,7 @@ class ModelCatalogTests(unittest.TestCase):
             def open(self, request, timeout):
                 return Response()
 
-        with patch("smartvoice.services.model_catalog.urllib.request.build_opener", return_value=Opener()):
+        with patch("smartvoice.services.model_download.urllib.request.build_opener", return_value=Opener()):
             with self.assertRaisesRegex(ModelDownloadCancelled, "canceled"):
                 _download("https://models.example/model", partial, None, canceled)
         self.assertEqual(partial.read_bytes(), b"partial")
@@ -198,9 +198,11 @@ class ModelCatalogTests(unittest.TestCase):
             get_model_spec("stt-sensevoice-small-int8"),
             archive_sha256=hashlib.sha256(archive_path.read_bytes()).hexdigest(),
         )
-        with patch("smartvoice.services.model_catalog._download", fake_download), patch(
-            "smartvoice.services.model_catalog.get_model_spec", return_value=spec
-        ), patch("smartvoice.services.model_catalog.load_catalog", return_value=[spec]):
+        with patch("smartvoice.services.model_download._download", fake_download), patch(
+            "smartvoice.services.model_download.get_model_spec", return_value=spec
+        ), patch("smartvoice.services.model_storage.get_model_spec", return_value=spec), patch(
+            "smartvoice.services.model_storage.load_catalog", return_value=[spec]
+        ):
             destination = install_model(settings, "stt-sensevoice-small-int8")
             self.assertTrue((destination / "smartvoice-model.json").is_file())
             self.assertEqual([entry["id"] for entry in installed_models(settings)], ["stt-sensevoice-small-int8"])

@@ -1,9 +1,7 @@
 {
   "schema_version": "2.0",
   "benchmark_suite": "smartvoice-model-comparison-v1",
-  "run_id": "20260928T084702Z-ac880e",
   "profile": "standard",
-  "generated_at": "2026-09-28T08:50:03.269994+00:00",
   "software": {
     "smartvoice": "0.1.0",
     "python": "3.11.9"
@@ -17,7 +15,7 @@
   },
   "dataset": {
     "repo_id": "google/fleurs",
-    "revision": "10b20dadef85684efea8561331323382da703432",
+    "revision": null,
     "split": "test",
     "license": "cc-by-4.0",
     "languages": {
@@ -38,22 +36,23 @@
         "license": "cc-by-4.0",
         "sample_count": 100,
         "sample_ids_sha256": "fdc86d4687047a5b67b57d483d199edd0e4679e24ee1fc50cd3930eb7704833a"
+      },
+      "yue": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "yue_hant_hk",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "a6b15e7491f1bb2b555629121a2b197ff22afbef9de2d870038ee9c20f19b47c"
       }
+    },
+    "revisions_by_language": {
+      "en": "10b20dadef85684efea8561331323382da703432",
+      "zh": "10b20dadef85684efea8561331323382da703432",
+      "yue": "d16ac437ac42fb543bf2893b934dac1af970e361"
     }
   },
-  "models": [
-    {
-      "id": "stt-sensevoice-small-int8",
-      "archive_sha256": "7d1efa2138a65b0b488df37f8b89e3d91a60676e416f515b952358d83dfd347e",
-      "file_sha256": {
-        "model.int8.onnx": "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
-        "tokens.txt": "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
-        "LICENSE": "221c6df10b0931a5629adad671ea48fb7747e034c414b6d2bfa275bc3dd4ea17"
-      },
-      "installed_model_files_bytes": 239549806
-    }
-  ],
-  "config_sha256": "a66f82182aa0d7343894de8ce92c48a7929d38e85b993b3c60383efa0e1bad4a",
   "profile_settings": {
     "quality_sample_limit": 100,
     "performance_sample_limit": 5,
@@ -81,6 +80,52 @@
     "inference_queue_timeout_seconds": 60.0,
     "inference_execution_timeout_seconds": 600.0
   },
+  "model_id": "stt-sensevoice-small-int8",
+  "task": "transcription",
+  "supported_languages": [
+    "en",
+    "zh",
+    "yue"
+  ],
+  "unsupported_languages": [
+    "hi",
+    "es",
+    "ar",
+    "fr",
+    "pt",
+    "ru",
+    "de"
+  ],
+  "generated_at": "2026-09-29T03:19:27.389032+00:00",
+  "selected_categories": [
+    "quality",
+    "performance",
+    "concurrency"
+  ],
+  "category_run_ids": {
+    "quality": [
+      "20260928T084702Z-ac880e",
+      "20260929T023737Z-44042c"
+    ],
+    "performance": [
+      "20260928T084702Z-ac880e"
+    ],
+    "concurrency": [
+      "20260928T084702Z-ac880e"
+    ]
+  },
+  "models": [
+    {
+      "id": "stt-sensevoice-small-int8",
+      "archive_sha256": "7d1efa2138a65b0b488df37f8b89e3d91a60676e416f515b952358d83dfd347e",
+      "file_sha256": {
+        "model.int8.onnx": "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
+        "tokens.txt": "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
+        "LICENSE": "221c6df10b0931a5629adad671ea48fb7747e034c414b6d2bfa275bc3dd4ea17"
+      },
+      "installed_model_files_bytes": 239549806
+    }
+  ],
   "categories": {
     "quality": {
       "stt": [
@@ -109,6 +154,19 @@
           "sample_count": 100,
           "failed_samples": 0,
           "dataset": "google/fleurs@10b20dadef85684efea8561331323382da703432:cmn_hans_cn/test"
+        },
+        {
+          "model_id": "stt-sensevoice-small-int8",
+          "language": "yue",
+          "metric": "cer",
+          "value": 0.381586,
+          "confidence_interval_95": {
+            "lower_95": 0.361671,
+            "upper_95": 0.402961
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:yue_hant_hk/test"
         }
       ],
       "tts": []
@@ -784,8 +842,18 @@
       }
     ]
   },
-  "local_artifacts": {
-    "tts_listening_files_generated": false
+  "quality_completeness": {
+    "languages_measured": [
+      "en",
+      "yue",
+      "zh"
+    ],
+    "human_mos": "not_applicable",
+    "note": "STT quality measured with FLEURS references."
   },
-  "interpretation": "Observed comparison results only; not an acceptance threshold or cross-platform ranking."
+  "interpretation": "Observed comparison results only; not an acceptance threshold or cross-platform ranking.",
+  "config_sha256_by_run": {
+    "20260928T084702Z-ac880e": "a66f82182aa0d7343894de8ce92c48a7929d38e85b993b3c60383efa0e1bad4a",
+    "20260929T023737Z-44042c": "ae127e5116f2eabb991c064ed07c466a04a9894d36ed77967bf89630c52f792b"
+  }
 }

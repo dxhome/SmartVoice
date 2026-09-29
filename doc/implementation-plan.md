@@ -1,80 +1,80 @@
-# SmartVoice 实施计划
+# SmartVoice Implementation Plan
 
-## 目标与当前约束
+## Goals and Current Constraints
 
-- 首期交付 Windows x64 上可从源代码启动的本地服务；当前不规划安装器或独立安装包。
-- 中文和英语优先，首批模型、运行时和性能目标需经评估后确定。
-- 当前可运行原型采用 sherpa-onnx；阶段 1 的最终决策仍需基于模型质量、性能、硬件和许可评估。STT 与 TTS 后续可分别选择后端。
-- 前端和调用方只依赖版本化 HTTP API 与 capability 契约；平台和推理差异由适配层承接。
-- 默认仅监听 loopback，默认不记录请求文本或音频。
+- The first release is a local service that can be run from source on Windows x64. An installer or standalone packaged application is not currently planned.
+- Chinese and English are the first priorities. The initial models, runtime, and performance targets must be confirmed through evaluation.
+- The current runnable prototype uses sherpa-onnx. The final Phase 1 decision must still consider model quality, performance, hardware, and licensing. STT and TTS may use different backends later.
+- Frontends and callers depend only on versioned HTTP APIs and capability contracts. Adapters handle platform and inference differences.
+- By default, bind only to loopback and do not log request text or audio.
 
-## 阶段 0：冻结首期范围
+## Phase 0: Freeze the First-release Scope
 
-确认 Windows 最低版本/架构、参考硬件、可接受的延迟与音频时长、GPU 首期要求、模型许可策略、模型源、OpenAI Audio API 兼容范围，以及 CLI/REST/管理界面的首期边界。
+Confirm the minimum Windows version/architecture, reference hardware, acceptable latency and audio duration, first-phase GPU requirements, model licensing policy and sources, OpenAI Audio API compatibility scope, and the boundaries of the CLI/REST/management UI.
 
-**产出：** 首期范围和量化验收基线。性能阈值不在缺乏参考机与语料时臆定。
+**Deliverable:** First-release scope and measurable acceptance baseline. Do not invent performance thresholds without reference hardware and a corpus.
 
-## 阶段 1：推理后端与模型评估
+## Phase 1: Evaluate Inference Backends and Models
 
-比较 sherpa-onnx 与必要备选方案；分别评估中英文 STT/TTS 候选模型。记录固定 revision、文件哈希、许可证、格式、来源、模型与依赖体积、冷启动、RTF/延迟、峰值 RAM/VRAM、设备实测和质量结果。
+Compare sherpa-onnx with relevant alternatives. Evaluate Chinese and English STT/TTS candidate models separately. Record pinned revisions, file hashes, licenses, formats, sources, model and dependency sizes, cold start, RTF/latency, peak RAM/VRAM, actual device, and quality results.
 
-**产出：** 后端决策记录、首批模型目录和兼容矩阵。只有实测并完成许可审查的模型才能标记“已验证”。
+**Deliverable:** Backend decision record, initial model catalog, and compatibility matrix. Mark a model as verified only after measurement and license review.
 
-**当前原型选择：** 已把 sherpa-onnx 作为首个可运行原型后端，用 SenseVoice Small INT8 做 STT、Melo VITS ONNX 做中英 TTS。官方 Python API 和 Windows 轮子可用；本机实测已跑通两项推理。此决定支持端到端验证，仍不构成最终性能、模型质量或再分发许可承诺。参考：[SenseVoice Python API](https://k2-fsa.github.io/sherpa/onnx/sense-voice/python-api.html)、[Melo VITS 模型说明](https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits.html)。
+**Current prototype choice:** sherpa-onnx is the first runnable prototype backend, with SenseVoice Small INT8 for STT and Melo VITS ONNX for Chinese/English TTS. The official Python APIs and Windows wheels are available, and both inference paths have run locally. This supports end-to-end validation but does not establish final performance, model quality, or redistribution rights. References: [SenseVoice Python API](https://k2-fsa.github.io/sherpa/onnx/sense-voice/python-api.html) and [Melo VITS model documentation](https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits.html).
 
-## 阶段 2：领域架构与 API 契约
+## Phase 2: Domain Architecture and API Contracts
 
-冻结领域数据结构、OpenAPI、稳定错误结构、capability schema、模型元数据和适配器接口。领域层不依赖 Windows、GPU 厂商或推理框架；Windows 文件/设备/生命周期能力由平台适配器提供。
+Freeze domain data structures, OpenAPI, stable error structures, capability schema, model metadata, and adapter interfaces. The domain layer must not depend on Windows, GPU vendors, or inference frameworks. Windows file/device/lifecycle capabilities belong in platform adapters.
 
-**产出：** 架构说明、OpenAPI 初版、版本和兼容策略。
+**Deliverable:** Architecture documentation, initial OpenAPI specification, and versioning/compatibility policy.
 
-## 阶段 3：CPU 源码部署纵向切片
+## Phase 3: CPU Source-deployment Vertical Slice
 
-从源代码启动服务，提供健康/就绪、运行时/capability、模型列表、文件 STT 和 WAV TTS。完善输入边界、错误映射、请求 ID、临时音频清理和默认脱敏日志。
+Run the service from source and provide health/readiness, runtime/capabilities, model listing, file-based STT, and WAV TTS. Complete input boundaries, error mapping, request IDs, temporary audio cleanup, and redacted-by-default logs.
 
-**产出：** Windows CPU 环境可运行、可由 REST 调用的首个语音版本。
+**Deliverable:** First speech release that can run on Windows CPU and be called over REST.
 
-## 阶段 4：模型目录与生命周期
+## Phase 4: Model Catalog and Lifecycle
 
-当前 Windows CPU 范围已实现目录查询、后台下载任务、取消与 HTTP Range 恢复、文件哈希/路径检查、临时目录和原子安装、激活/停用、卸载、磁盘空间查询及验证后的离线导入/导出。来源仅允许目录登记的 HTTPS URL；离线导入仅接受已登记模型 ID 的包。
+The current Windows CPU scope provides catalog queries, background download jobs, cancellation and HTTP Range resume, file hash/path checks, temporary directories and atomic installation, activation/deactivation, removal, disk-space queries, and verified offline import/export. Sources are restricted to catalog-registered HTTPS URLs; offline imports accept only packages for registered model IDs.
 
-**产出：** 当前目录模型从发现到激活、使用、卸载和离线迁移的本地生命周期。
+**Deliverable:** A local lifecycle covering discovery, activation, use, removal, and offline transfer for catalog models.
 
-## 阶段 5：GPU、诊断与首期发布验收
+## Phase 5: GPU, Diagnostics, and First-release Acceptance
 
-按验证矩阵加入 GPU provider；报告实际设备和回退原因。补齐资源限制、并发/取消/超时语义、配置迁移、运行说明、API 文档和第三方声明。
+Add GPU providers according to the verification matrix and report the actual device and fallback reason. Complete resource limits, concurrency/cancellation/timeout semantics, configuration migration, operating instructions, API documentation, and third-party notices.
 
-**产出：** 达到首期基线的 Windows 源码版本与可复现验收报告。
+**Deliverable:** A Windows source release that meets the first-release baseline, with a reproducible acceptance report.
 
-### sherpa-onnx 并发限制（待后续处理）
+### sherpa-onnx Concurrency Limitation (Deferred)
 
-当前 `SherpaOnnxProvider` 使用 provider 级全局锁包住 recognizer stream 创建、音频提交和推理解码，因此同一进程中的 sherpa-onnx 推理实际串行执行。`num_threads` 是单次推理使用的运行时线程数，不代表 API 可以同时执行同等数量的推理请求。
+The current `SherpaOnnxProvider` uses a provider-wide lock around recognizer stream creation, audio submission, and inference. As a result, sherpa-onnx inference is serialized within a process. `num_threads` controls runtime threads for an individual inference; it does not mean the API can perform that many requests concurrently.
 
-若将 `max_concurrent_inference` 提高到 1 以上，队列可能同时放行多个请求，但它们仍会在 provider 锁处等待。该锁等待发生在队列并发槽已取得之后，因此当前 `queue_wait_seconds` 不包含这部分等待；并发指标可能把锁等待计入推理耗时。提高队列容量只能延后过载拒绝，不能在当前锁策略下提升持续推理吞吐，并会增加请求等待和音频缓冲占用。
+If `max_concurrent_inference` is raised above 1, the queue may admit multiple requests, but they will still wait on the provider lock. This lock wait occurs after a queue slot is acquired, so it is excluded from the current `queue_wait_seconds`; concurrency metrics may count lock wait as inference time. Increasing queue capacity can delay overload rejection but cannot improve sustained throughput under the current lock policy. It also increases request wait and audio-buffer memory.
 
-后续如需真正并行推理，应先确认 sherpa-onnx recognizer/stream 的线程安全和资源模型，设计锁粒度或 recognizer 实例策略，再通过固定到达速率的并发基准验证吞吐、延迟、拒绝率和内存，并调整队列等待计时。**此项暂不实施；默认配置保持 `max_concurrent_inference=1`、`max_queued_inference=2`，不因该记录变更默认值。**
+Before enabling truly parallel inference, verify sherpa-onnx recognizer/stream thread safety and resource behavior. Design a lock-granularity or recognizer-instance strategy, then measure throughput, latency, rejection rate, and memory with a fixed-arrival-rate concurrency benchmark, and adjust queue-wait timing. **This is deferred. Defaults remain `max_concurrent_inference=1` and `max_queued_inference=2`; this note does not change them.**
 
-## 阶段 6：后续扩展
+## Phase 6: Future Extensions
 
-### 核心功能：STT/TTS 动态模型路由（`stt-smartvoice-auto` / `tts-smartvoice-auto`）
+### Core Feature: Dynamic STT/TTS Model Routing (`smartvoice-auto`)
 
-分别为 STT 和 TTS 提供场景专用虚拟模型：STT 使用 `stt-smartvoice-auto`，TTS 使用 `tts-smartvoice-auto`。当前模型目录的 canonical ID 规则要求 STT ID 以 `stt-` 开头、TTS ID 以 `tts-` 开头，并由小写字母/数字及连字符组成；这两个虚拟 ID 符合该命名规则，但不作为模型目录中的权重模型。调用方使用虚拟 ID 时，SmartVoice 根据语言和静态路由表选择实际模型。调用方指定具体模型 ID 时，继续按现有直接调用路径使用该模型推理，不经过智能路由。智能路由取代现有每任务一个默认模型的机制；底层具体模型仍由目录管理、安装和卸载。
+STT and TTS share one virtual model ID, `smartvoice-auto`. The audio API path determines the task; a static routing table then chooses the actual model by language. A concrete model ID continues to invoke that model directly. The virtual model is not a weight-bearing catalog model and is pinned to the top of the model list. Smart routing replaces the per-task default-model mechanism; concrete models remain managed through the catalog.
 
-- **模型名称：** 对外虚拟模型 ID 使用 `stt-smartvoice-auto` 和 `tts-smartvoice-auto`，符合仓库现有 `stt-`/`tts-` 任务前缀及字符规则。虚拟 ID 只在对应 STT/TTS 推理 API 场景有效，不能被模型下载、安装或卸载操作当作目录模型处理。
-- **语言标识：** API 的 `language` 值及路由 JSON 语言键采用 OpenAI/Whisper 语言代码；SmartVoice 内部也以 Whisper 语言代码作为统一语言标识。常见值包括 `en`、`zh`、`ja`、`ko`、`fr`、`de` 等，不使用 BCP 47 地区/文字系统扩展（例如 `zh-Hans`、`fr-FR`）。实现按 Whisper 语言代码校验，并为当前目录中的粤语 `yue` 保留扩展支持。目录模型元数据、provider 检测结果及语言识别器输出映射到相同代码；模型支持语言仍以模型自身 capability 为准。
-- **语言来源与优先级：** 请求中的 `language` 是调用方提示。提供明确语言时按该语言查静态路由表；`auto` 或未提供时，STT 优先复用支持自动识别且能返回语言信息的模型内检测，定义 provider 统一结果格式。只有路由必须在推理前选模时，才评估独立轻量检测器并测准确率和额外延迟。TTS 使用离线轻量文本语言识别库，并保留脚本检测作为辅助。短文本、混合语言或低置信度时，有显式语言则使用它；无显式语言时按对应配置处理，未配置则返回可解释错误。混合语言分段合成后续另行评估。
-- **核心选模逻辑：** 使用 JSON 格式的静态路由配置。每个任务、每种语言配置 1 至 3 个按顺序排列的模型 ID；配置顺序完全决定匹配和选择优先级，不在运行时用质量分数、性能指标或额外策略重新排序。运行时依次检查配置候选，只选择第一个已安装且验证可用的模型；资格条件仅为已安装且验证可用。不自动下载任何模型，不尝试下一个候选进行推理回退；所选模型推理失败时记录诊断日志并将错误返回调用方，用户依据日志调整 JSON 配置。若该语言所有候选均未安装或验证失败，返回明确错误并列出配置候选及安装指引。不存在隐式任务默认模型或未配置语言的通用回退。
-- **默认配置及用户修改：** 程序提供内置默认路由 JSON；运行服务读取用户数据目录中的路由 JSON（首次启动时由内置配置初始化，具体文件路径待定）。用户直接编辑 JSON，无需 CLI 编辑子命令。每语言最多 3 个候选；配置校验需检查 schema、任务、语言标签、模型 ID 前缀/任务、重复项及候选数量。具体模型必须拒绝与请求任务不一致或不支持请求语言的组合，不提供绕过能力检查的强制覆盖。
-- **热加载命令：** 用户修改 JSON 后，通过新增命令 `python -m smartvoice router reload` 通知正在运行的服务重新读取配置，无需重启。命令需连接当前服务并报告加载成功或校验错误；服务只有完整验证新配置后才原子替换运行中的配置，校验失败时保留上一份有效配置。该命令不编辑 JSON，也不触发下载。服务地址、配置路径发现方式以及对应本地 API/进程间通信契约需在详细设计中确定。
-- **取消默认模型机制：** 智能路由取代当前每任务单一默认模型选择。后续实现需移除模型默认设置 CLI 与 REST 操作、`default_models.json` 运行逻辑及 runtime 中的默认模型字段；模型列表中“Default”标记也应随之调整。不需要支持旧版本兼容或迁移。指定具体模型的直接推理能力保留，与虚拟模型智能路由并行提供。
-- **调用与响应契约：** 调用方通过 `stt-smartvoice-auto` / `tts-smartvoice-auto` 请求路由；指定具体模型 ID 时沿用现有直接推理流程。响应应报告请求模型 ID 和实际执行模型 ID，并能区分调用模式（智能路由或直接指定）；路由请求还返回规范化语言及语言来源（请求字段、STT 模型检测、TTS 文本识别），可返回静态配置中的候选优先级/选择原因。能力和 runtime 信息公布虚拟模型、支持语言及当前路由候选的安装/验证状态。日志记录 request ID、调用模式、路由配置版本/摘要（仅路由调用）、目标语言、候选状态、实际模型、推理成功或失败及耗时，不记录输入文本或音频。响应字段承载位置仍需冻结。
-- **错误语义：** 为 JSON 配置无效、热加载失败、未识别/未配置语言、该语言无路由、候选全部未安装或验证失败、直接指定模型与任务/语言/安装状态不匹配、所选模型推理失败等情况定义稳定错误码、HTTP 状态和可操作说明。路由请求不尝试其他候选、不静默更换语言或模型、不自动下载；直接指定模型的错误遵循既有模型调用语义。
-- **资源管理：** 按需加载静态路由最终选中的模型；多模型缓存、并发和内存占用仍需定义容量及淘汰策略。验证在用模型的卸载保护及路由配置热更新与并发请求之间的一致性。
-- **验收：** 覆盖命名规则、OpenAI/Whisper 语言代码校验和模型语言映射、显式语言优先、STT/TTS 自动语言检测、静态候选顺序、最多 3 个候选、仅已安装且验证可用模型入选、无自动下载和无推理回退、具体模型直连、JSON 修改与热加载、无效配置保留旧配置、默认模型机制退场、错误和日志诊断、缓存及并发行为。
+- **Model name:** Use `smartvoice-auto` as the single public virtual model ID. Do not treat the virtual ID as a catalog model with weights; the request API path supplies the STT/TTS context.
+- **Language identifiers:** API `language` values and JSON routing keys use OpenAI/Whisper language codes. SmartVoice also uses Whisper codes internally as its common language identifiers. Common values include `en`, `zh`, `ja`, `ko`, `fr`, and `de`. Do not use BCP 47 region/script extensions such as `zh-Hans` or `fr-FR`. Validate against Whisper codes and retain `yue` as a catalog extension for Cantonese. Catalog metadata, provider detection results, and language identifier output must map to the same codes. Model-declared capabilities remain authoritative for supported languages.
+- **Language sources and priority:** An explicit request `language` takes precedence. For `auto`, missing, or empty values, STT uses sherpa-onnx's dedicated Spoken Language Identification API and multilingual Whisper Tiny INT8 to identify language, then selects an ASR model from the routing table. Do not use ASR inference for language detection or retry. If identification fails, returns an unknown language, or yields a language without a route, select an installed and verified STT model that supports `auto` and let it transcribe directly. Tiny INT8 is a SmartVoice-managed built-in runtime resource, not a user-selectable ASR model. On first service startup, download it from a pinned source to the user model directory and verify SHA-256; reuse verified files on later starts. Startup must fail with a clear error if download or verification fails. TTS detection runs once using Unicode script rules, a small set of high-precision word cues, and a lightweight text classifier. Restrict the detected candidate to languages supported by the selected TTS model. For input shorter than 10 characters, repeat separated copies until the minimum length is reached; pass the original text to synthesis. Confidence is output/debug information, not a routing threshold. Record detection and confidence for 1–2 character and approximately 12-character regression samples; rerun them whenever this logic changes. Evaluate mixed-language chunked synthesis separately.
+- **Core selection logic:** Use a static JSON routing configuration with one to three ordered model IDs per task/language. Array order fully determines selection priority; do not reorder at runtime using quality scores, performance metrics, or extra policies. Choose the first candidate that is installed and verified. Do not download automatically and do not fall through to another candidate after inference failure. Log diagnostics and return the inference error so the user can adjust the JSON. If no candidate for that language is installed and verified, return a clear error listing candidates and installation guidance. Do not add implicit per-task defaults or generic fallbacks for unconfigured languages.
+- **Default configuration and user edits:** Provide a built-in default routing JSON. The service reads the user's routing JSON from the data directory, initialized from the built-in file on first launch (the exact path was TBD at planning time). Users edit the JSON directly; no CLI edit command is required. Allow at most three candidates per language. Validate schema, tasks, language labels, model ID prefix/task, duplicates, and candidate count. Reject a concrete model that does not match the request task or language; do not offer a force override that bypasses capability checks.
+- **Hot-reload command:** After editing the JSON, users invoke `python -m smartvoice router reload` to ask the running service to reload without restarting. The command reports success or validation errors. The service atomically replaces the active configuration only after full validation and keeps the previous valid configuration on failure. The command does not edit JSON or trigger downloads. Service address discovery, config path discovery, and the corresponding local API/IPC contract must be defined in detailed design.
+- **Remove default-model mechanism:** Smart routing replaces the current single default model per task. The implementation should remove default-model CLI/REST operations, `default_models.json` runtime behavior, and the default-model field from runtime status. Update the “Default” marker in the model list accordingly. No backward compatibility or migration for the old mechanism is required. Preserve direct inference by concrete model ID alongside virtual routing.
+- **Request/response contract:** Callers request routing with `smartvoice-auto`; the audio API path identifies STT/TTS. Concrete model IDs retain direct inference. Responses report requested and actual model IDs and distinguish routed/direct mode. Routed requests report normalized language and its source. Show one virtual model, pinned to the top of the model list. TTS detection runs once; for input shorter than 10 characters, only the repeated copy goes to the detector while synthesis receives the original text. Confidence is not a threshold; keep language and confidence in debug logs.
+- **Error semantics:** Define stable error codes, HTTP statuses, and actionable messages for invalid JSON, failed reload, unidentified/unconfigured languages, missing routes, candidates that are all uninstalled or unverified, direct model/task/language/installation mismatch, and inference failure. Routing must not try another candidate, silently change language/model, or download automatically. Direct model errors follow existing model-call semantics.
+- **Resource management:** Load the final statically selected model on demand. Define capacity and eviction for multi-model caches, concurrency, and memory use. Verify protection against removing models in use and consistency between route hot reload and concurrent requests.
+- **Acceptance:** Cover naming, OpenAI/Whisper language validation and model-language mapping, explicit-language priority, STT/TTS automatic language detection, static candidate order, maximum of three candidates, installed-and-verified filtering, no automatic download or inference fallback, direct concrete-model use, JSON edits/hot reload, retention of the previous configuration after invalid updates, removal of default-model behavior, error/log diagnostics, cache, and concurrency behavior.
 
-#### 智能路由表配置原型（待用户确认）
+#### Smart-routing Table Prototype (Pending User Confirmation)
 
-以下 JSON 是用于确认结构和语义的原型，不代表最终模型排序。语言键使用 Whisper 语言代码；配置加载时需校验代码，并确保候选模型的语言能力包含对应语言。
+This JSON illustrates a possible structure and semantics; it does not define the final model ranking. Language keys use Whisper language codes. Configuration loading must validate the code and verify that each candidate model declares support for the corresponding language.
 
 ```json
 {
@@ -116,45 +116,76 @@
 }
 ```
 
-#### 智能路由仍需解决的问题
+#### Open Questions for Smart Routing
 
-1. **STT 自动检测边界：** 哪些模型能返回可复用的语言结果；检测是否在首次推理前可用；检测置信度和低置信度判定格式如何统一；无可靠检测时返回什么错误。
-2. **TTS 识别边界：** 轻量识别库选择、许可/体积/离线要求、置信度阈值、短文本判定、混合语言和脚本特征冲突处理。
-3. **Whisper 代码表与目录能力的边界：** 确认采用的 Whisper 语言代码表版本和校验规则；处理粤语 `yue` 等目录语言是否属于兼容扩展；保证每个路由候选都声明支持对应代码。
-4. **路由 JSON 生命周期：** 文件路径、内置默认 JSON 与用户配置初始化/恢复方式、配置 schema 版本和未知模型 ID 如何处理；CLI 如何定位正在运行服务的配置和地址。
-5. **响应兼容性与隐私：** 请求模型、实际模型、调用模式、语言来源、候选选择原因放响应体、响应头还是两者；日志保留策略及配置摘要是否足以诊断。
-6. **资源及验收目标：** 多模型缓存容量/淘汰策略、模型切换开销、检测额外延迟及路由配置热更新并发一致性的量化验收目标。
+1. **STT automatic-detection boundary:** Which models return reusable language results? Is detection available before the first inference? How are confidence and low-confidence results represented? What error is returned when detection is unreliable?
+2. **TTS detection boundary:** Select a lightweight text classifier and confirm its license, size, and offline behavior. Define confidence thresholds, short-text handling, mixed-language behavior, and conflicts between script and lexical cues.
+3. **Whisper code table vs. catalog capabilities:** Confirm the language-code table version and validation rules. Decide how catalog extensions such as `yue` relate to that table. Ensure every route candidate declares the corresponding code.
+4. **Routing JSON lifecycle:** Define file location, built-in defaults, user initialization/recovery, schema version, unknown model behavior, and how the CLI discovers the running service's config and address.
+5. **Response compatibility and privacy:** Decide whether requested model, actual model, mode, language source, and selection reason belong in body, headers, or both. Decide whether logs and config digests are sufficient for diagnosis.
+6. **Resources and acceptance targets:** Quantify cache capacity/eviction, model switching overhead, detection latency, and consistency requirements for hot reload during concurrent requests.
 
-#### 推荐执行顺序
+#### Recommended Implementation Order
 
-1. 确认虚拟 ID 命名、Whisper 语言代码表及模型能力校验规则，并冻结“虚拟 ID 触发路由、具体模型 ID 直接推理”的语义。
-2. 确认 JSON 原型字段、路由配置文件位置和默认配置初始化方式；为未知语言和未配置语言定义错误行为。
-3. 冻结 provider 的语言检测结果契约；确认 STT 模型内检测可行性，选择 TTS 离线识别库并确定低置信度行为。
-4. 冻结候选过滤和执行规则：按 JSON 顺序选第一个已安装且验证可用模型；推理失败不尝试其他候选，只记日志并返回错误。
-5. 设计 `router reload` 命令到运行服务的控制通道；定义配置完整校验、原子热切换、无效配置保留旧版本及并发请求语义。
-6. 设计移除旧默认模型 REST/CLI/runtime 能力的方案；无需设计旧版本兼容或迁移机制。保留具体模型 ID 的直接推理行为。
-7. 定义错误码、响应元数据、capability/runtime、脱敏日志和资源缓存约束；完成验收矩阵后再开始实现。
+1. Confirm virtual ID naming, Whisper language table, and model capability validation. Freeze the semantics: virtual ID triggers routing; concrete IDs call a model directly.
+2. Confirm the JSON schema, routing file location, and default initialization. Define errors for unknown and unconfigured languages.
+3. Freeze the provider language-detection result contract. Confirm STT model detection feasibility, select an offline TTS text classifier, and define low-confidence behavior.
+4. Freeze candidate filtering and execution: select the first installed, verified candidate in JSON order; on inference failure, log and return without trying another candidate.
+5. Design the control channel for `router reload`; define full validation, atomic hot swap, retention of the previous config on failure, and concurrent request semantics.
+6. Plan removal of old default-model REST/CLI/runtime capabilities without backward compatibility or migration. Preserve direct inference for concrete model IDs.
+7. Define errors, response metadata, capabilities/runtime, redacted logs, and cache/resource limits. Begin implementation after the acceptance matrix is complete.
 
-实现状态（2026-09-28）：已完成静态 JSON 路由、启动时配置初始化与校验、运行时热加载、虚拟模型 ID、显式/自动语言路由、已安装模型筛选、请求诊断元数据及默认模型机制移除，并补充单元、API 和真实推理测试。首期仍限定为每个请求选用单模型，不包含混合语言分段合成。
+**Implementation status (2026-09-28):** Static JSON routing, startup initialization and validation, runtime hot reload, virtual model ID, explicit/automatic language routing, installed-model filtering, request diagnostics metadata, and removal of the default-model mechanism are complete. Unit, API, and real-inference tests were added. First-release requests still select one model each; mixed-language chunked synthesis is not included.
 
-继续逐步扩展模型目录，优先评估更大参数量和非 INT8 精度的模型，改善语音识别与合成质量。候选包括 STT 的 Whisper Small/Medium/Large（约 244M/769M/1.55B 参数，优先从 Medium 开始验证）和 TTS 的 Kokoro-82M；也评估现有 Whisper、Piper 等模型的 FP32/FP16 或其他非 INT8 权重版本。每个候选均需确认 sherpa-onnx/目标后端兼容性、Windows CPU 可运行性、目标语言覆盖、模型许可与来源，并在统一语料和硬件上对比质量、延迟、RTF、内存及磁盘占用；不因参数量较大或精度未量化而直接认定效果更好。模型通过评估后再分批加入目录和生命周期管理。
+### Future Core Capability: Streaming Speech Processing (Transcription, Translation Subtitles, and Interpretation)
 
-同时再评估流式 STT、更多语言/模型、镜像 provider、轻量管理 UI，以及 macOS/Linux/Android 平台适配。移动端可采用嵌入式 SDK，不强制常驻 Web 服务。
+**Goal:** Provide a session capability that continuously receives audio and returns incremental results in three modes:
 
-## 当前仓库结构
+1. **Transcription in the source language (speech → text):** Display source-language text while audio arrives, for same-language subtitles. Distinguish revisable partial results from committed final results.
+2. **Translated subtitles (speech → target-language text):** Return target-language text while source-language audio arrives. Also return the source transcript when useful for bilingual subtitles, diagnostics, and source/translation alignment.
+3. **Spoken interpretation in the target language (speech → target-language speech):** Return target-language text and chunked synthesized audio. Send only committed, stable translations to TTS because already-played audio cannot be retracted.
+
+**Overall architecture:** Use streaming sessions as the product/protocol boundary rather than turning the existing full-file transcription endpoint into a long-lived connection. A session receives and validates audio, maintains recognition state, manages buffering/backpressure/cancellation, and runs streaming ASR, translation, and optional TTS according to the output mode. Support a logical ASR → translation → TTS cascade while also allowing an adapter for an end-to-end speech translation model. Model implementation details must not leak into the session contract. Keep `POST /v1/audio/transcriptions` for full-file transcription. A WebSocket extension API is recommended for real-time bidirectional audio and results; freeze its path and event schema during detailed design.
+
+**Session and event contract:** Session creation declares mode, source language (explicit or auto), required target language for translation, whether to return source text, and model/routing selection. Server events should include session-ready (with actual processing chain), source-language partial/final, target translation partial/final, target audio chunks linked to translations, utterance end, session completion, and error. Events carry session ID, utterance/segment ID, language, finality, and available time ranges. Link translations to source segments and audio chunks to translation segments. Define audio chunk format/sample rate/channels, finish/cancel, disconnect cleanup, heartbeat/idle timeout, recoverability, input/output backpressure, queue limits, and slow-client behavior.
+
+**Incremental commitment and revision:** Streaming recognition may change as new audio arrives, and partial translations may change when the source text is revised. Define translation stabilization/commit policy, permitted edits to text translations, and when a translation becomes final. Speech mode speaks only committed segments. Balance translation trigger frequency, acceptable revision rate, utterance endpointing, context, quality, latency, and compute cost. Do not trigger unlimited retranslations or TTS for every ASR partial.
+
+**VAD and endpointing:** VAD detects speech/silence regions for silence suppression or segmentation. Streaming ASR endpoint detection decides when the current utterance can be committed; these are different responsibilities. First evaluate endpoint detection built into online ASR; a separate VAD is not mandatory. Compare VAD as optional preprocessing/real-time enhancement, measuring missed quiet speech, truncation, noise false positives, and CPU overhead. Endpoint policy affects final recognition, translation stability, and TTS start time.
+
+**Models, capabilities, and routing:** Whisper, SenseVoice, and Qwen3-ASR are currently cataloged as offline models; this does not establish streaming support. New model metadata must describe online/offline type, input/output modality, streaming support, source/target languages or language pairs, required files, platform/device requirements, and license. Streaming ASR, text translation, speech translation, and TTS may be provided by one model or a compatible model chain. Select a complete feasible chain by session mode and language pair, then pin actual models/policy for the session and report the selection. If automatic source-language detection cannot finish in time, define a waiting state or require an explicit language; never switch language/model silently after output has begun. Extend catalog, in-use model protection, and capability/runtime descriptions to represent these features.
+
+**Concurrency, resources, and failures:** The current provider-wide lock serializes sherpa-onnx inference, and the existing queue serves finite one-shot requests. Long-lived WebSocket sessions must not occupy ordinary inference slots indefinitely, and audio chunks must not be queued without bounds. Design per-session recognizer state, fair scheduling, concurrent session quotas, model sharing/isolation, audio buffer/output queue limits, input backpressure, idle/maximum session lifetime, cancellation/disconnect cleanup, shutdown, overload, and TTS lag behavior. Measure end-to-end sustained real-time factor, queue latency, CPU/memory, and session count.
+
+**Implementation and acceptance order:**
+
+1. Freeze session semantics, event structure, language inputs, limits, and errors for the three modes. Establish target devices and representative corpora.
+2. Evaluate sherpa-onnx online ASR candidates and platform compatibility. Measure first-partial latency, endpoint latency, WER/CER, RTF, resources, and licenses; build session infrastructure and implement mode 1.
+3. Evaluate cascaded text translation and end-to-end speech-to-text translation. Measure quality, translation latency, and revision rate per language pair; implement mode 2.
+4. Implement chunked TTS for committed translations, audio ordering/linkage, playback cancellation, and backlog control; implement mode 3.
+5. Compare model endpoint detection against VAD+ASR separately. Add VAD as an optional capability/configuration only if it clearly improves quality or product experience.
+6. Accept each mode separately: mode 1 by partial/final latency and recognition quality; mode 2 by translation latency/quality/revision rate/alignment; mode 3 by first-audio latency, playback order, and backlog. Jointly accept sustained real-time factor, concurrency, resource limits, timeouts, cancellation, disconnect cleanup, and privacy logging.
+
+**Current status:** This is a future design/research plan only. Do not implement streaming APIs, models, or VAD in the current phase. Evaluate model candidates, language coverage, target-device performance, licenses, protocol path/schema, and latency/quality thresholds before implementation. Streaming APIs and a management UI remain outside the current release scope.
+
+Continue expanding the model catalog in stages, prioritizing evaluation of larger parameter counts and non-INT8 precision to improve recognition and synthesis quality. Candidates include Whisper Small/Medium/Large for STT (approximately 244M/769M/1.55B parameters; start by validating Medium) and Kokoro-82M for TTS. Also evaluate FP32/FP16 or other non-INT8 weights for existing Whisper, Piper, and other models. For every candidate, confirm sherpa-onnx/target backend compatibility, Windows CPU operation, language coverage, license, and source. Compare quality, latency, RTF, memory, and disk usage on a shared corpus and hardware; do not assume larger parameter count or unquantized precision is automatically better. Add models to the catalog and lifecycle in batches only after evaluation.
+
+Also evaluate additional languages/models, mirror providers, a lightweight management UI, and macOS/Linux/Android adapters. Mobile may use an embedded SDK and does not require a permanently running Web service. See the “Streaming Speech Processing” section in this phase for its detailed plan.
+
+## Current Repository Structure
 
 ```text
 SmartVoice/
 ├─ README.md
 ├─ LICENSE
-├─ pyproject.toml                 # 当前实现选用 Python；依赖保持精简
+├─ pyproject.toml                 # Python is currently selected; keep dependencies lean
 ├─ doc/
 │  ├─ requirements-spec.md
 │  ├─ industry-research.md
 │  └─ implementation-plan.md
-├─ catalog/models.json             # 固定 HTTPS 来源与模型文件清单
+├─ catalog/models.json             # Pinned HTTPS sources and model file inventory
 ├─ src/smartvoice/
-│  ├─ __main__.py                  # 本地 API 与模型 CLI
+│  ├─ __main__.py                  # Local API and model CLI
 │  ├─ app.py
 │  ├─ api/v1/routes.py
 │  ├─ config/settings.py
@@ -165,51 +196,58 @@ SmartVoice/
 ├─ tests/
 │  ├─ test_api.py
 │  ├─ test_model_catalog.py
-│  └─ test_real_inference.py       # 安装模型后执行，否则自动跳过
+│  └─ test_real_inference.py       # Runs after models are installed; otherwise skipped
 ├─ benchmarks/
-│  ├─ runner.py                  # quality/performance/concurrency comparison
-│  ├─ config/                    # tracked suite and empty manifest templates
-│  └─ tests/                     # benchmark-specific tests
-└─ examples/                     # product usage examples
+│  ├─ runner.py                    # Quality/performance/concurrency comparison
+│  ├─ config/                      # Tracked suite and empty manifest templates
+│  └─ tests/                       # Benchmark-specific tests
+└─ examples/                       # Product usage examples
 ```
 
-模型权重保存在用户数据目录，不进入 Git。后续再按模块增长情况拆分 API schema、平台服务、运行时诊断和模型任务管理。
+Model weights live in the user data directory and are not checked into Git. Further splits of API schemas, platform services, runtime diagnostics, and model task management should follow module growth.
 
-## 验收方式
+## Acceptance Method
 
-### STT 质量与性能
+### STT Quality and Performance
 
-维护固定、人工校对的中文/英语语料及清晰的许可记录，覆盖口音、噪声、远讲、专名、中英混说、静音、损坏、超长等条件。对同一模型版本运行完整语料，保存逐条参考文本、识别结果与环境信息。
+Maintain fixed, manually transcribed Chinese/English corpora with clear licensing. Cover accents, noise, far-field speech, proper nouns, Chinese/English mixing, silence, corruption, and long recordings. Run the complete corpus against the same model version and save each reference, recognition result, and environment details.
 
-- 英语报告 WER；中文报告 CER，并另报数字/专名等关键实体错误。所有文本使用固定规范化规则。
-- 记录冷启动、推理耗时、RTF、内存/显存峰值及真实执行设备。
-- JiWER 可用于 WER/CER 计算；需针对中文定义稳定的规范化和分词规则。
+- Report English WER and Chinese CER. Separately report errors for key entities such as numbers and proper nouns. Use fixed text normalization.
+- Record cold start, inference time, RTF, peak RAM/VRAM, and actual device.
+- JiWER may be used for WER/CER; define stable Chinese normalization and tokenization rules.
 
-### TTS 质量与性能
+### TTS Quality and Performance
 
-固定中英文文本集，覆盖数字、标点、缩写、多音字、专名和长文本。保存生成 WAV 和运行数据。
+Use a fixed Chinese/English text set covering numbers, punctuation, abbreviations, polyphonic characters, proper nouns, and long text. Save generated WAV files and runtime data.
 
-- 以人工盲听 MOS/成对偏好为主要质量判断；按自然度、可懂度、发音/韵律分项记录。
-- DNSMOS、UTMOS 可用于自动回归筛查；TTSDS 可用于阶段性多维模型对比。自动预测分数不作为用户感知质量的唯一结论。
-- 独立 STT 对 TTS 输出的识别结果可辅助评估可懂度，但会受该 STT 自身误差影响。
-- 记录生成耗时、首音频延迟、RTF、峰值内存/显存、采样率和音频时长。PESQ/STOI 不作为无配对 TTS 音频的主指标。
+- Use blinded human MOS/pairwise preference as the primary quality judgment; separately record naturalness, intelligibility, pronunciation, and prosody.
+- DNSMOS and UTMOS may be used for automated regression screening. TTSDS may be used for periodic multidimensional model comparisons. Automated predicted scores are not the sole measure of user-perceived quality.
+- Recognition of TTS output by an independent STT model may help assess intelligibility, but is affected by that STT model's own errors.
+- Record synthesis time, time to first audio, RTF, peak RAM/VRAM, sample rate, and audio duration. Do not use PESQ/STOI as the primary metric for unpaired TTS audio.
 
-### API、稳定性、离线与隐私
+### API, Reliability, Offline Operation, and Privacy
 
-- 按 OpenAPI 契约检查正常请求、非法字段、错误码、取消/超时、队列上限和资源清理。
-- 覆盖磁盘不足、下载中断、哈希不匹配、模型缺失、显存不足和设备回退等故障路径。
-- 已安装模型断网推理；检查 loopback 默认监听、日志脱敏和临时音频清理。
-- 在两种 provider/契约替身上验证适配器一致性，确认客户端契约不随后端变化。
+- Check normal requests, invalid fields, error codes, cancellation/timeouts, queue limits, and resource cleanup against the OpenAPI contract.
+- Cover disk exhaustion, interrupted downloads, hash mismatch, missing models, insufficient VRAM, and device fallback.
+- Run installed-model inference offline. Check default loopback binding, log redaction, and temporary audio cleanup.
+- Verify adapter consistency with two providers/contract substitutes and confirm that client contracts do not change with the backend.
 
-所有质量/性能门槛由阶段 0 在参考机器与基准语料确定。每份报告记录模型 revision/hash、语料版本、规范化规则、硬件、驱动和运行时版本。
+Set all quality/performance thresholds in Phase 0 using reference hardware and benchmark corpora. Each report records model revision/hash, corpus version, normalization rules, hardware, driver, and runtime versions.
 
-## 当前代码阶段验收
+## Architecture Boundary Improvements (Phases 1–4 Complete)
 
-- Windows x64 CPU 源码运行纵向切片已具备：健康/按任务就绪、runtime/capability/model 查询、中文/英语文件 STT 和 WAV TTS、常见 WAV/MP3/FLAC/M4A 解码、请求 ID、字段级错误、脱敏诊断日志、并发队列上限及 STT/TTS 输入输出边界。
-- Windows 主机和进程运行指标可通过 runtime、响应头和日志读取；包括 CPU/内存、进程工作集/峰值工作集及每次请求的 CPU 时间。默认推理并发为 1，排队容量和超时可配置。
-- 真实模型测试覆盖中英 STT/TTS、四种输入音频容器、损坏音频和超长文本分块路径。性能脚本记录冷/热延迟、RTF、CPU 时间、归一化 CPU 利用率、进程内存，以及同进程加载任务/语言路径后的驻留峰值。
-- 历史单机实测数据见 [Windows CPU 运行配置](../benchmarks/config/windows-cpu.json) 和机器可读 [JSON 报告](../benchmarks/result/windows-cpu-ryzen-ai-9-hx-370.json)。该结果来自 Ryzen AI 9 HX 370，不是最低配置承诺或验收 SLA，也不应与新 benchmark schema 的结果直接比较。
-- 模型生命周期现已提供 CLI 和 REST 操作：按任务激活/停用、卸载保护、后台下载进度/取消、Range 续传、离线 ZIP 导入/导出和磁盘占用信息。服务端推理超时会返回 504；底层原生推理线程无法强制终止，因此该线程完成前仍占用推理槽位，避免超时后额外推理挤占资源。
-- 配置支持 JSON 文件、环境变量覆盖和关键 CLI 启动覆盖；启动时报告数据目录/服务地址，并能识别已有服务实例。
-- 核心验收仍有明确缺口：尚无获准使用且人工校对的代表性中英 STT 语料，因此没有可靠 CER/WER 和正式质量门槛；TTS 尚无固定听测集和人工盲听结论；尚未在最终约定的参考硬件上确定性能 SLA。TTS `language` 作为期望语言提示，按输入文字的主导字符脚本做冲突校验，实际发音仍由双语模型依据文本决定。
-- 当前只验证 SenseVoice/Melo 与 sherpa-onnx CPU 路径。GPU、其他 OS、替代模型/后端的实测与契约替换验证、远程鉴权、流式 API 和管理 UI 仍待后续阶段；不纳入本次 Windows CPU 目标。
+- `domain` now owns neutral contracts for model metadata, installed models, transcription results, and language-identification results. Inference, model repository, optional language identification, and load status are declared through `ports`.
+- STT/TTS model validation, language decisions, automatic routing, and fallback have moved into application services; HTTP routes map requests/responses. API and CLI share model-management use cases.
+- The sherpa-onnx provider reads specifications and paths through the model repository; host/process diagnostics belong to the platform adapter. Source catalog metadata is copied into package resources during wheel builds, so installed operation does not require a repository checkout.
+- Language-identification assets are optional: service startup does not download them. `/v1/capabilities` reports availability; users can explicitly install them with `models install-language-id`. If assets are missing, fall back to an STT model that supports automatic detection.
+
+## Current Code-phase Acceptance
+
+- The Windows x64 CPU source vertical slice provides health/task readiness, runtime/capability/model queries, Chinese/English file STT and WAV TTS, WAV/MP3/FLAC/M4A decoding, request IDs, field-level errors, redacted diagnostics, bounded inference queues, and STT/TTS input/output limits.
+- Windows host and process metrics are available through runtime, response headers, and logs, including CPU/memory, process working set/peak working set, and per-request CPU time. Default inference concurrency is 1; queue capacity and timeouts are configurable.
+- Real-model tests cover Chinese/English STT/TTS, four input audio containers, corrupt audio, and long-text chunking. Performance scripts record cold/warm latency, RTF, CPU time, normalized CPU utilization, process memory, and resident peaks after loading task/language paths in one process.
+- Historical single-machine measurements are in [Windows CPU settings](../benchmarks/config/windows-cpu.json) and the machine-readable [JSON report](../benchmarks/result/windows-cpu-ryzen-ai-9-hx-370.json). These results come from a Ryzen AI 9 HX 370; they are not a minimum-specification commitment or acceptance SLA and should not be directly compared with reports using the new benchmark schema.
+- Model lifecycle operations are available through CLI and REST: activation/deactivation by task, in-use removal protection, background download progress/cancellation, Range resume, offline ZIP import/export, and disk usage. Inference timeout returns 504. Native inference threads cannot be forcibly stopped, so the thread continues to occupy an inference slot until it finishes; this prevents additional inference from overcommitting resources after a timeout.
+- Configuration supports JSON files, environment-variable overrides, and key CLI startup overrides. Startup reports the data directory/service address and can detect an existing service instance.
+- Important acceptance gaps remain: there is no approved, manually transcribed representative Chinese/English STT corpus, so reliable CER/WER and formal quality thresholds are unavailable; TTS has no fixed listening set or blinded human evaluation; performance SLAs have not been set on the final reference hardware. TTS `language` is an expected-language hint. The service checks conflicts against the dominant character script, while actual pronunciation is determined by the text in the bilingual model.
+- Only the SenseVoice/Melo sherpa-onnx CPU path is validated. GPU, other operating systems, alternative models/backends, adapter contract substitution, remote authentication, streaming APIs, and a management UI remain for later phases and are outside the current Windows CPU target.

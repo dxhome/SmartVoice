@@ -7,8 +7,9 @@ import uuid
 from typing import Any
 
 from smartvoice.config.settings import Settings
-from smartvoice.domain.errors import InvalidRequestError
-from smartvoice.services.model_catalog import get_model_spec, install_model
+from smartvoice.domain.errors import InvalidRequestError, ResourceNotFoundError
+from smartvoice.services.model_registry import get_model_spec
+from smartvoice.services.model_download import install_model
 
 
 class ModelJobManager:
@@ -67,14 +68,14 @@ class ModelJobManager:
         with self._lock:
             job = self._jobs.get(job_id)
             if job is None:
-                raise InvalidRequestError(f"Unknown model job ID: {job_id}")
+                raise ResourceNotFoundError(f"Unknown model job ID: {job_id}")
             return {key: value for key, value in job.items() if key != "cancel"}
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         with self._lock:
             job = self._jobs.get(job_id)
             if job is None:
-                raise InvalidRequestError(f"Unknown model job ID: {job_id}")
+                raise ResourceNotFoundError(f"Unknown model job ID: {job_id}")
             if job["status"] not in {"queued", "running"}:
                 return {key: value for key, value in job.items() if key != "cancel"}
             job["cancel"].set()

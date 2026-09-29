@@ -1,20 +1,49 @@
 """Inference boundary implemented by runtime-specific adapters."""
 
-from typing import Protocol
+from typing import Protocol, Sequence, runtime_checkable
+
+from smartvoice.domain.contracts import (
+    InstalledModel,
+    LanguageIdentificationResult,
+    ProviderCapabilityDocument,
+    SynthesizedSpeech,
+    TranscriptionResult,
+)
 
 
 class InferenceProvider(Protocol):
-    """Operations an inference adapter must expose to the domain layer."""
+    """Required operations an inference adapter exposes to application services."""
 
-    def installed_models(self) -> list[dict[str, object]]: ...
+    def installed_models(self) -> Sequence[InstalledModel]: ...
 
     def runtime(self) -> dict[str, object]: ...
 
-    def transcribe(self, audio: bytes, language: str = "auto", model_id: str | None = None) -> dict[str, object]: ...
+    def transcribe(self, audio: bytes, language: str = "auto", model_id: str | None = None) -> TranscriptionResult: ...
 
     def synthesize(
         self, text: str, voice: str = "default", speed: float = 1.0, model_id: str | None = None,
         language: str = "auto",
-    ) -> tuple[bytes, int, float]: ...
+    ) -> SynthesizedSpeech: ...
 
-    def capabilities(self) -> dict[str, object]: ...
+    def capabilities(self) -> ProviderCapabilityDocument: ...
+
+
+@runtime_checkable
+class LanguageIdentifier(Protocol):
+    """Optional adapter capability for dedicated spoken-language detection."""
+
+    def identify_language(self, audio: bytes) -> LanguageIdentificationResult: ...
+
+
+@runtime_checkable
+class LanguageIdentifierStatus(Protocol):
+    """Optional status capability for adapters with installable detector assets."""
+
+    def language_identification_available(self) -> bool: ...
+
+
+@runtime_checkable
+class ModelLifecycle(Protocol):
+    """Optional provider capability for querying loaded models and releasing them."""
+
+    def is_model_loaded(self, model_id: str) -> bool: ...

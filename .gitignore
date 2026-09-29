@@ -2,6 +2,7 @@
 __pycache__/
 .venv/
 .smartvoice-dev/
+samples/
 *.py[codz]
 *$py.class
 
@@ -218,3 +219,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# macOS metadata
+.DS_Store

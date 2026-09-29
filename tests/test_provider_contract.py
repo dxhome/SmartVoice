@@ -8,10 +8,46 @@ from fastapi.testclient import TestClient
 
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
+from smartvoice.domain.contracts import SynthesizedSpeech
 from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 
 
 class ProviderContractTests(unittest.TestCase):
+    def test_spoken_language_identifier_uses_sherpa_whisper_tiny_api(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        import numpy as np
+
+        provider = SherpaOnnxProvider(Settings(data_dir=Path.cwd() / ".smartvoice-dev" / "lid-contract"))
+        calls = {}
+
+        class WhisperConfig:
+            def __init__(self, **kwargs):
+                calls["whisper"] = kwargs
+
+        class IdentifierConfig:
+            def __init__(self, **kwargs):
+                calls["config"] = kwargs
+
+        stream = SimpleNamespace(accept_waveform=Mock())
+        identifier = SimpleNamespace(create_stream=Mock(return_value=stream), compute=Mock(return_value="fr"))
+        sherpa = SimpleNamespace(
+            SpokenLanguageIdentificationWhisperConfig=WhisperConfig,
+            SpokenLanguageIdentificationConfig=IdentifierConfig,
+            SpokenLanguageIdentification=Mock(return_value=identifier),
+        )
+        provider._sherpa = lambda: sherpa
+        provider._decode_audio = lambda *_args: np.zeros(1600, dtype=np.float32)
+        with patch("smartvoice.adapters.inference.sherpa_onnx.provider.installed_language_id_model_dir", return_value=Path("/lid")):
+            result = provider.identify_language(b"fixture")
+
+        self.assertEqual(calls["whisper"], {"encoder": "/lid/tiny-encoder.int8.onnx", "decoder": "/lid/tiny-decoder.int8.onnx"})
+        self.assertEqual(calls["config"]["num_threads"], provider.settings.num_threads)
+        self.assertEqual(result["language"], "fr")
+        self.assertEqual(result["model"], "sherpa-onnx-whisper-tiny-int8-language-id")
+        stream.accept_waveform.assert_called_once()
+        identifier.compute.assert_called_once_with(stream)
+
     def test_whisper_model_uses_whisper_recognizer_factory(self):
         from types import SimpleNamespace
         from unittest.mock import Mock
@@ -94,7 +130,7 @@ class ProviderContractTests(unittest.TestCase):
                 return {"text": "contract", "language": language, "duration": 1.0, "model": model_id, "device": "cpu"}
 
             def synthesize(self, text, voice="default", speed=1.0, model_id=None, language="auto"):
-                return b"RIFF-test", 24000, 1.0
+                return SynthesizedSpeech(audio=b"RIFF-test", sample_rate=24000, duration=1.0)
 
         class ProviderB(ProviderA):
             backend = "provider-b"
@@ -116,10 +152,10 @@ class ProviderContractTests(unittest.TestCase):
                     transcription = client.post(
                         "/v1/audio/transcriptions",
                         files={"file": ("sample.wav", b"fixture", "audio/wav")},
-                        data={"model": "stt-smartvoice-auto", "language": "zh"},
+                        data={"model": "smartvoice-auto", "language": "zh"},
                     )
                     speech = client.post("/v1/audio/speech", json={
-                        "model": "tts-smartvoice-auto", "input": "Hello", "language": "en",
+                        "model": "smartvoice-auto", "input": "Hello", "language": "en",
                     })
                     self.assertEqual(transcription.status_code, 200)
                     self.assertEqual(transcription.json()["text"], "contract")

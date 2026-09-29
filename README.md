@@ -18,12 +18,12 @@ SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It 
 
 Smart routing selects a model for each request using its language and a user-editable, ordered JSON table. It is a lightweight model router: the configured order decides which model is preferred for each task and language.
 
-Use these virtual model IDs to enable routing:
+Use one virtual model ID for both transcription and speech synthesis. SmartVoice routes by the API endpoint being called:
 
 | Request | Virtual model ID | Language source |
 |---|---|---|
-| Transcription | `stt-smartvoice-auto` | Explicit `language`, or an installed STT model's automatic detection when omitted or `auto` |
-| Speech synthesis | `tts-smartvoice-auto` | Explicit `language`, or offline text detection when omitted or `auto` |
+| Transcription | `smartvoice-auto` | Explicit `language`, or automatic detection when omitted or `auto` |
+| Speech synthesis | `smartvoice-auto` | Explicit `language`, or text detection when omitted or `auto` |
 
 The built-in route table is copied to `<data_dir>/router.json` on first startup. Edit the JSON file to customize model selection by language, then apply the changes without restarting:
 
@@ -49,19 +49,21 @@ SmartVoice supports a subset of OpenAI Audio API conventions; this is not a clai
 
 ## Model catalog
 
-All listed models use the sherpa-onnx adapter. Language availability describes catalog capability, not comparative quality; model and voice licenses may differ from SmartVoice's license.
+All listed models use the sherpa-onnx adapter. Language availability describes catalog capability, not comparative quality; model and voice licenses may differ from SmartVoice's license. Based on the available quality and performance benchmarks, the recommended STT models are SenseVoice and Qwen3-ASR. For TTS, Matcha Baker is recommended for Chinese only, and Supertonic 3 for its supported non-Chinese languages. These recommendations balance measured recognition quality and CPU performance; benchmark coverage varies by language, and TTS listening quality has not been rated with MOS.
 
-| Model ID | Task | Languages / voices |
-|---|---|---|
-| `stt-whisper-base-multilingual-int8` | STT | Auto detection; English, Chinese, Japanese, Korean, French, German |
-| `stt-sensevoice-small-int8` | STT | Chinese, English, Cantonese, Japanese, Korean |
-| `stt-qwen3-asr-600m-int8` | STT | 30 language codes including Cantonese; automatic detection |
-| `tts-melo-zh-en` | TTS | Chinese, English |
-| `tts-kokoro-multilingual-v1-1-zh-en` | TTS | Chinese, English; 103 speakers |
-| `tts-matcha-zh-baker` | TTS | Chinese; one voice |
-| `tts-supertonic-v3-multilingual-int8` | TTS | 31 languages; no Chinese |
+| Model ID | Task | Languages / voices | Recommendation |
+|---|---|---|---|
+| `stt-whisper-base-multilingual-int8` | STT | Auto detection; English, Chinese, Japanese, Korean, French, German | — |
+| `stt-sensevoice-small-int8` | STT | Chinese, English, Cantonese, Japanese, Korean | Recommended |
+| `stt-qwen3-asr-600m-int8` | STT | 30 language codes including Cantonese; automatic detection | Recommended |
+| `tts-melo-zh-en` | TTS | Chinese, English | — |
+| `tts-kokoro-multilingual-v1-1-zh-en` | TTS | Chinese, English; 103 speakers | — |
+| `tts-matcha-zh-baker` | TTS | Chinese; one voice | Recommended for Chinese only |
+| `tts-supertonic-v3-multilingual-int8` | TTS | 31 languages; no Chinese | Recommended |
 
 Install models from the catalog with `python -m smartvoice models install <model-id>`. Qwen3-ASR needs about 1 GB for model files, plus temporary disk space during installation. See [`catalog/models.json`](catalog/models.json) for the exact language codes, sources, and model details.
+
+For routed STT requests with `language=auto`, SmartVoice can use an optional dedicated spoken-language detector. Install it explicitly with `python -m smartvoice models install-language-id`; without it, SmartVoice falls back to an installed STT model that supports automatic language detection. The detector is not downloaded during service startup. Its availability is reported by `/v1/capabilities`.
 
 ## Quick start (macOS and Windows)
 
@@ -69,7 +71,18 @@ Install models from the catalog with `python -m smartvoice models install <model
 
 Requires Python 3.11 or newer. SmartVoice runs inference on CPU; no GPU or CUDA installation is required. The examples use the default loopback address, `127.0.0.1`.
 
-On macOS:
+After the first PyPI release, install the published package and inference dependencies with:
+
+```bash
+python -m pip install "smartvoice[inference]"
+python -m smartvoice models install stt-sensevoice-small-int8
+python -m smartvoice models install tts-melo-zh-en
+python -m smartvoice --host 127.0.0.1 --port 8000
+```
+
+Upgrade an existing installation with `python -m pip install --upgrade "smartvoice[inference]"`. The package includes the built-in model catalog, router table, web page, and default `smartvoice.json`; model weights are downloaded separately.
+
+To run from a source checkout, use the development install below. On macOS:
 
 ```bash
 python3 -m venv .venv
@@ -101,6 +114,8 @@ The route table is separate: edit `<data_dir>/router.json`, then run `python -m 
 
 ### Connect an agent or application
 
+Before connecting a client, open the built-in SmartVoice integration test page at `http://127.0.0.1:8000/test`. It lists installed STT and TTS models with their supported languages and sizes, lets you upload audio for a real transcription test, and generates playable speech from text. Use it to confirm the models and languages you need are available; the page also shows copyable `curl` examples with the selected model IDs.
+
 In your OpenAI-compatible client, set the API base URL to:
 
 ```text
@@ -116,7 +131,7 @@ The audio endpoints follow a supported subset of the OpenAI Audio API convention
 ### Transcribe audio with routing
 
 ```powershell
-curl.exe -F "file=@sample.wav" -F "model=stt-smartvoice-auto" -F "language=auto" `
+curl.exe -F "file=@sample.wav" -F "model=smartvoice-auto" -F "language=auto" `
   http://127.0.0.1:8000/v1/audio/transcriptions
 ```
 
@@ -127,7 +142,7 @@ Supported upload formats include WAV, MP3, M4A, and FLAC. Audio is limited to 25
 ```powershell
 curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
   -H "Content-Type: application/json" `
-  -d '{"model":"tts-smartvoice-auto","input":"Hello from SmartVoice.","language":"auto"}' `
+  -d '{"model":"smartvoice-auto","input":"Hello from SmartVoice.","language":"auto"}' `
   --output speech.wav
 ```
 
@@ -147,16 +162,23 @@ python -m smartvoice models uninstall stt-sensevoice-small-int8
 ## Architecture
 
 ```text
-Client / Agent
-      │
-      ▼
-OpenAI-style HTTP API ──► Static language router ──► Installed model
-      │                                              │
-      └── Model catalog and lifecycle               ▼
-                                             sherpa-onnx CPU adapter
+Client / Agent ──► Versioned HTTP API ──► Application services
+                         ▲                       │
+                         │                       ▼
+                    Local CLI              Domain contracts
+                                                 │
+                               ┌─────────────────┴─────────────────┐
+                               ▼                                   ▼
+                       Inference port                      Model repository port
+                               │                                   │
+                               ▼                                   ▼
+                    sherpa-onnx adapter                 Filesystem catalog adapter
+                               │
+                               ▼
+                      Platform diagnostics adapter
 ```
 
-Callers use the versioned API and capability endpoints; inference details stay behind the provider adapter. The current release supports CPU inference on Windows x64 and macOS Apple Silicon when run from source. GPU providers, streaming, Linux, Android, and packaged installers are not available.
+Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The current release supports CPU inference on Windows x64 and macOS Apple Silicon when run from source. GPU providers, streaming, Linux and Android runtimes are not available.
 
 ## Development
 
@@ -166,12 +188,13 @@ python -m unittest discover -s tests -v
 ```
 
 Real-inference tests require the relevant models to be installed. See [`benchmarks/README.md`](benchmarks/README.md) for model quality, latency, and concurrency comparisons.
+See [`doc/releasing.md`](doc/releasing.md) for versioning, GitHub Releases, and optional PyPI publishing.
 
 ## Repository layout
 
 ```text
 catalog/       Model metadata and default router table
-src/           API, routing, model lifecycle, and inference adapters
+src/           API/CLI entry points, application services, domain contracts, ports, and adapters
 tests/         Unit, API, and optional real-inference tests
 benchmarks/    Benchmark code, configurations, and results
 config/        Example service settings

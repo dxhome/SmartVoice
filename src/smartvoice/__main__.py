@@ -16,11 +16,11 @@ from pathlib import Path
 import uvicorn
 
 from smartvoice.config.settings import Settings
+from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
 from smartvoice.domain.errors import SmartVoiceError
-from smartvoice.services.model_catalog import (
-    ModelDownloadCancelled, catalog_models, export_model, get_model_spec,
-    import_model, install_model, uninstall_model,
-)
+from smartvoice.services.model_download import ModelDownloadCancelled
+from smartvoice.services.model_jobs import ModelJobManager
+from smartvoice.services.model_management import ModelManagementService
 
 
 def _format_model_list(models: list[dict[str, object]]) -> str:
@@ -60,6 +60,31 @@ def _is_loopback(host: str) -> bool:
         return ipaddress.ip_address(host).is_loopback
     except ValueError:
         return False
+
+
+def _print_startup_banner(address: str, settings: Settings, debug: bool) -> None:
+    art_path = Path(__file__).with_name("ascii-art.txt")
+    source_lines = art_path.read_text(encoding="utf-8").strip("\n").splitlines()
+    scale = 1.0
+    source_width = max((len(line) for line in source_lines), default=0)
+    art_width = max(1, round(source_width * scale))
+    art_height = max(1, round(len(source_lines) * scale))
+    art_lines = []
+    for row in range(art_height):
+        source_line = source_lines[min(len(source_lines) - 1, int(row / scale))].ljust(source_width)
+        art_lines.append("".join(
+            source_line[min(source_width - 1, int(column / scale))]
+            for column in range(art_width)
+        ).rstrip())
+    art_width = max((len(line) for line in art_lines), default=0)
+    border = f"+{'-' * (art_width + 2)}+"
+    print(border)
+    for line in art_lines:
+        print(f"| {line.ljust(art_width)} |")
+    print(border)
+    debug_label = " | DEBUG MODE" if debug else ""
+    print(f"Starting SmartVoice API at {address} (CPU, {settings.num_threads} inference threads{debug_label})")
+    print(f"Docs: {address}/docs | Test: {address}/test")
 
 
 def _smartvoice_is_running(host: str, port: int) -> bool:
@@ -109,10 +134,9 @@ def _serve(args: list[str]) -> None:
     except OSError:
         pass
     settings.models_dir.mkdir(parents=True, exist_ok=True)
+    _print_startup_banner(address, settings, parsed.debug)
     print(f"SmartVoice data directory: {settings.data_dir}")
     print(f"Model directory: {settings.models_dir}")
-    debug_label = " | DEBUG MODE" if parsed.debug else ""
-    print(f"Starting SmartVoice API at {address} (CPU, {settings.num_threads} inference threads{debug_label})")
     from smartvoice.app import create_app
 
     uvicorn.run(
@@ -136,43 +160,58 @@ def _models(args: list[str]) -> None:
     export_parser.add_argument("destination", type=Path)
     import_parser = subparsers.add_parser("import", help="Import and verify a portable offline model package")
     import_parser.add_argument("archive", type=Path)
+    subparsers.add_parser("install-language-id", help="Install the optional spoken-language detection assets")
     parsed = parser.parse_args(args)
     try:
         settings = Settings.from_env(parsed.config)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(f"Invalid configuration: {exc}")
+    model_management = ModelManagementService(
+        ModelJobManager(settings), CatalogModelRepository(settings)
+    )
     if parsed.action == "list":
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8")
-        models = catalog_models(settings)
+        models = model_management.catalog()["data"]
         if parsed.json:
             print(json.dumps(models, ensure_ascii=False, indent=2))
         else:
             print(_format_model_list(models))
         return
 
+    if parsed.action == "install-language-id":
+        from smartvoice.services.spoken_language_identifier import ensure_language_id_model
+
+        try:
+            destination = ensure_language_id_model(settings)
+        except (OSError, ValueError, SmartVoiceError) as exc:
+            parser.error(str(exc))
+        print(f"Installed spoken-language detection assets at: {destination}")
+        return
+
     if parsed.action in {"uninstall", "remove"}:
         if _smartvoice_is_running(settings.server_host, settings.server_port):
             parser.error("Stop the SmartVoice service before uninstalling a model so loaded files are not removed.")
         try:
-            size = uninstall_model(settings, parsed.model_id)
+            result = model_management.uninstall(parsed.model_id)
         except (OSError, ValueError, SmartVoiceError) as exc:
             parser.error(str(exc))
+        size = int(result["removed_bytes"])
         print(f"Removed {parsed.model_id}; released {size / 1024**2:.1f} MiB.")
         return
     if parsed.action == "export":
         try:
-            export_model(settings, parsed.model_id, parsed.destination)
+            model_management.export(parsed.model_id, parsed.destination)
         except (OSError, ValueError, SmartVoiceError) as exc:
             parser.error(str(exc))
         print(f"Exported {parsed.model_id} to {parsed.destination}.")
         return
     if parsed.action == "import":
         try:
-            destination = import_model(settings, parsed.archive)
+            result = model_management.import_archive(parsed.archive)
         except (OSError, ValueError, SmartVoiceError, json.JSONDecodeError) as exc:
             parser.error(str(exc))
-        print(f"Imported model to {destination}.")
+        print(f"Imported model {result['id']}.")
         return
 
     last_output = 0.0
@@ -189,14 +228,14 @@ def _models(args: list[str]) -> None:
             print(f"\rDownloaded {downloaded / 1024**2:.1f} MiB", end="", flush=True)
         last_output = now
 
-    spec = get_model_spec(parsed.model_id)
+    spec = model_management.get_spec(parsed.model_id)
     if spec.file_sources:
         print("Model files are fetched from fixed HTTPS catalog URLs and each file is checked against its catalog SHA-256.")
     else:
         print("The archive is fetched from its fixed HTTPS catalog URL and checked against the catalog SHA-256.")
     print("Review the model license before redistribution.")
     try:
-        destination = install_model(settings, parsed.model_id, progress)
+        destination = model_management.install(parsed.model_id, progress)
     except (OSError, ValueError, SmartVoiceError, ModelDownloadCancelled) as exc:
         parser.error(str(exc))
     print(f"\nInstalled at: {destination}")

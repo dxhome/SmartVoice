@@ -14,7 +14,7 @@ class BenchmarkConfigTests(unittest.TestCase):
     def test_tracked_comparison_config_defines_language_and_category_profiles(self):
         path = Path(__file__).parents[1] / "config" / "model-comparison.json"
         config = _read_config(path)
-        self.assertEqual(set(config["languages"]), {"en", "zh"})
+        self.assertTrue({"en", "zh"}.issubset(config["languages"]))
         self.assertEqual(set(config["profiles"]), {"smoke", "standard", "full"})
         self.assertTrue(all("normalization" in language for language in config["languages"].values()))
         self.assertTrue(config["tts_quality_judge_model_id"])

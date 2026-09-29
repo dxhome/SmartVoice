@@ -1,0 +1,3 @@
+include catalog/models.json
+include catalog/router.json
+include config/smartvoice.example.json

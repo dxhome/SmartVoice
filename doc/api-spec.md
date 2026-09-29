@@ -22,16 +22,18 @@ This document describes the HTTP API implemented by the current source code. The
 
 | Method and path | Query parameters | Success response |
 |---|---|---|
-| `GET /v1/capabilities` | Optional `task`: `transcription` or `speech` | Provider capability document. Current fields: `api_version`, `capability_schema_version`, `backend`, and `tasks`. Each task entry includes task, model, languages, `streaming` (currently false), and `voices` for speech models; Kokoro also reports `voice_count`. |
+| `GET /v1/capabilities` | Optional `task`: `transcription` or `speech` | Provider capability document with `api_version`, `capability_schema_version`, `backend`, `tasks`, router status, and `language_identification`. The latter reports whether spoken-language detection is supported by the provider and whether optional assets are installed; it includes an install command when applicable. Each task entry includes task, model, languages, `streaming` (currently false), and `voices` for speech models; Kokoro also reports `voice_count`. |
 | `GET /v1/runtime` | None | Runtime document with backend/device/provider status, installed model count, router status/candidates, runtime version, host, system memory and process metrics. Some metrics can be `null` or omitted on unsupported platforms. |
-| `GET /v1/models` | None | OpenAI-style `{ "object": "list", "data": [...] }` list of installed models and virtual routing models, extended with SmartVoice metadata. Results are grouped by task (transcription, then speech); each task's virtual model appears first, followed by installed models sorted alphabetically by name. |
+| `GET /v1/models` | None | OpenAI-style `{ "object": "list", "data": [...] }` list of installed models and the `smartvoice-auto` virtual model, extended with SmartVoice metadata. `smartvoice-auto` is always first; installed models follow grouped by task and sorted alphabetically by name. |
 | `GET /v1/models/{model_id}` | Path: installed or virtual model ID | One OpenAI-style model object. Unknown or uninstalled concrete IDs return `404`. |
 | `GET /v1/catalog` | Optional `task`: `transcription` or `speech` | `{ "data": [...], "storage": {...} }`. Catalog entries include model ID, task, languages, backend, install status, source/archive metadata, installed size, required files and license note. Storage reports installed, free and total bytes. |
 | `POST /v1/router/reload` | Empty JSON object | Reloads `router.json`; invalid configuration returns an error and leaves the active configuration unchanged. Intended for local CLI use. |
 
 The `task` query parameter is a SmartVoice extension; omit it to list all tasks. Task names are `transcription` for STT and `speech` for TTS.
 
-The router reads `<data_dir>/router.json`, initializing it from the built-in `catalog/router.json` on first run. Edit the JSON directly, then run `python -m smartvoice router reload`. The command accepts the same `--config` option as the service and optional `--host`/`--port` overrides. Routing candidates are ordered per task and Whisper language code; the first installed and verified candidate is selected. Requests using `stt-smartvoice-auto` or `tts-smartvoice-auto` use routing. Requests using a concrete model ID continue to invoke that model directly. A model inference failure does not cause a second candidate to be tried.
+The router reads `<data_dir>/router.json`, initializing it from the built-in `catalog/router.json` on first run. Edit the JSON directly, then run `python -m smartvoice router reload`. The command accepts the same `--config` option as the service and optional `--host`/`--port` overrides. Routing candidates are ordered per task and language code declared by the model catalog; the first installed and verified candidate is selected. Requests using `smartvoice-auto` use routing for either audio endpoint. Requests using a concrete model ID continue to invoke that model directly. A model inference failure does not cause a second candidate to be tried.
+
+The dedicated spoken-language detector is optional. The service does not download it during startup; install it explicitly with `python -m smartvoice models install-language-id`. When it is unavailable, routed STT falls back to an installed model that supports automatic language detection, if one is available.
 
 ## Model management
 
@@ -53,8 +55,8 @@ Send `multipart/form-data`:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `file` | file | Required | Audio in WAV, MP3, M4A or FLAC format. Default upload limit: 25 MiB. Default duration limit: 600 seconds. |
-| `model` | string | Required | `stt-smartvoice-auto` routes by language, or specify an installed STT model ID for direct inference. |
-| `language` | string | `auto` | `auto` or a Whisper language code. `auto` uses a supported installed model for language detection before routing. STT automatic detection makes at most three attempts to obtain a language with a configured route. TTS text detection accepts confidence >= 0.70 immediately; after three lower-confidence results, it routes using the highest-confidence result. |
+| `model` | string | Required | `smartvoice-auto` routes by language, or specify an installed STT model ID for direct inference. |
+| `language` | string | `auto` | Empty or `auto` triggers language detection. When the optional sherpa-onnx Whisper Tiny int8 identifier is installed, SmartVoice uses it before routing. If it is unavailable or returns an unrouted language, SmartVoice falls back to an installed auto-capable ASR model when possible. The identifier is never downloaded during service startup. |
 | `response_format` | string | `json` | `json`, `text` or `verbose_json`. |
 | `timestamps` | boolean | `false` | Include token-level `segments` when true and when the model returns aligned tokens/timestamps. |
 
@@ -67,9 +69,9 @@ Send a JSON object. Unknown fields are rejected.
 | Field | Type | Default | Constraints |
 |---|---|---|---|
 | `input` | string | Required | Non-whitespace; 1–4,000 characters. |
-| `model` | string | Required | `tts-smartvoice-auto` routes by text/request language, or specify an installed TTS model ID for direct inference. |
+| `model` | string | Required | `smartvoice-auto` routes by text/request language, or specify an installed TTS model ID for direct inference. |
 | `voice` | string | `default` | Most models accept `default` or `0`. Kokoro accepts `default` or a speaker ID from `0` to `102`; its default speaker follows the resolved language. |
-| `language` | string or null | `auto` | `auto` detects text language offline. Explicit Whisper language codes take precedence over detected text script. |
+| `language` | string or null | `auto` | `auto` detects text language offline using text and script cues. Short text is repeated for detection when needed; synthesis always uses the original input. An explicit catalog-supported language code takes precedence over detected text script. |
 | `response_format` | string | `wav` | Only `wav` is accepted. |
 | `speed` | number | `1.0` | Inclusive range 0.5–2.0. |
 
@@ -91,9 +93,9 @@ Application errors have the following shape (validation errors additionally incl
 
 | HTTP status | `error.code` | Meaning |
 |---:|---|---|
-| `400` | `invalid_request` | Malformed request, invalid operation, unknown job ID, or invalid/unavailable catalog operation. |
+| `400` | `invalid_request` | Malformed request, invalid operation, or invalid/unavailable catalog operation. |
+| `404` | `not_found` | A model job ID does not exist. Unknown or uninstalled model IDs on the model detail endpoint return `404` with the standard HTTP error body. |
 | `400` | `router_config_invalid` | Router configuration is invalid or could not be read during reload. |
-| `400` | `language_detection_failed` | TTS language detection is unavailable, for example because the offline language detector dependency is missing. |
 | `413` | `file_too_large` | STT audio upload exceeds the configured byte limit. |
 | `413` | `payload_too_large` | Imported model package exceeds 2 GiB. |
 | `413` | `speech_output_too_large` | Generated TTS audio exceeds its configured duration or byte limit. |
@@ -101,8 +103,8 @@ Application errors have the following shape (validation errors additionally incl
 | `422` | `validation_error` | Request shape, field value, or field limit is invalid. `details` is an array of `{ "field", "message", "type" }`. |
 | `500` | `inference_failed` | Inference failed. |
 | `500` | `internal_error` | Unexpected server error. |
-| `501` | `not_implemented` | The requested language, task, model capability, voice, response format, device, or request option is not supported by this release. A valid language without a configured route also returns this status. |
-| `503` | `model_unavailable` | A supported model or automatic language detector is configured but not installed, verified, or available in the active provider. |
+| `501` | `not_implemented` | The requested language, task, model capability, voice, response format, device, or request option is not supported by this release. This also applies when no installed and verified model is available for a routed language. |
+| `503` | `model_unavailable` | A directly requested supported model, or a required runtime resource, is not installed, verified, or available in the active provider. |
 | `503` | `inference_overloaded` | The inference queue is full. |
 | `504` | `inference_timeout` | Queue wait or inference exceeded its configured timeout. |
 

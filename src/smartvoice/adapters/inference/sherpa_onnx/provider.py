@@ -19,10 +19,11 @@ from smartvoice.domain.errors import (
     SpeechOutputTooLargeError,
     UnsupportedFeatureError,
 )
-from smartvoice.services.model_catalog import (
-    get_model_spec, installed_models, model_directory,
-)
-from smartvoice.services.host_metrics import host_info, process_metrics, system_memory_info
+from smartvoice.domain.contracts import InstalledModel, LanguageIdentificationResult, SynthesizedSpeech, TranscriptionResult
+from smartvoice.ports.model_repository import ModelRepository
+from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
+from smartvoice.services.spoken_language_identifier import installed_language_id_model_dir
+from smartvoice.adapters.platform.host_metrics import host_info, process_metrics, system_memory_info
 
 STT_MODEL_ID = "stt-sensevoice-small-int8"
 TTS_MODEL_ID = "tts-melo-zh-en"
@@ -32,15 +33,66 @@ TARGET_SAMPLE_RATE = 16000
 class SherpaOnnxProvider:
     """Loads models on first use and serializes inference to bound CPU/memory use."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, model_repository: ModelRepository | None = None):
         self.settings = settings
+        self.model_repository = model_repository or CatalogModelRepository(settings)
         self._lock = threading.RLock()
         self._recognizers: dict[tuple[str, str], object] = {}
+        self._language_identifier = None
         self._tts: dict[str, object] = {}
         self._verified_files: dict[str, tuple[int, int, str]] = {}
 
-    def installed_models(self) -> list[dict[str, object]]:
-        available = installed_models(self.settings)
+    def identify_language(self, audio: bytes) -> LanguageIdentificationResult:
+        """Detect spoken language using sherpa-onnx's dedicated Whisper LID API."""
+        import av
+
+        import numpy as np
+
+        model_dir = installed_language_id_model_dir(self.settings)
+        if model_dir is None:
+            raise ModelUnavailableError(
+                "The optional spoken-language detector is not installed. Install its assets or specify a language."
+            )
+        try:
+            samples = self._decode_audio(av, audio, self.settings.max_audio_seconds)
+        except Exception as exc:
+            raise InvalidAudioError(
+                "Could not decode this audio. Try a valid WAV, MP3, M4A, or FLAC file.",
+                detail=type(exc).__name__,
+            ) from exc
+        if samples.size == 0:
+            raise InvalidAudioError("The uploaded audio is empty.")
+        with self._lock:
+            try:
+                if self._language_identifier is None:
+                    sherpa_onnx = self._sherpa()
+                    config = sherpa_onnx.SpokenLanguageIdentificationConfig(
+                        whisper=sherpa_onnx.SpokenLanguageIdentificationWhisperConfig(
+                            encoder=str(model_dir / "tiny-encoder.int8.onnx"),
+                            decoder=str(model_dir / "tiny-decoder.int8.onnx"),
+                        ),
+                        num_threads=self.settings.num_threads,
+                        provider=self.settings.provider,
+                    )
+                    self._language_identifier = sherpa_onnx.SpokenLanguageIdentification(config)
+                start = time.perf_counter()
+                stream = self._language_identifier.create_stream()
+                stream.accept_waveform(sample_rate=TARGET_SAMPLE_RATE, waveform=samples.astype(np.float32, copy=False))
+                language = self._language_identifier.compute(stream)
+                elapsed = time.perf_counter() - start
+            except Exception as exc:
+                raise InferenceError("Spoken language identification failed.", detail=type(exc).__name__) from exc
+        return {
+            "language": self._normalize_language(str(language)) or "",
+            "processing_seconds": round(elapsed, 4),
+            "model": "sherpa-onnx-whisper-tiny-int8-language-id",
+        }
+
+    def language_identification_available(self) -> bool:
+        return installed_language_id_model_dir(self.settings) is not None
+
+    def installed_models(self) -> list[InstalledModel]:
+        available = self.model_repository.installed_models()
         verified = []
         for model in available:
             try:
@@ -75,7 +127,7 @@ class SherpaOnnxProvider:
             task = {"task": model["task"], "model": model["id"], "languages": model["languages"], "streaming": False}
             if model["task"] == "speech":
                 task["voices"] = ["default"]
-                spec = get_model_spec(str(model["id"]))
+                spec = self.model_repository.get_spec(str(model["id"]))
                 if spec.voice_count:
                     task["voice_count"] = spec.voice_count
             tasks.append(task)
@@ -83,11 +135,11 @@ class SherpaOnnxProvider:
 
     def transcribe(
         self, audio: bytes, language: str = "auto", model_id: str = STT_MODEL_ID
-    ) -> dict[str, object]:
+    ) -> TranscriptionResult:
         import av
         import numpy as np
 
-        spec = get_model_spec(model_id)
+        spec = self.model_repository.get_spec(model_id)
         model_id = spec.id
         model_dir = self._model_dir(model_id)
         if language not in {"auto", *spec.languages}:
@@ -169,10 +221,10 @@ class SherpaOnnxProvider:
     def synthesize(
         self, text: str, voice: str = "default", speed: float = 1.0, model_id: str = TTS_MODEL_ID,
         language: str = "auto",
-    ) -> tuple[bytes, int, float]:
+    ) -> SynthesizedSpeech:
         import numpy as np
 
-        spec = get_model_spec(model_id)
+        spec = self.model_repository.get_spec(model_id)
         model_id = spec.id
         if spec.task != "speech":
             raise UnsupportedFeatureError(f"Model {model_id!r} does not support speech synthesis.")
@@ -188,7 +240,7 @@ class SherpaOnnxProvider:
                 raise UnsupportedFeatureError("The selected voice is not available in the installed TTS model.")
             sid = 0
         model_dir = self._model_dir(model_id)
-        spec = get_model_spec(model_id)
+        spec = self.model_repository.get_spec(model_id)
         model_path = self._manifest_path(model_dir, spec.model_file)
         lexicon_path = ",".join(
             str(self._manifest_path(model_dir, name)) for name in spec.lexicon_file.split(",")
@@ -252,7 +304,7 @@ class SherpaOnnxProvider:
             wav.setsampwidth(2)
             wav.setframerate(sample_rate)
             wav.writeframes(pcm.tobytes())
-        return output.getvalue(), sample_rate, duration
+        return SynthesizedSpeech(audio=output.getvalue(), sample_rate=sample_rate, duration=duration)
 
     @staticmethod
     def _split_tts_text(text: str, max_characters: int) -> list[str]:
@@ -351,9 +403,9 @@ class SherpaOnnxProvider:
     def _model_dir(self, model_id: str) -> Path:
         if self.settings.provider != "cpu":
             raise UnsupportedFeatureError("This release does not implement inference on the requested device; only CPU is supported.")
-        spec = get_model_spec(model_id)
+        spec = self.model_repository.get_spec(model_id)
         model_id = spec.id
-        directory = model_directory(self.settings, model_id)
+        directory = self.model_repository.model_directory(model_id)
         manifest = directory / "smartvoice-model.json"
         if not manifest.is_file():
             raise ModelUnavailableError(f"Model {model_id!r} is not installed. Install it with `python -m smartvoice models install {model_id}`.")

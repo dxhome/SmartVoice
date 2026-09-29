@@ -1,0 +1,497 @@
+{
+  "schema_version": "2.0",
+  "benchmark_suite": "smartvoice-model-comparison-v1",
+  "profile": "standard",
+  "software": {
+    "smartvoice": "0.1.0",
+    "python": "3.11.9"
+  },
+  "platform": {
+    "system": "Darwin",
+    "release": "27.0.0",
+    "machine": "arm64",
+    "processor": "arm",
+    "python_implementation": "CPython"
+  },
+  "dataset": {
+    "repo_id": "google/fleurs",
+    "revision": "10b20dadef85684efea8561331323382da703432",
+    "split": "test",
+    "license": "cc-by-4.0",
+    "languages": {
+      "en": {
+        "repository": "google/fleurs",
+        "revision": "10b20dadef85684efea8561331323382da703432",
+        "config": "en_us",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "e7886f59000714f61fff6c84ee9d87f70460b14d4f877995c03322127fac37e9"
+      },
+      "zh": {
+        "repository": "google/fleurs",
+        "revision": "10b20dadef85684efea8561331323382da703432",
+        "config": "cmn_hans_cn",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "fdc86d4687047a5b67b57d483d199edd0e4679e24ee1fc50cd3930eb7704833a"
+      }
+    }
+  },
+  "profile_settings": {
+    "quality_sample_limit": 100,
+    "performance_sample_limit": 5,
+    "bootstrap_samples": 1000,
+    "performance": {
+      "warmup_iterations": 3,
+      "iterations": 20
+    },
+    "concurrency": {
+      "concurrency_levels": [
+        1,
+        2,
+        4
+      ],
+      "requests_per_worker": 10,
+      "soak_workers": 4,
+      "soak_seconds": 60
+    }
+  },
+  "service_settings": {
+    "provider": "cpu",
+    "inference_threads": 4,
+    "max_concurrent_inference": 1,
+    "max_queued_inference": 2,
+    "inference_queue_timeout_seconds": 60.0,
+    "inference_execution_timeout_seconds": 600.0
+  },
+  "model_id": "tts-matcha-zh-baker",
+  "task": "speech",
+  "supported_languages": [
+    "zh"
+  ],
+  "unsupported_languages": [
+    "hi",
+    "es",
+    "ar",
+    "fr",
+    "pt",
+    "ru",
+    "de",
+    "yue"
+  ],
+  "generated_at": "2026-09-29T01:53:40.630879+00:00",
+  "selected_categories": [
+    "quality",
+    "performance",
+    "concurrency"
+  ],
+  "category_run_ids": {
+    "quality": [
+      "20260929T010956Z-0d9185"
+    ],
+    "performance": [
+      "20260929T013851Z-881466"
+    ],
+    "concurrency": [
+      "20260929T013851Z-881466"
+    ]
+  },
+  "models": [
+    {
+      "id": "tts-matcha-zh-baker",
+      "archive_sha256": "20de2ec034b55562609d6362771c934905dfe11d0f41ec103d593427ad9a7efb",
+      "file_sha256": {
+        "model-steps-3.onnx": "ef7ebdf5987e16a5836136a51d6f3560ca997ffd33d06a40daab5af92b4b86e5",
+        "tokens.txt": "56209b2bf609d5ac1d66ede6dae7bf5254bd3f8aa24c4a6823713d5b884d87ba",
+        "lexicon.txt": "38b886d46aefa50da6322a64d72fd595d5f4fae1051adb160d647541b1e0a4a2",
+        "phone.fst": "1ac2b6fa56b1442320c4de7db08353bab8963a2b57f365eebcdd3a2d3562f8d7",
+        "date.fst": "eb8aa079ae3cb81d8f4404992f39d61a0cb990947512b5b8d1e54d1f6980e718",
+        "number.fst": "743f402181fcfebf76cc2f0546b71fa26476e626fbe4e460fb7b4c3a7a8bd5bd",
+        "vocos-22khz-univ.onnx": "0574a135aa1db2de6e181050db2ec528496cacd4a4701fc5d7faf9f9804c0081"
+      },
+      "installed_model_files_bytes": 131104197
+    }
+  ],
+  "categories": {
+    "quality": {
+      "stt": [],
+      "tts": [
+        {
+          "model_id": "tts-matcha-zh-baker",
+          "language": "zh",
+          "evaluation": "human_blind_listening",
+          "generated_samples": 100,
+          "failed_samples": 0,
+          "human_mos": null,
+          "round_trip_asr": {
+            "judge_model_id": "stt-sensevoice-small-int8",
+            "metric": "cer",
+            "value": 0.094919,
+            "confidence_interval_95": {
+              "lower_95": 0.071566,
+              "upper_95": 0.118208
+            },
+            "sample_count": 100,
+            "failed_samples": 0
+          },
+          "note": "Fill the local ratings template, then run aggregate_tts_ratings.py. Audio and rating data stay outside Git.",
+          "source_dataset": "google/fleurs@10b20dadef85684efea8561331323382da703432:cmn_hans_cn/test"
+        }
+      ]
+    },
+    "performance": [
+      {
+        "case": {
+          "task": "speech",
+          "model_id": "tts-matcha-zh-baker",
+          "language": "zh",
+          "sample_id": "17738549684744212080"
+        },
+        "cold_request": {
+          "request_wall_seconds": 1.9538649580208585,
+          "inference_seconds": 1.2436,
+          "queue_wait_seconds": 0.0001,
+          "audio_duration_seconds": 3.96,
+          "real_time_factor": 0.31404040404040406,
+          "process_cpu_seconds": 2.309355,
+          "working_set_bytes": null,
+          "process_peak_working_set_bytes": 366559232
+        },
+        "cold_request_over_inference_seconds": 0.710165,
+        "warm": {
+          "request_wall_seconds": {
+            "median": 0.831989,
+            "p50": 0.832825,
+            "p95": 0.891949,
+            "p99": 0.911284,
+            "min": 0.800566,
+            "max": 0.911284
+          },
+          "inference_seconds": {
+            "median": 0.1183,
+            "p50": 0.1189,
+            "p95": 0.1313,
+            "p99": 0.133,
+            "min": 0.1147,
+            "max": 0.133
+          },
+          "queue_wait_seconds": {
+            "median": 0.0001,
+            "p50": 0.0001,
+            "p95": 0.0002,
+            "p99": 0.0002,
+            "min": 0.0001,
+            "max": 0.0002
+          },
+          "real_time_factor": {
+            "median": 0.02987,
+            "p50": 0.030025,
+            "p95": 0.033106,
+            "p99": 0.033535,
+            "min": 0.028935,
+            "max": 0.033535
+          },
+          "process_cpu_seconds": {
+            "median": 1.184678,
+            "p50": 1.185845,
+            "p95": 1.239608,
+            "p99": 1.243324,
+            "min": 1.150639,
+            "max": 1.243324
+          }
+        },
+        "serial_throughput_requests_per_second": {
+          "median": 1.201941,
+          "p50": 1.203149,
+          "p95": 1.239355,
+          "p99": 1.249116,
+          "min": 1.097353,
+          "max": 1.249116
+        },
+        "logical_cpu_utilization_percent": {
+          "median": 14.215434,
+          "p50": 14.22182,
+          "p95": 14.396992,
+          "p99": 14.467652,
+          "min": 13.089552,
+          "max": 14.467652
+        },
+        "characters_per_inference_second": 325.121921,
+        "resources": {
+          "baseline_process_rss_bytes": null,
+          "steady_rss_median_bytes": null,
+          "model_loaded_rss_delta_bytes": null,
+          "peak_rss_bytes": 372408320.0
+        },
+        "warmup_iterations": 3,
+        "measured_iterations": 20,
+        "elapsed_seconds": 21.769997,
+        "service_startup_seconds": 4.136082,
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 3962241024,
+            "memory_load_percent": 77
+          },
+          "process_resources": {
+            "cpu_time_seconds": 2.203717,
+            "peak_working_set_bytes": 74039296
+          }
+        }
+      }
+    ],
+    "concurrency": [
+      {
+        "case": {
+          "task": "speech",
+          "model_id": "tts-matcha-zh-baker",
+          "language": "zh"
+        },
+        "workload_model": "closed_loop_fixed_concurrency",
+        "levels": [
+          {
+            "workers": 1,
+            "requests_per_worker": 10,
+            "request_count": 10,
+            "success_count": 10,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 1.21992,
+            "request_wall_seconds": {
+              "median": 0.814079,
+              "p50": 0.814887,
+              "p95": 0.836034,
+              "p99": 0.836034,
+              "min": 0.800425,
+              "max": 0.836034
+            },
+            "queue_wait_seconds": {
+              "median": 0.0001,
+              "p50": 0.0001,
+              "p95": 0.0001,
+              "p99": 0.0001,
+              "min": 0.0001,
+              "max": 0.0001
+            },
+            "inference_seconds": {
+              "median": 0.11755,
+              "p50": 0.118,
+              "p95": 0.1214,
+              "p99": 0.1214,
+              "min": 0.1153,
+              "max": 0.1214
+            },
+            "process_cpu_seconds": {
+              "median": 1.169876,
+              "p50": 1.175029,
+              "p95": 1.198763,
+              "p99": 1.198763,
+              "min": 1.151574,
+              "max": 1.198763
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 8.19726
+          },
+          {
+            "workers": 2,
+            "requests_per_worker": 10,
+            "request_count": 20,
+            "success_count": 20,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 1.416141,
+            "request_wall_seconds": {
+              "median": 1.389228,
+              "p50": 1.389386,
+              "p95": 1.422716,
+              "p99": 2.064381,
+              "min": 0.82562,
+              "max": 2.064381
+            },
+            "queue_wait_seconds": {
+              "median": 0.0002,
+              "p50": 0.0002,
+              "p95": 0.0003,
+              "p99": 0.0003,
+              "min": 0.0002,
+              "max": 0.0003
+            },
+            "inference_seconds": {
+              "median": 0.69505,
+              "p50": 0.6951,
+              "p95": 0.712,
+              "p99": 0.7193,
+              "min": 0.1202,
+              "max": 0.7193
+            },
+            "process_cpu_seconds": {
+              "median": 2.36888,
+              "p50": 2.36904,
+              "p95": 2.412744,
+              "p99": 2.414739,
+              "min": 1.689758,
+              "max": 2.414739
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 14.122892
+          },
+          {
+            "workers": 4,
+            "requests_per_worker": 10,
+            "request_count": 40,
+            "success_count": 31,
+            "failure_count": 9,
+            "failure_rate": 0.225,
+            "requests_per_second": 1.063712,
+            "request_wall_seconds": {
+              "median": 3.47835,
+              "p50": 3.47835,
+              "p95": 4.961632,
+              "p99": 5.657433,
+              "min": 0.880166,
+              "max": 5.657433
+            },
+            "queue_wait_seconds": {
+              "median": 1.3848,
+              "p50": 1.3848,
+              "p95": 2.1329,
+              "p99": 2.18,
+              "min": 0.0001,
+              "max": 2.18
+            },
+            "inference_seconds": {
+              "median": 0.7152,
+              "p50": 0.7152,
+              "p95": 1.4392,
+              "p99": 1.4827,
+              "min": 0.1165,
+              "max": 1.4827
+            },
+            "process_cpu_seconds": {
+              "median": 4.774067,
+              "p50": 4.774067,
+              "p95": 6.171321,
+              "p99": 7.114009,
+              "min": 1.211189,
+              "max": 7.114009
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {
+              "503": 9
+            },
+            "duration_seconds": 29.143237
+          }
+        ],
+        "soak": {
+          "workers": 4,
+          "target_seconds": 60,
+          "actual_seconds": 61.691781,
+          "request_count": 87,
+          "success_count": 69,
+          "failure_count": 18,
+          "failure_rate": 0.206897,
+          "requests_per_second": 1.118463,
+          "request_wall_seconds": {
+            "median": 3.482189,
+            "p50": 3.482189,
+            "p95": 4.20177,
+            "p99": 4.254279,
+            "min": 1.668934,
+            "max": 4.88964
+          },
+          "queue_wait_seconds": {
+            "median": 1.3868,
+            "p50": 1.3868,
+            "p95": 2.0966,
+            "p99": 2.1028,
+            "min": 0.2387,
+            "max": 2.1148
+          },
+          "inference_seconds": {
+            "median": 0.7124,
+            "p50": 0.7124,
+            "p95": 1.4116,
+            "p99": 1.4459,
+            "min": 0.1194,
+            "max": 1.4492
+          },
+          "process_cpu_seconds": {
+            "median": 4.748333,
+            "p50": 4.748333,
+            "p95": 5.65112,
+            "p99": 6.104581,
+            "min": 2.915561,
+            "max": 7.334788
+          },
+          "real_time_factor": {
+            "median": 0.179929,
+            "p50": 0.179929,
+            "p95": 0.356465,
+            "p99": 0.365034,
+            "min": 0.030167,
+            "max": 0.36596
+          },
+          "working_set_peak_bytes": null,
+          "working_set_start_bytes": null,
+          "working_set_end_bytes": null,
+          "estimated_working_set_growth_bytes_per_minute": null,
+          "errors_by_status": {
+            "503": 18
+          }
+        },
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 3962241024,
+            "memory_load_percent": 77
+          },
+          "process_resources": {
+            "cpu_time_seconds": 2.203717,
+            "peak_working_set_bytes": 74039296
+          }
+        }
+      }
+    ]
+  },
+  "quality_completeness": {
+    "languages_measured": [
+      "zh"
+    ],
+    "human_mos": "not_collected",
+    "note": "TTS quality currently contains automatic round-trip ASR metrics. MOS requires human listening ratings and is not inferred."
+  },
+  "interpretation": "Observed comparison results only; not an acceptance threshold or cross-platform ranking.",
+  "config_sha256_by_run": {
+    "20260929T010956Z-0d9185": "b231cf3b2740591c15edd0531ddf24f54199848e5a75aac511e1f83d4495467d",
+    "20260929T013851Z-881466": "b231cf3b2740591c15edd0531ddf24f54199848e5a75aac511e1f83d4495467d"
+  },
+  "quality_judge_model_by_language": {
+    "zh": "stt-sensevoice-small-int8"
+  }
+}

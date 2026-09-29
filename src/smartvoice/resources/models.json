@@ -1,0 +1,157 @@
+{
+  "schema_version": "1.0",
+  "models": [
+    {
+      "id": "stt-whisper-base-multilingual-int8",
+      "task": "transcription",
+      "name": "Whisper Base Multilingual INT8",
+      "languages": ["auto", "en", "zh", "ja", "ko", "fr", "de"],
+      "backend": "sherpa-onnx",
+      "source": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-encoder.int8.onnx",
+      "archive_name": "sherpa-whisper-base.tar.bz2",
+      "archive_sha256": null,
+      "required_files": ["base-encoder.int8.onnx", "base-decoder.int8.onnx", "base-tokens.txt"],
+      "file_sources": {
+        "base-encoder.int8.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-encoder.int8.onnx",
+        "base-decoder.int8.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-decoder.int8.onnx",
+        "base-tokens.txt": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-tokens.txt"
+      },
+      "file_sha256": {
+        "base-encoder.int8.onnx": "0b8fb1304b6109976038efff5ace81720e00386f3ff6b54ee8c75291ca0a1e11",
+        "base-decoder.int8.onnx": "9759d217388a01b3a4c7c15533201067b48ae819c4daafc8624e64b9409dc02d",
+        "base-tokens.txt": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+      },
+      "model_file": "base-encoder.int8.onnx",
+      "decoder_file": "base-decoder.int8.onnx",
+      "tokens_file": "base-tokens.txt",
+      "license_note": "Whisper is multilingual; review the model license and archive notices before redistribution.",
+      "model_type": "whisper"
+    },
+    {
+      "id": "stt-sensevoice-small-int8",
+      "task": "transcription",
+      "name": "SenseVoice Small INT8",
+      "languages": ["zh", "en", "yue", "ja", "ko"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2",
+      "archive_name": "sensevoice-small-int8.tar.bz2",
+      "archive_sha256": "7d1efa2138a65b0b488df37f8b89e3d91a60676e416f515b952358d83dfd347e",
+      "required_files": ["model.int8.onnx", "tokens.txt", "LICENSE"],
+      "model_file": "model.int8.onnx",
+      "tokens_file": "tokens.txt",
+      "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution.",
+      "model_type": "sense_voice"
+    },
+    {
+      "id": "stt-qwen3-asr-600m-int8",
+      "task": "transcription",
+      "name": "Qwen3-ASR 0.6B INT8",
+      "languages": ["auto", "zh", "en", "yue", "ar", "de", "fr", "es", "pt", "id", "it", "ko", "ru", "th", "vi", "ja", "tr", "hi", "ms", "nl", "sv", "da", "fi", "pl", "cs", "fil", "fa", "el", "hu", "mk", "ro"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2",
+      "archive_name": "qwen3-asr-0.6b-int8.tar.bz2",
+      "archive_sha256": null,
+      "required_files": ["conv_frontend.onnx", "encoder.int8.onnx", "decoder.int8.onnx", "tokenizer/merges.txt", "tokenizer/tokenizer_config.json", "tokenizer/vocab.json"],
+      "required_dirs": ["tokenizer"],
+      "file_sources": {
+        "conv_frontend.onnx": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/conv_frontend.onnx",
+        "encoder.int8.onnx": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/encoder.int8.onnx",
+        "decoder.int8.onnx": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/decoder.int8.onnx",
+        "tokenizer/merges.txt": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/tokenizer/merges.txt",
+        "tokenizer/tokenizer_config.json": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/tokenizer/tokenizer_config.json",
+        "tokenizer/vocab.json": "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/tokenizer/vocab.json"
+      },
+      "file_sha256": {
+        "conv_frontend.onnx": "d22dc4423e0940e49884e903d2ea2f7e5567c14fc1aed97e4e26d6b8f208ef9e",
+        "encoder.int8.onnx": "60748d3e6744a57c9c91e1b17424a6c2990567e8adceb0783940c03ed98fa9d9",
+        "decoder.int8.onnx": "4f6885be5959ae26af3089d38ee7972c5fafbeeb1cf8d5e76eab6d8b61ca5771",
+        "tokenizer/merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "tokenizer/tokenizer_config.json": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c",
+        "tokenizer/vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "model_file": "conv_frontend.onnx",
+      "decoder_file": "decoder.int8.onnx",
+      "tokens_file": "tokenizer",
+      "minimum_free_bytes": 2200000000,
+      "license_note": "The Qwen3-ASR upstream is Apache-2.0; review the sherpa-onnx conversion notices and derived artifacts before redistribution.",
+      "model_type": "qwen3_asr"
+    },
+    {
+      "id": "tts-melo-zh-en",
+      "task": "speech",
+      "name": "MeloTTS Chinese and English VITS ONNX",
+      "languages": ["zh", "en"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
+      "archive_name": "melo-tts-zh-en.tar.bz2",
+      "archive_sha256": "e58351ed7149f290a54534538badd4077cdbe6fddc964b24d0bee870415d1514",
+      "required_files": ["model.onnx", "lexicon.txt", "tokens.txt", "LICENSE"],
+      "model_file": "model.onnx",
+      "lexicon_file": "lexicon.txt",
+      "tokens_file": "tokens.txt",
+      "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution.",
+      "model_type": "vits"
+    },
+    {
+      "id": "tts-kokoro-multilingual-v1-1-zh-en",
+      "task": "speech",
+      "name": "Kokoro 1.1 Chinese and English (103 voices)",
+      "languages": ["zh", "en"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_1.tar.bz2",
+      "archive_name": "kokoro-multi-lang-v1_1.tar.bz2",
+      "archive_sha256": "a3f4c73d043860e3fd2e5b06f36795eb81de0fc8e8de6df703245edddd87dbad",
+      "required_files": ["model.onnx", "voices.bin", "tokens.txt", "lexicon-us-en.txt", "lexicon-zh.txt"],
+      "required_dirs": ["espeak-ng-data"],
+      "model_file": "model.onnx",
+      "tokens_file": "tokens.txt",
+      "voices_file": "voices.bin",
+      "voice_count": 103,
+      "lexicon_file": "lexicon-us-en.txt,lexicon-zh.txt",
+      "data_dir": "espeak-ng-data",
+      "license_note": "Review the source model and voice licenses before use or redistribution.",
+      "model_type": "kokoro"
+    },
+    {
+      "id": "tts-matcha-zh-baker",
+      "task": "speech",
+      "name": "Matcha Icefall Baker Chinese",
+      "languages": ["zh"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-baker.tar.bz2",
+      "archive_name": "matcha-icefall-zh-baker.tar.bz2",
+      "archive_sha256": "20de2ec034b55562609d6362771c934905dfe11d0f41ec103d593427ad9a7efb",
+      "required_files": ["model-steps-3.onnx", "tokens.txt", "lexicon.txt", "phone.fst", "date.fst", "number.fst", "vocos-22khz-univ.onnx"],
+      "model_file": "model-steps-3.onnx",
+      "tokens_file": "tokens.txt",
+      "lexicon_file": "lexicon.txt",
+      "vocoder_file": "vocos-22khz-univ.onnx",
+      "voice_count": 1,
+      "rule_fsts": "phone.fst,date.fst,number.fst",
+      "extra_files": {
+        "vocos-22khz-univ.onnx": {
+          "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx",
+          "sha256": "0574a135aa1db2de6e181050db2ec528496cacd4a4701fc5d7faf9f9804c0081"
+        }
+      },
+      "license_note": "Review the Matcha checkpoint and Vocos vocoder licenses before use or redistribution.",
+      "model_type": "matcha"
+    },
+    {
+      "id": "tts-supertonic-v3-multilingual-int8",
+      "task": "speech",
+      "name": "Supertonic 3 Multilingual INT8",
+      "languages": ["en", "fr", "de", "ja", "ko", "ar", "bg", "cs", "da", "el", "es", "et", "fi", "hi", "hr", "hu", "id", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi"],
+      "backend": "sherpa-onnx",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2",
+      "archive_name": "supertonic-3-multilingual-int8.tar.bz2",
+      "archive_sha256": "82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427",
+      "required_files": ["duration_predictor.int8.onnx", "text_encoder.int8.onnx", "vector_estimator.int8.onnx", "vocoder.int8.onnx", "tts.json", "unicode_indexer.bin", "voice.bin", "LICENSE"],
+      "model_file": "duration_predictor.int8.onnx",
+      "tokens_file": "tokens.txt",
+      "tts_files": ["duration_predictor.int8.onnx", "text_encoder.int8.onnx", "vector_estimator.int8.onnx", "vocoder.int8.onnx", "tts.json", "unicode_indexer.bin", "voice.bin"],
+      "license_note": "Model weights are subject to OpenRAIL-M; review the bundled license for usage and redistribution terms.",
+      "model_type": "supertonic"
+    }
+  ]
+}

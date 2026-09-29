@@ -12,17 +12,22 @@ from urllib.parse import parse_qsl
 from fastapi import FastAPI, Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 
 from smartvoice import __version__
 from smartvoice.api.v1.routes import get_request_id, router as v1_router
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import SmartVoiceError
-from smartvoice.services.host_metrics import process_metrics
+from smartvoice.adapters.platform.host_metrics import process_metrics
 from smartvoice.services.inference_queue import InferenceQueue
 from smartvoice.services.model_jobs import ModelJobManager
 from smartvoice.services.model_router import ModelRouter
+from smartvoice.services.transcription import TranscriptionService
+from smartvoice.services.speech import SpeechService
+from smartvoice.ports.inference import LanguageIdentifier, LanguageIdentifierStatus, ModelLifecycle
+from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
+from smartvoice.services.model_management import ModelManagementService
 
 logger = logging.getLogger("smartvoice.api")
 if not logger.handlers:
@@ -33,11 +38,11 @@ logger.setLevel(logging.INFO)
 logger.propagate = False
 
 OPENAPI_DESCRIPTION = """![SmartVoice logo](/assets/smartvoice-logo.png)
-**Private, local speech recognition and synthesis for edge devices.**
+**Local speech recognition and synthesis, with language-aware model routing.**
 
-SmartVoice is an early-stage local speech-to-text (STT) and text-to-speech (TTS) service. It brings both tasks behind one HTTP API, with a replaceable inference backend and a model catalog for offline use.
+SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It offers both through one OpenAI-style audio API, with models installed and run on your machine. Smart routing chooses an installed model based on the request language. Inference runs locally on CPU with no per-request cloud fee; model files need to be downloaded during setup.
 
-Multilingual STT and TTS · Cross-platform goal · Offline inference · OpenAPI
+[Test STT and TTS before integrating an application](/test)
 
 [View the SmartVoice project on GitHub](https://github.com/dxhome/SmartVoice)
 """
@@ -174,10 +179,11 @@ def _debug_headers(headers) -> dict[str, str]:
 
 def create_app(settings: Settings | None = None, provider=None, *, debug_http: bool = False) -> FastAPI:
     settings = settings or Settings.from_env()
+    model_repository = CatalogModelRepository(settings)
     if provider is None:
         from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 
-        provider = SherpaOnnxProvider(settings)
+        provider = SherpaOnnxProvider(settings, model_repository)
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         yield
@@ -198,32 +204,63 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     )
     app.state.model_jobs = ModelJobManager(settings)
     app.state.model_router = ModelRouter(settings)
+    language_identifier = provider if isinstance(provider, LanguageIdentifier) else None
+    app.state.language_identifier_status = provider if isinstance(provider, LanguageIdentifierStatus) else None
+    model_lifecycle = provider if isinstance(provider, ModelLifecycle) else None
+    app.state.transcription_service = TranscriptionService(provider, app.state.model_router, model_repository, language_identifier)
+    app.state.speech_service = SpeechService(provider, app.state.model_router, model_repository)
+    app.state.model_management = ModelManagementService(
+        app.state.model_jobs, model_repository, model_lifecycle
+    )
     app.include_router(v1_router)
 
-    logo_path = Path(__file__).resolve().parents[2] / "assets" / "smartvoice-logo.png"
+    resource_dir = Path(__file__).resolve().parent / "resources"
+    logo_path = resource_dir / "smartvoice-logo.png"
+
+    @app.get("/", include_in_schema=False)
+    async def home() -> RedirectResponse:
+        return RedirectResponse(url="/docs")
 
     @app.get("/assets/smartvoice-logo.png", include_in_schema=False)
     async def smartvoice_logo() -> FileResponse:
         return FileResponse(logo_path, media_type="image/png")
+
+    @app.get("/assets/smartvoice-favicon.png", include_in_schema=False)
+    async def smartvoice_favicon() -> FileResponse:
+        favicon_path = resource_dir / "smartvoice-favicon.png"
+        return FileResponse(favicon_path, media_type="image/png")
+
+    @app.get("/test", response_class=HTMLResponse, include_in_schema=False)
+    async def integration_test_page() -> FileResponse:
+        page_path = Path(__file__).resolve().parent / "web" / "test.html"
+        return FileResponse(page_path, media_type="text/html; charset=utf-8")
 
     @app.get("/docs", include_in_schema=False)
     async def swagger_docs() -> HTMLResponse:
         page = get_swagger_ui_html(
             openapi_url=app.openapi_url or "/openapi.json",
             title="SmartVoice | API documentation",
+            swagger_favicon_url="/assets/smartvoice-favicon.png",
         )
         html = page.body.decode("utf-8")
         style = """<style>
         .swagger-ui img[src*="smartvoice-logo.png"] {
             display: block !important;
             width: 200px !important;
-            height: 200px !important;
+            height: auto !important;
             max-width: 200px !important;
-            max-height: 200px !important;
             object-fit: contain !important;
-            margin: 0 0 18px !important;
+            margin: 0 auto !important;
         }
         .swagger-ui .info .markdown p { max-width: 900px; }
+        .swagger-ui .info .description .markdown > p:first-child {
+            text-align: center;
+            margin: 0 0 14px;
+        }
+        .swagger-ui .info .description .markdown > p:nth-child(2) {
+            text-align: center;
+            margin: 0 auto 14px;
+        }
         </style>"""
         return HTMLResponse(html.replace("</head>", f"{style}</head>"))
 

@@ -8,23 +8,7 @@ import sys
 from dataclasses import dataclass, fields
 from pathlib import Path
 
-
-DEFAULT_CONFIG = {
-    "server_host": "127.0.0.1",
-    "server_port": 8000,
-    "log_level": "INFO",
-    "max_upload_bytes": 25 * 1024 * 1024,
-    "max_audio_seconds": 600,
-    "max_tts_characters": 4000,
-    "max_tts_audio_seconds": 180,
-    "max_tts_output_bytes": 32 * 1024 * 1024,
-    "num_threads": max(1, min(4, os.cpu_count() or 1)),
-    "provider": "cpu",
-    "max_concurrent_inference": 1,
-    "max_queued_inference": 2,
-    "inference_queue_timeout_seconds": 60,
-    "inference_execution_timeout_seconds": 600,
-}
+from smartvoice.services.builtin_resources import read_builtin_json
 
 
 def _ensure_user_config(path: Path) -> None:
@@ -32,8 +16,7 @@ def _ensure_user_config(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with path.open("x", encoding="utf-8") as stream:
-            json.dump(DEFAULT_CONFIG, stream, ensure_ascii=False, indent=2)
-            stream.write("\n")
+            stream.write(read_builtin_json("smartvoice.json"))
     except FileExistsError:
         pass
 

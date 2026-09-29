@@ -1,0 +1,1030 @@
+{
+  "schema_version": "2.0",
+  "benchmark_suite": "smartvoice-model-comparison-v1",
+  "profile": "standard",
+  "software": {
+    "smartvoice": "0.1.0",
+    "python": "3.11.9"
+  },
+  "platform": {
+    "system": "Darwin",
+    "release": "27.0.0",
+    "machine": "arm64",
+    "processor": "arm",
+    "python_implementation": "CPython"
+  },
+  "dataset": {
+    "repo_id": "google/fleurs",
+    "revision": null,
+    "split": "test",
+    "license": "cc-by-4.0",
+    "languages": {
+      "en": {
+        "repository": "google/fleurs",
+        "revision": "10b20dadef85684efea8561331323382da703432",
+        "config": "en_us",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "e7886f59000714f61fff6c84ee9d87f70460b14d4f877995c03322127fac37e9"
+      },
+      "zh": {
+        "repository": "google/fleurs",
+        "revision": "10b20dadef85684efea8561331323382da703432",
+        "config": "cmn_hans_cn",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "fdc86d4687047a5b67b57d483d199edd0e4679e24ee1fc50cd3930eb7704833a"
+      },
+      "ar": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "ar_eg",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "99adb7149b5bca6dce202153729c3bd477cb8dd17bc74b24a9ad1375faaf75c3"
+      },
+      "de": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "de_de",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "2780cffd4bdf33ddf1ecf72eaa7b035cf1185e9cb4bd78b9de5be994551c89df"
+      },
+      "es": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "es_419",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "bccf0de0f62b2f9561d43feecf5b12e50c5aac1b7f2b37033b3b93c086751e80"
+      },
+      "fr": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "fr_fr",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "da79f9d47de7875627f104244c652a02bbf262c73ed03c24fe2e4b0d580b11e8"
+      },
+      "hi": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "hi_in",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "012321c7478a9a6b9aac44e390ed9c8e42d3311576409837896c9c002534af5d"
+      },
+      "pt": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "pt_br",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "d6cf998ece72071b835020e3e67d8d70702e86f46a4321bbdd54c0e011b94959"
+      },
+      "ru": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "ru_ru",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "34102de39645aa347d164cd05b131241d082775f7634cce29b69ea4d2d83b4a5"
+      },
+      "yue": {
+        "repository": "google/fleurs",
+        "revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+        "config": "yue_hant_hk",
+        "split": "test",
+        "license": "cc-by-4.0",
+        "sample_count": 100,
+        "sample_ids_sha256": "a6b15e7491f1bb2b555629121a2b197ff22afbef9de2d870038ee9c20f19b47c"
+      }
+    },
+    "revisions_by_language": {
+      "en": "10b20dadef85684efea8561331323382da703432",
+      "zh": "10b20dadef85684efea8561331323382da703432",
+      "ar": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "de": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "es": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "fr": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "hi": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "pt": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "ru": "d16ac437ac42fb543bf2893b934dac1af970e361",
+      "yue": "d16ac437ac42fb543bf2893b934dac1af970e361"
+    }
+  },
+  "profile_settings": {
+    "quality_sample_limit": 100,
+    "performance_sample_limit": 5,
+    "bootstrap_samples": 1000,
+    "performance": {
+      "warmup_iterations": 3,
+      "iterations": 20
+    },
+    "concurrency": {
+      "concurrency_levels": [
+        1,
+        2,
+        4
+      ],
+      "requests_per_worker": 10,
+      "soak_workers": 4,
+      "soak_seconds": 60
+    }
+  },
+  "service_settings": {
+    "provider": "cpu",
+    "inference_threads": 4,
+    "max_concurrent_inference": 1,
+    "max_queued_inference": 2,
+    "inference_queue_timeout_seconds": 60.0,
+    "inference_execution_timeout_seconds": 600.0
+  },
+  "model_id": "stt-qwen3-asr-600m-int8",
+  "task": "transcription",
+  "supported_languages": [
+    "en",
+    "zh",
+    "hi",
+    "es",
+    "ar",
+    "fr",
+    "pt",
+    "ru",
+    "de",
+    "yue"
+  ],
+  "unsupported_languages": [],
+  "generated_at": "2026-09-29T04:33:18.036850+00:00",
+  "selected_categories": [
+    "quality",
+    "performance",
+    "concurrency"
+  ],
+  "category_run_ids": {
+    "quality": [
+      "20260929T010956Z-0d9185",
+      "20260929T032053Z-e28868"
+    ],
+    "performance": [
+      "20260929T013851Z-881466"
+    ],
+    "concurrency": [
+      "20260929T013851Z-881466"
+    ]
+  },
+  "models": [
+    {
+      "id": "stt-qwen3-asr-600m-int8",
+      "archive_sha256": null,
+      "file_sha256": {
+        "conv_frontend.onnx": "d22dc4423e0940e49884e903d2ea2f7e5567c14fc1aed97e4e26d6b8f208ef9e",
+        "encoder.int8.onnx": "60748d3e6744a57c9c91e1b17424a6c2990567e8adceb0783940c03ed98fa9d9",
+        "decoder.int8.onnx": "4f6885be5959ae26af3089d38ee7972c5fafbeeb1cf8d5e76eab6d8b61ca5771",
+        "tokenizer/merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "tokenizer/tokenizer_config.json": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c",
+        "tokenizer/vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "installed_model_files_bytes": 987015347
+    }
+  ],
+  "categories": {
+    "quality": {
+      "stt": [
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "en",
+          "metric": "wer",
+          "value": 0.084254,
+          "confidence_interval_95": {
+            "lower_95": 0.065707,
+            "upper_95": 0.106881
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@10b20dadef85684efea8561331323382da703432:en_us/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "zh",
+          "metric": "cer",
+          "value": 0.069384,
+          "confidence_interval_95": {
+            "lower_95": 0.049987,
+            "upper_95": 0.090134
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@10b20dadef85684efea8561331323382da703432:cmn_hans_cn/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "hi",
+          "metric": "wer",
+          "value": 0.213033,
+          "confidence_interval_95": {
+            "lower_95": 0.18955,
+            "upper_95": 0.237235
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:hi_in/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "es",
+          "metric": "wer",
+          "value": 0.074862,
+          "confidence_interval_95": {
+            "lower_95": 0.06088,
+            "upper_95": 0.089016
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:es_419/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "ar",
+          "metric": "wer",
+          "value": 0.332584,
+          "confidence_interval_95": {
+            "lower_95": 0.288136,
+            "upper_95": 0.383821
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:ar_eg/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "fr",
+          "metric": "wer",
+          "value": 0.108669,
+          "confidence_interval_95": {
+            "lower_95": 0.08933,
+            "upper_95": 0.127751
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:fr_fr/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "pt",
+          "metric": "wer",
+          "value": 0.119535,
+          "confidence_interval_95": {
+            "lower_95": 0.097834,
+            "upper_95": 0.146452
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:pt_br/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "ru",
+          "metric": "wer",
+          "value": 0.233094,
+          "confidence_interval_95": {
+            "lower_95": 0.206051,
+            "upper_95": 0.263103
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:ru_ru/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "de",
+          "metric": "wer",
+          "value": 0.10493,
+          "confidence_interval_95": {
+            "lower_95": 0.08612,
+            "upper_95": 0.123494
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:de_de/test"
+        },
+        {
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "yue",
+          "metric": "cer",
+          "value": 0.091218,
+          "confidence_interval_95": {
+            "lower_95": 0.074964,
+            "upper_95": 0.110063
+          },
+          "sample_count": 100,
+          "failed_samples": 0,
+          "dataset": "google/fleurs@d16ac437ac42fb543bf2893b934dac1af970e361:yue_hant_hk/test"
+        }
+      ],
+      "tts": []
+    },
+    "performance": [
+      {
+        "case": {
+          "task": "transcription",
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "en",
+          "sample_id": "1830239880893513318"
+        },
+        "cold_request": {
+          "request_wall_seconds": 3.871963208017405,
+          "inference_seconds": 3.8264,
+          "queue_wait_seconds": 0.0001,
+          "audio_duration_seconds": 3.96,
+          "real_time_factor": 0.9662626262626263,
+          "process_cpu_seconds": 5.31676,
+          "working_set_bytes": null,
+          "process_peak_working_set_bytes": 1611415552
+        },
+        "cold_request_over_inference_seconds": 0.045463,
+        "warm": {
+          "request_wall_seconds": {
+            "median": 1.189478,
+            "p50": 1.19026,
+            "p95": 1.428986,
+            "p99": 1.46845,
+            "min": 1.153192,
+            "max": 1.46845
+          },
+          "inference_seconds": {
+            "median": 1.18485,
+            "p50": 1.1859,
+            "p95": 1.422,
+            "p99": 1.4622,
+            "min": 1.1479,
+            "max": 1.4622
+          },
+          "queue_wait_seconds": {
+            "median": 0.0001,
+            "p50": 0.0001,
+            "p95": 0.0001,
+            "p99": 0.0001,
+            "min": 0.0,
+            "max": 0.0001
+          },
+          "real_time_factor": {
+            "median": 0.299205,
+            "p50": 0.29947,
+            "p95": 0.359091,
+            "p99": 0.369242,
+            "min": 0.289874,
+            "max": 0.369242
+          },
+          "process_cpu_seconds": {
+            "median": 2.648518,
+            "p50": 2.654603,
+            "p95": 2.83376,
+            "p99": 2.954722,
+            "min": 2.539549,
+            "max": 2.954722
+          }
+        },
+        "serial_throughput_requests_per_second": {
+          "median": 0.840705,
+          "p50": 0.841258,
+          "p95": 0.866967,
+          "p99": 0.867158,
+          "min": 0.68099,
+          "max": 0.867158
+        },
+        "logical_cpu_utilization_percent": {
+          "median": 22.045516,
+          "p50": 22.055247,
+          "p95": 22.38181,
+          "p99": 22.479492,
+          "min": 19.266068,
+          "max": 22.479492
+        },
+        "characters_per_inference_second": null,
+        "resources": {
+          "baseline_process_rss_bytes": null,
+          "steady_rss_median_bytes": null,
+          "model_loaded_rss_delta_bytes": null,
+          "peak_rss_bytes": 1711685632.0
+        },
+        "warmup_iterations": 3,
+        "measured_iterations": 20,
+        "elapsed_seconds": 32.190656,
+        "service_startup_seconds": 4.170278,
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 3442556928,
+            "memory_load_percent": 80
+          },
+          "process_resources": {
+            "cpu_time_seconds": 2.372393,
+            "peak_working_set_bytes": 76185600
+          }
+        }
+      },
+      {
+        "case": {
+          "task": "transcription",
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "zh",
+          "sample_id": "17738549684744212080"
+        },
+        "cold_request": {
+          "request_wall_seconds": 3.9683827080007177,
+          "inference_seconds": 3.9524,
+          "queue_wait_seconds": 0.0001,
+          "audio_duration_seconds": 4.8,
+          "real_time_factor": 0.8234166666666667,
+          "process_cpu_seconds": 5.642744,
+          "working_set_bytes": null,
+          "process_peak_working_set_bytes": 1447870464
+        },
+        "cold_request_over_inference_seconds": 0.015883,
+        "warm": {
+          "request_wall_seconds": {
+            "median": 1.318371,
+            "p50": 1.322228,
+            "p95": 1.518461,
+            "p99": 1.555232,
+            "min": 1.209912,
+            "max": 1.555232
+          },
+          "inference_seconds": {
+            "median": 1.3144,
+            "p50": 1.3186,
+            "p95": 1.5149,
+            "p99": 1.5463,
+            "min": 1.2064,
+            "max": 1.5463
+          },
+          "queue_wait_seconds": {
+            "median": 0.0001,
+            "p50": 0.0001,
+            "p95": 0.0001,
+            "p99": 0.0001,
+            "min": 0.0,
+            "max": 0.0001
+          },
+          "real_time_factor": {
+            "median": 0.273833,
+            "p50": 0.274708,
+            "p95": 0.315604,
+            "p99": 0.322146,
+            "min": 0.251333,
+            "max": 0.322146
+          },
+          "process_cpu_seconds": {
+            "median": 2.920225,
+            "p50": 2.931295,
+            "p95": 3.238491,
+            "p99": 3.337962,
+            "min": 2.75876,
+            "max": 3.337962
+          }
+        },
+        "serial_throughput_requests_per_second": {
+          "median": 0.758518,
+          "p50": 0.760738,
+          "p95": 0.819059,
+          "p99": 0.826507,
+          "min": 0.642991,
+          "max": 0.826507
+        },
+        "logical_cpu_utilization_percent": {
+          "median": 22.709187,
+          "p50": 22.709219,
+          "p95": 22.907269,
+          "p99": 22.965937,
+          "min": 20.575208,
+          "max": 22.965937
+        },
+        "characters_per_inference_second": null,
+        "resources": {
+          "baseline_process_rss_bytes": null,
+          "steady_rss_median_bytes": null,
+          "model_loaded_rss_delta_bytes": null,
+          "peak_rss_bytes": 1798504448.0
+        },
+        "warmup_iterations": 3,
+        "measured_iterations": 20,
+        "elapsed_seconds": 34.389886,
+        "service_startup_seconds": 3.839039,
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 4761829376,
+            "memory_load_percent": 72
+          },
+          "process_resources": {
+            "cpu_time_seconds": 2.138862,
+            "peak_working_set_bytes": 75907072
+          }
+        }
+      }
+    ],
+    "concurrency": [
+      {
+        "case": {
+          "task": "transcription",
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "en"
+        },
+        "workload_model": "closed_loop_fixed_concurrency",
+        "levels": [
+          {
+            "workers": 1,
+            "requests_per_worker": 10,
+            "request_count": 10,
+            "success_count": 10,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 0.715518,
+            "request_wall_seconds": {
+              "median": 1.316415,
+              "p50": 1.322029,
+              "p95": 1.858702,
+              "p99": 1.858702,
+              "min": 1.187275,
+              "max": 1.858702
+            },
+            "queue_wait_seconds": {
+              "median": 0.0001,
+              "p50": 0.0001,
+              "p95": 0.0001,
+              "p99": 0.0001,
+              "min": 0.0,
+              "max": 0.0001
+            },
+            "inference_seconds": {
+              "median": 1.30865,
+              "p50": 1.3131,
+              "p95": 1.8511,
+              "p99": 1.8511,
+              "min": 1.1775,
+              "max": 1.8511
+            },
+            "process_cpu_seconds": {
+              "median": 2.773675,
+              "p50": 2.783263,
+              "p95": 3.236531,
+              "p99": 3.236531,
+              "min": 2.580199,
+              "max": 3.236531
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 13.975881
+          },
+          {
+            "workers": 2,
+            "requests_per_worker": 10,
+            "request_count": 20,
+            "success_count": 20,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 0.816428,
+            "request_wall_seconds": {
+              "median": 2.382234,
+              "p50": 2.388943,
+              "p95": 2.727314,
+              "p99": 2.736539,
+              "min": 1.194283,
+              "max": 2.736539
+            },
+            "queue_wait_seconds": {
+              "median": 1.1844,
+              "p50": 1.1854,
+              "p95": 1.3721,
+              "p99": 1.4197,
+              "min": 0.0001,
+              "max": 1.4197
+            },
+            "inference_seconds": {
+              "median": 1.1892,
+              "p50": 1.1908,
+              "p95": 1.3764,
+              "p99": 1.4239,
+              "min": 1.1282,
+              "max": 1.4239
+            },
+            "process_cpu_seconds": {
+              "median": 5.227918,
+              "p50": 5.231863,
+              "p95": 5.728652,
+              "p99": 5.736428,
+              "min": 2.587827,
+              "max": 5.736428
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 24.496963
+          },
+          {
+            "workers": 4,
+            "requests_per_worker": 10,
+            "request_count": 40,
+            "success_count": 30,
+            "failure_count": 10,
+            "failure_rate": 0.25,
+            "requests_per_second": 0.819832,
+            "request_wall_seconds": {
+              "median": 3.566377,
+              "p50": 3.571134,
+              "p95": 3.990501,
+              "p99": 4.064503,
+              "min": 1.265562,
+              "max": 4.064503
+            },
+            "queue_wait_seconds": {
+              "median": 2.37285,
+              "p50": 2.3735,
+              "p95": 2.6212,
+              "p99": 2.7989,
+              "min": 0.0001,
+              "max": 2.7989
+            },
+            "inference_seconds": {
+              "median": 1.1891,
+              "p50": 1.1928,
+              "p95": 1.3792,
+              "p99": 1.4247,
+              "min": 1.1307,
+              "max": 1.4247
+            },
+            "process_cpu_seconds": {
+              "median": 7.874567,
+              "p50": 7.876717,
+              "p95": 8.511854,
+              "p99": 8.540632,
+              "min": 2.603663,
+              "max": 8.540632
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {
+              "503": 10
+            },
+            "duration_seconds": 36.592841
+          }
+        ],
+        "soak": {
+          "workers": 4,
+          "target_seconds": 60,
+          "actual_seconds": 62.907032,
+          "request_count": 11960,
+          "success_count": 45,
+          "failure_count": 11915,
+          "failure_rate": 0.996237,
+          "requests_per_second": 0.715341,
+          "request_wall_seconds": {
+            "median": 4.21113,
+            "p50": 4.21113,
+            "p95": 4.48872,
+            "p99": 4.5153,
+            "min": 1.421706,
+            "max": 4.5153
+          },
+          "queue_wait_seconds": {
+            "median": 2.7981,
+            "p50": 2.7981,
+            "p95": 2.9174,
+            "p99": 3.0975,
+            "min": 0.0003,
+            "max": 3.0975
+          },
+          "inference_seconds": {
+            "median": 1.3962,
+            "p50": 1.3962,
+            "p95": 1.4691,
+            "p99": 1.7225,
+            "min": 1.1215,
+            "max": 1.7225
+          },
+          "process_cpu_seconds": {
+            "median": 9.844381,
+            "p50": 9.844381,
+            "p95": 10.108396,
+            "p99": 10.135781,
+            "min": 3.226426,
+            "max": 10.135781
+          },
+          "real_time_factor": {
+            "median": 0.352576,
+            "p50": 0.352576,
+            "p95": 0.370985,
+            "p99": 0.434975,
+            "min": 0.283207,
+            "max": 0.434975
+          },
+          "working_set_peak_bytes": null,
+          "working_set_start_bytes": null,
+          "working_set_end_bytes": null,
+          "estimated_working_set_growth_bytes_per_minute": null,
+          "errors_by_status": {
+            "503": 11915
+          }
+        },
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 3442556928,
+            "memory_load_percent": 80
+          },
+          "process_resources": {
+            "cpu_time_seconds": 2.372393,
+            "peak_working_set_bytes": 76185600
+          }
+        }
+      },
+      {
+        "case": {
+          "task": "transcription",
+          "model_id": "stt-qwen3-asr-600m-int8",
+          "language": "zh"
+        },
+        "workload_model": "closed_loop_fixed_concurrency",
+        "levels": [
+          {
+            "workers": 1,
+            "requests_per_worker": 10,
+            "request_count": 10,
+            "success_count": 10,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 0.686558,
+            "request_wall_seconds": {
+              "median": 1.367861,
+              "p50": 1.380403,
+              "p95": 2.270294,
+              "p99": 2.270294,
+              "min": 1.233794,
+              "max": 2.270294
+            },
+            "queue_wait_seconds": {
+              "median": 0.0001,
+              "p50": 0.0001,
+              "p95": 0.0001,
+              "p99": 0.0001,
+              "min": 0.0,
+              "max": 0.0001
+            },
+            "inference_seconds": {
+              "median": 1.359,
+              "p50": 1.3748,
+              "p95": 2.2633,
+              "p99": 2.2633,
+              "min": 1.2259,
+              "max": 2.2633
+            },
+            "process_cpu_seconds": {
+              "median": 3.018992,
+              "p50": 3.037095,
+              "p95": 3.894602,
+              "p99": 3.894602,
+              "min": 2.822455,
+              "max": 3.894602
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 14.565415
+          },
+          {
+            "workers": 2,
+            "requests_per_worker": 10,
+            "request_count": 20,
+            "success_count": 20,
+            "failure_count": 0,
+            "failure_rate": 0.0,
+            "requests_per_second": 0.791659,
+            "request_wall_seconds": {
+              "median": 2.506327,
+              "p50": 2.506849,
+              "p95": 2.549479,
+              "p99": 2.606259,
+              "min": 1.321707,
+              "max": 2.606259
+            },
+            "queue_wait_seconds": {
+              "median": 1.251,
+              "p50": 1.2528,
+              "p95": 1.2721,
+              "p99": 1.3147,
+              "min": 0.0002,
+              "max": 1.3147
+            },
+            "inference_seconds": {
+              "median": 1.2565,
+              "p50": 1.2572,
+              "p95": 1.2782,
+              "p99": 1.3148,
+              "min": 1.2276,
+              "max": 1.3148
+            },
+            "process_cpu_seconds": {
+              "median": 5.751537,
+              "p50": 5.753884,
+              "p95": 5.860142,
+              "p99": 5.965,
+              "min": 3.016955,
+              "max": 5.965
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {},
+            "duration_seconds": 25.263395
+          },
+          {
+            "workers": 4,
+            "requests_per_worker": 10,
+            "request_count": 40,
+            "success_count": 30,
+            "failure_count": 10,
+            "failure_rate": 0.25,
+            "requests_per_second": 0.782501,
+            "request_wall_seconds": {
+              "median": 3.779481,
+              "p50": 3.7802,
+              "p95": 3.989649,
+              "p99": 4.016707,
+              "min": 1.274396,
+              "max": 4.016707
+            },
+            "queue_wait_seconds": {
+              "median": 2.51975,
+              "p50": 2.5229,
+              "p95": 2.6754,
+              "p99": 2.7239,
+              "min": 0.0004,
+              "max": 2.7239
+            },
+            "inference_seconds": {
+              "median": 1.26005,
+              "p50": 1.2609,
+              "p95": 1.3132,
+              "p99": 1.4169,
+              "min": 1.2182,
+              "max": 1.4169
+            },
+            "process_cpu_seconds": {
+              "median": 8.660688,
+              "p50": 8.663417,
+              "p95": 8.925897,
+              "p99": 9.054323,
+              "min": 2.93087,
+              "max": 9.054323
+            },
+            "working_set_peak_bytes": null,
+            "errors_by_status": {
+              "503": 10
+            },
+            "duration_seconds": 38.338631
+          }
+        ],
+        "soak": {
+          "workers": 4,
+          "target_seconds": 60,
+          "actual_seconds": 63.392787,
+          "request_count": 10664,
+          "success_count": 42,
+          "failure_count": 10622,
+          "failure_rate": 0.996062,
+          "requests_per_second": 0.662536,
+          "request_wall_seconds": {
+            "median": 4.516892,
+            "p50": 4.517371,
+            "p95": 4.713579,
+            "p99": 4.752024,
+            "min": 1.507447,
+            "max": 4.752024
+          },
+          "queue_wait_seconds": {
+            "median": 3.0079,
+            "p50": 3.0093,
+            "p95": 3.1648,
+            "p99": 3.2423,
+            "min": 0.0002,
+            "max": 3.2423
+          },
+          "inference_seconds": {
+            "median": 1.50535,
+            "p50": 1.5056,
+            "p95": 1.5866,
+            "p99": 1.7392,
+            "min": 1.2336,
+            "max": 1.7392
+          },
+          "process_cpu_seconds": {
+            "median": 10.974539,
+            "p50": 10.976601,
+            "p95": 11.313202,
+            "p99": 11.391187,
+            "min": 3.652442,
+            "max": 11.391187
+          },
+          "real_time_factor": {
+            "median": 0.313615,
+            "p50": 0.313667,
+            "p95": 0.330542,
+            "p99": 0.362333,
+            "min": 0.257,
+            "max": 0.362333
+          },
+          "working_set_peak_bytes": null,
+          "working_set_start_bytes": null,
+          "working_set_end_bytes": null,
+          "estimated_working_set_growth_bytes_per_minute": null,
+          "errors_by_status": {
+            "503": 10622
+          }
+        },
+        "host_runtime": {
+          "backend": "sherpa-onnx",
+          "requested_device": "cpu",
+          "actual_device": "cpu",
+          "provider_status": "available",
+          "runtime_version": "1.13.8",
+          "host": {
+            "os": "macOS-27.0-arm64-arm-64bit",
+            "processor": "arm",
+            "logical_cpu_count": 10,
+            "total_physical_memory_bytes": 17179869184
+          },
+          "system_memory": {
+            "total_physical_bytes": 17179869184,
+            "available_physical_bytes": 4761829376,
+            "memory_load_percent": 72
+          },
+          "process_resources": {
+            "cpu_time_seconds": 2.138862,
+            "peak_working_set_bytes": 75907072
+          }
+        }
+      }
+    ]
+  },
+  "quality_completeness": {
+    "languages_measured": [
+      "ar",
+      "de",
+      "en",
+      "es",
+      "fr",
+      "hi",
+      "pt",
+      "ru",
+      "yue",
+      "zh"
+    ],
+    "human_mos": "not_applicable",
+    "note": "STT quality measured with FLEURS references."
+  },
+  "interpretation": "Observed comparison results only; not an acceptance threshold or cross-platform ranking.",
+  "config_sha256_by_run": {
+    "20260929T010956Z-0d9185": "b231cf3b2740591c15edd0531ddf24f54199848e5a75aac511e1f83d4495467d",
+    "20260929T013851Z-881466": "b231cf3b2740591c15edd0531ddf24f54199848e5a75aac511e1f83d4495467d",
+    "20260929T032053Z-e28868": "eea8b2d107e17d9b2d210072dc9d39765d8f06bebdb889166b502aeaada1ff1b"
+  }
+}

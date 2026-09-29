@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smartvoice"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Local speech-to-text and text-to-speech service"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,5 +26,16 @@ dev = [
     "jiwer>=4.0,<5.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/dxhome/SmartVoice"
+Repository = "https://github.com/dxhome/SmartVoice"
+Issues = "https://github.com/dxhome/SmartVoice/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "smartvoice._version.__version__"}
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+smartvoice = ["web/*.html", "resources/*.json", "resources/*.png", "ascii-art.txt"]

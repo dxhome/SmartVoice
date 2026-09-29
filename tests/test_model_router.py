@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from smartvoice.config.settings import Settings
-from smartvoice.domain.errors import ModelUnavailableError
+from smartvoice.domain.errors import UnsupportedFeatureError
 from smartvoice.services.model_router import ModelRouter, RouterConfigError
 
 
@@ -45,7 +45,7 @@ class ModelRouterTests(unittest.TestCase):
         ])
 
     def test_no_installed_candidate_returns_actionable_model_error(self):
-        with self.assertRaisesRegex(ModelUnavailableError, "Install a configured model"):
+        with self.assertRaisesRegex(UnsupportedFeatureError, "Install a configured model"):
             self.router.choose("transcription", "zh", [])
 
     def test_initialization_copies_builtin_config_to_user_data_dir(self):

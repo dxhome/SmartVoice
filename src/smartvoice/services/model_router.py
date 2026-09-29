@@ -13,18 +13,14 @@ from pathlib import Path
 from typing import Any
 
 from smartvoice.config.settings import Settings
-from smartvoice.domain.errors import InvalidRequestError, ModelUnavailableError, UnsupportedFeatureError
-from smartvoice.services.model_catalog import MODEL_ID_PATTERN, load_catalog
+from smartvoice.domain.errors import InvalidRequestError, UnsupportedFeatureError
+from smartvoice.services.model_catalog_constants import MODEL_ID_PATTERN
+from smartvoice.services.model_registry import load_catalog
+from smartvoice.services.builtin_resources import read_builtin_json
 
 logger = logging.getLogger("smartvoice.router")
-ROUTER_MODEL_IDS = {"transcription": "stt-smartvoice-auto", "speech": "tts-smartvoice-auto"}
-WHISPER_LANGUAGE_CODES = frozenset(
-    "en zh de es ru ko fr ja pt tr pl ca nl ar sv it id hi fi vi he uk el ms cs ro da hu ta "
-    "no th ur hr bg lt la mi ml cy sk te fa lv bn sr az sl kn et mk br eu is hy ne mn bs kk fil "
-    "sq sw gl mr pa si km sn yo so af oc ka be tg sd gu am yi lo uz fo ht ps tk nn mt sa lb "
-    "my bo tl mg as tt haw ln ha ba jw su yue"
-    .split()
-)
+ROUTER_MODEL_ID = "smartvoice-auto"
+ROUTER_MODEL_IDS = {"transcription": ROUTER_MODEL_ID, "speech": ROUTER_MODEL_ID}
 LANGUAGE_RE = re.compile(r"^[a-z]{2,3}$")
 MAX_CANDIDATES = 3
 
@@ -54,14 +50,15 @@ def _parse_router_config(raw: Any) -> RouterConfig:
     if not isinstance(tasks, dict) or set(tasks) != {"transcription", "speech"}:
         raise RouterConfigError("Router configuration tasks must contain transcription and speech maps.")
     specs = {spec.id: spec for spec in load_catalog()}
+    supported_languages = {language for spec in specs.values() for language in spec.languages if language != "auto"}
     normalized: dict[str, dict[str, tuple[str, ...]]] = {}
     for task, languages in tasks.items():
         if not isinstance(languages, dict):
             raise RouterConfigError(f"Router task {task!r} must contain a language-to-model map.")
         normalized[task] = {}
         for language, model_ids in languages.items():
-            if not isinstance(language, str) or language not in WHISPER_LANGUAGE_CODES:
-                raise RouterConfigError(f"Unsupported Whisper language code: {language!r}.")
+            if not isinstance(language, str) or not LANGUAGE_RE.fullmatch(language) or language not in supported_languages:
+                raise RouterConfigError(f"Unsupported model language code: {language!r}.")
             if not isinstance(model_ids, list) or not 1 <= len(model_ids) <= MAX_CANDIDATES:
                 raise RouterConfigError(f"Language {language!r} must have between 1 and {MAX_CANDIDATES} model candidates.")
             if any(not isinstance(model_id, str) for model_id in model_ids):
@@ -99,6 +96,7 @@ class ModelRouter:
     def __init__(self, settings: Settings, *, config_path: Path | None = None, default_path: Path | None = None):
         self.path = config_path or settings.data_dir / "router.json"
         self.default_path = default_path or default_router_path()
+        self._injected_default_path = default_path
         self._lock = threading.RLock()
         self.last_error: str | None = None
         try:
@@ -108,7 +106,7 @@ class ModelRouter:
             # apply it through `python -m smartvoice router reload`.
             self.last_error = "The saved router configuration is invalid; the built-in configuration is active."
             try:
-                raw = json.loads(self.default_path.read_text(encoding="utf-8"))
+                raw = json.loads(self._read_builtin_router())
                 self._config = _parse_router_config(raw)
             except (OSError, json.JSONDecodeError, RouterConfigError) as fallback_exc:
                 raise RouterConfigError("Both user and built-in router configurations are invalid.") from fallback_exc
@@ -117,11 +115,16 @@ class ModelRouter:
     def _load_or_initialize(self) -> RouterConfig:
         if not self.path.exists():
             try:
-                raw = self.default_path.read_bytes()
+                raw = self._read_builtin_router().encode("utf-8")
             except OSError as exc:
                 raise RouterConfigError("Built-in router configuration is unavailable.") from exc
             _atomic_write(self.path, raw)
         return self._read_and_validate()
+
+    def _read_builtin_router(self) -> str:
+        if self._injected_default_path is not None:
+            return self._injected_default_path.read_text(encoding="utf-8")
+        return read_builtin_json("router.json")
 
     def _read_and_validate(self) -> RouterConfig:
         try:
@@ -157,7 +160,7 @@ class ModelRouter:
         selected = next((model_id for model_id in candidates if model_id in installed), None)
         if selected is None:
             configured = ", ".join(candidates) if candidates else "none"
-            raise ModelUnavailableError(
+            raise UnsupportedFeatureError(
                 f"No installed and verified {task} model is configured for language {language!r}. "
                 f"Configured candidates: {configured}. Install a configured model or update router.json."
             )

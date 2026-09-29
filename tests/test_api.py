@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
+from smartvoice.domain.contracts import SynthesizedSpeech
 
 
 class FakeProvider:
@@ -20,6 +21,7 @@ class FakeProvider:
 
     def __init__(self):
         self.transcribe_calls = []
+        self.identify_calls = 0
 
     def installed_models(self):
         return [
@@ -40,17 +42,22 @@ class FakeProvider:
         assert audio == b"audio fixture"
         return {
             "text": "测试转写",
-            "language": "zh",
+            "language": language if language != "auto" else "zh",
             "duration": 1.25,
-            "model": "stt-sensevoice-small-int8",
+            "model": model_id or "stt-sensevoice-small-int8",
             "device": "cpu",
             "segments": [{"text": "测试", "start": 0.1}],
         }
 
+    def identify_language(self, audio):
+        self.identify_calls += 1
+        assert audio == b"audio fixture"
+        return {"language": "zh", "model": "sherpa-onnx-whisper-tiny-int8-language-id", "processing_seconds": 0.01}
+
     def synthesize(self, text, voice="default", speed=1.0, model_id=None, language="auto"):
         self.synthesize_call = (text, model_id, language)
         assert text in {"你好", "Hi", "Hello", "Bonjour", "The weather is sunny today and I will take a walk in the park."}
-        return b"RIFF-test-wav", 24000, 0.8
+        return SynthesizedSpeech(audio=b"RIFF-test-wav", sample_rate=24000, duration=0.8)
 
 
 class ApiTests(unittest.TestCase):
@@ -68,6 +75,12 @@ class ApiTests(unittest.TestCase):
             "tasks": {"transcription": {}, "speech": {"en": ["tts-melo-zh-en"]}},
         }), encoding="utf-8")
 
+    def set_router(self, transcription=None, speech=None):
+        (self.data_dir / "router.json").write_text(json.dumps({
+            "schema_version": "1.0",
+            "tasks": {"transcription": transcription or {}, "speech": speech or {}},
+        }), encoding="utf-8")
+
     def test_health_and_readiness(self):
         with self.make_client() as client:
             self.assertEqual(client.get("/health").status_code, 200)
@@ -83,7 +96,7 @@ class ApiTests(unittest.TestCase):
                 response = client.post(
                     "/v1/audio/speech",
                     headers={"X-Debug-Test": "present", "Authorization": "Bearer secret"},
-                    json={"model": "tts-smartvoice-auto", "input": "Hello", "language": "en"},
+                    json={"model": "smartvoice-auto", "input": "Hello", "language": "en"},
                 )
                 missing = client.get("/v1/models/not-installed")
 
@@ -118,19 +131,23 @@ class ApiTests(unittest.TestCase):
             docs = client.get("/docs")
             schema = client.get("/openapi.json").json()
             logo = client.get("/assets/smartvoice-logo.png")
+            favicon = client.get("/assets/smartvoice-favicon.png")
 
         self.assertEqual(docs.status_code, 200)
         self.assertIn('img[src*="smartvoice-logo.png"]', docs.text)
         self.assertIn("width: 200px !important", docs.text)
-        self.assertIn("height: 200px !important", docs.text)
+        self.assertIn("height: auto !important", docs.text)
         self.assertIn("/openapi.json", docs.text)
         description = schema["info"]["description"]
-        self.assertIn("Private, local speech recognition and synthesis", description)
+        self.assertIn("Local speech recognition and synthesis", description)
         self.assertIn("https://github.com/dxhome/SmartVoice", description)
         self.assertNotIn("prototype", description.lower())
         self.assertEqual(logo.status_code, 200)
         self.assertEqual(logo.headers["content-type"], "image/png")
         self.assertTrue(logo.content.startswith(b"\x89PNG\r\n\x1a\n"))
+        self.assertEqual(favicon.status_code, 200)
+        self.assertEqual(favicon.headers["content-type"], "image/png")
+        self.assertTrue(favicon.content.startswith(b"\x89PNG\r\n\x1a\n"))
 
     def test_readiness_reports_missing_models(self):
         class EmptyProvider(FakeProvider):
@@ -236,12 +253,21 @@ class ApiTests(unittest.TestCase):
                 return None
 
         with self.make_client() as client:
-            client.app.state.model_jobs = Jobs()
+            client.app.state.model_management.jobs = Jobs()
             started = client.post("/v1/models/stt-sensevoice-small-int8/download")
             self.assertEqual(started.status_code, 202)
             self.assertEqual(started.json()["job_id"], "job-123")
             self.assertEqual(client.get("/v1/jobs/job-123").json()["status"], "completed")
             self.assertEqual(client.delete("/v1/jobs/job-123").json()["status"], "canceling")
+
+    def test_unknown_model_job_uses_not_found_status(self):
+        with self.make_client() as client:
+            get_response = client.get("/v1/jobs/missing-job")
+            delete_response = client.delete("/v1/jobs/missing-job")
+        self.assertEqual(get_response.status_code, 404)
+        self.assertEqual(delete_response.status_code, 404)
+        self.assertEqual(get_response.json()["error"]["code"], "not_found")
+        self.assertEqual(delete_response.json()["error"]["code"], "not_found")
 
     def test_model_export_uninstall_and_import_routes(self):
         from smartvoice.services.model_catalog import get_model_spec
@@ -288,7 +314,7 @@ class ApiTests(unittest.TestCase):
                 "/v1/audio/transcriptions",
                 headers={"X-Request-ID": "test-123"},
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "language": "zh", "timestamps": "true", "response_format": "verbose_json"},
+                data={"model": "smartvoice-auto", "language": "zh", "timestamps": "true", "response_format": "verbose_json"},
             )
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["X-Request-ID"], "test-123")
@@ -300,7 +326,7 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "unexpected": "value"},
+                data={"model": "smartvoice-auto", "unexpected": "value"},
             )
             self.assertEqual(response.status_code, 501)
             self.assertIn("unexpected", response.json()["error"]["message"])
@@ -321,10 +347,10 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "language": "zh"},
+                data={"model": "smartvoice-auto", "language": "zh"},
             )
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["requested_model"], "stt-smartvoice-auto")
+        self.assertEqual(response.json()["requested_model"], "smartvoice-auto")
         self.assertEqual(response.json()["model"], "stt-sensevoice-small-int8")
         self.assertEqual(response.json()["model_mode"], "router")
         self.assertEqual(response.json()["language_source"], "request")
@@ -333,78 +359,87 @@ class ApiTests(unittest.TestCase):
     def test_transcription_auto_detects_then_routes_to_language_candidate(self):
         provider = FakeProvider()
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
-            with self.assertLogs("smartvoice.api", level="DEBUG") as captured:
+            with self.assertLogs("smartvoice.application.transcription", level="DEBUG") as captured:
                 response = client.post(
                     "/v1/audio/transcriptions",
                     files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                    data={"model": "stt-smartvoice-auto", "language": "auto"},
+                    data={"model": "smartvoice-auto", "language": "auto"},
                 )
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["language"], "zh")
         self.assertEqual(response.json()["language_source"], "model_detection")
         detection_log = next(line for line in captured.output if "language_detection_completed" in line)
-        self.assertIn("detector_model=stt-whisper-base-multilingual-int8", detection_log)
+        self.assertIn("model=sherpa-onnx-whisper-tiny-int8-language-id", detection_log)
         self.assertIn("language=zh", detection_log)
         self.assertNotIn("audio fixture", detection_log)
         self.assertEqual(provider.transcribe_calls, [
-            ("auto", "stt-whisper-base-multilingual-int8"),
             ("zh", "stt-sensevoice-small-int8"),
         ])
+        self.assertEqual(provider.identify_calls, 1)
 
-    def test_transcription_retries_detection_until_language_has_a_route(self):
+    def test_transcription_empty_language_is_treated_as_auto(self):
+        provider = FakeProvider()
+        with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                data={"model": "smartvoice-auto", "language": ""},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(provider.identify_calls, 1)
+        self.assertEqual(provider.transcribe_calls, [("zh", "stt-sensevoice-small-int8")])
+
+    def test_transcription_falls_back_to_auto_model_when_language_identifier_fails(self):
+        class FailedIdentifierProvider(FakeProvider):
+            def identify_language(self, audio):
+                raise RuntimeError("identifier unavailable")
+
+        provider = FailedIdentifierProvider()
+        with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                data={"model": "smartvoice-auto", "language": "auto"},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["model"], "stt-whisper-base-multilingual-int8")
+        self.assertEqual(provider.transcribe_calls, [("auto", "stt-whisper-base-multilingual-int8")])
+
+    def test_transcription_uses_single_dedicated_detection_result(self):
+        self.set_router(transcription={"fr": ["stt-whisper-base-multilingual-int8"]})
         class VariableLanguageProvider(FakeProvider):
-            def __init__(self):
-                super().__init__()
-                self.detections = ["ru", "fr"]
-
-            def transcribe(self, audio, language="auto", model_id=None):
-                result = super().transcribe(audio, language, model_id)
-                if language == "auto":
-                    result["language"] = self.detections.pop(0)
-                return result
+            def identify_language(self, audio):
+                return {"language": "fr", "model": "tiny-lid"}
 
         provider = VariableLanguageProvider()
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "language": "auto"},
+                data={"model": "smartvoice-auto", "language": "auto"},
             )
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["language"], "fr")
-        self.assertEqual(provider.transcribe_calls, [
-            ("auto", "stt-whisper-base-multilingual-int8"),
-            ("auto", "stt-whisper-base-multilingual-int8"),
-        ])
+        self.assertEqual(provider.transcribe_calls, [("fr", "stt-whisper-base-multilingual-int8")])
 
-    def test_transcription_stops_after_three_unsupported_detection_results(self):
+    def test_transcription_falls_back_to_auto_capable_model_for_unrouted_detection_result(self):
+        self.set_router()
         class UnsupportedLanguageProvider(FakeProvider):
-            def __init__(self):
-                super().__init__()
-                self.detections = ["ru", "es", "it", "fr"]
-
-            def transcribe(self, audio, language="auto", model_id=None):
-                result = super().transcribe(audio, language, model_id)
-                if language == "auto":
-                    result["language"] = self.detections.pop(0)
-                return result
+            def identify_language(self, audio):
+                return {"language": "ru", "model": "tiny-lid"}
 
         provider = UnsupportedLanguageProvider()
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "language": "auto"},
+                data={"model": "smartvoice-auto", "language": "auto"},
             )
-        self.assertEqual(response.status_code, 501)
-        self.assertIn("after 3 attempts", response.json()["error"]["message"])
-        self.assertEqual(provider.transcribe_calls, [
-            ("auto", "stt-whisper-base-multilingual-int8"),
-            ("auto", "stt-whisper-base-multilingual-int8"),
-            ("auto", "stt-whisper-base-multilingual-int8"),
-        ])
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["model"], "stt-whisper-base-multilingual-int8")
+        self.assertEqual(provider.transcribe_calls, [("auto", "stt-whisper-base-multilingual-int8")])
 
-    def test_transcription_auto_requires_installed_detection_model(self):
+    def test_transcription_auto_detection_does_not_depend_on_an_installed_asr_detector(self):
         class NoAutoModelProvider(FakeProvider):
             def installed_models(self):
                 return []
@@ -413,10 +448,30 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "language": "auto"},
+                data={"model": "smartvoice-auto", "language": "auto"},
+            )
+        self.assertEqual(response.status_code, 501)
+        self.assertEqual(response.json()["error"]["code"], "not_implemented")
+        self.assertIn("No installed and verified transcription model", response.json()["error"]["message"])
+
+    def test_transcription_reports_detection_failure_when_no_auto_model_is_installed(self):
+        class NoAutoFallbackProvider(FakeProvider):
+            def installed_models(self):
+                return [{"id": "stt-sensevoice-small-int8", "task": "transcription"}]
+
+            def identify_language(self, audio):
+                return {"language": "", "model": "tiny-lid"}
+
+        with TestClient(create_app(
+            settings=Settings(data_dir=self.data_dir), provider=NoAutoFallbackProvider()
+        )) as client:
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                data={"model": "smartvoice-auto", "language": "auto"},
             )
         self.assertEqual(response.status_code, 503)
-        self.assertIn("auto-detection support", response.json()["error"]["message"])
+        self.assertIn("no installed and verified STT model supports auto mode", response.json()["error"]["message"])
 
     def test_router_does_not_retry_another_candidate_after_inference_failure(self):
         from smartvoice.domain.errors import InferenceError
@@ -431,7 +486,7 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "language": "zh"},
+                data={"model": "smartvoice-auto", "language": "zh"},
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(provider.transcribe_calls, [("zh", "stt-sensevoice-small-int8")])
@@ -443,9 +498,10 @@ class ApiTests(unittest.TestCase):
 
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=EmptyProvider())) as client:
             response = client.post("/v1/audio/speech", json={
-                "model": "tts-smartvoice-auto", "input": "你好", "language": "zh",
+                "model": "smartvoice-auto", "input": "你好", "language": "zh",
             })
-        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.status_code, 501)
+        self.assertEqual(response.json()["error"]["code"], "not_implemented")
         self.assertIn("tts-melo-zh-en", response.json()["error"]["message"])
 
     def test_transcription_rejects_unsupported_language_code(self):
@@ -453,15 +509,16 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "language": "en-US"},
+                data={"model": "smartvoice-auto", "language": "en-US"},
             )
         self.assertEqual(response.status_code, 501)
         self.assertEqual(response.json()["error"]["code"], "not_implemented")
 
     def test_router_returns_not_implemented_for_valid_language_without_route(self):
+        self.set_router()
         for task, model_id, payload in (
-            ("transcription", "stt-smartvoice-auto", None),
-            ("speech", "tts-smartvoice-auto", {"input": "Bonjour tout le monde", "language": "ru"}),
+            ("transcription", "smartvoice-auto", None),
+            ("speech", "smartvoice-auto", {"input": "Bonjour tout le monde", "language": "ru"}),
         ):
             with self.subTest(task=task), self.make_client() as client:
                 if task == "transcription":
@@ -490,10 +547,10 @@ class ApiTests(unittest.TestCase):
             stt = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto", "language": "zh", "response_format": "srt"},
+                data={"model": "smartvoice-auto", "language": "zh", "response_format": "srt"},
             )
             tts = client.post("/v1/audio/speech", json={
-                "model": "tts-smartvoice-auto", "input": "Hello", "language": "en", "response_format": "mp3",
+                "model": "smartvoice-auto", "input": "Hello", "language": "en", "response_format": "mp3",
             })
         self.assertEqual(stt.status_code, 501)
         self.assertEqual(tts.status_code, 501)
@@ -502,7 +559,7 @@ class ApiTests(unittest.TestCase):
         with self.make_client() as client:
             task = client.get("/v1/catalog", params={"task": "streaming"})
             option = client.post("/v1/audio/speech", json={
-                "model": "tts-smartvoice-auto", "input": "Hello", "language": "en", "stream": True,
+                "model": "smartvoice-auto", "input": "Hello", "language": "en", "stream": True,
             })
         self.assertEqual(task.status_code, 501)
         self.assertEqual(option.status_code, 501)
@@ -510,10 +567,12 @@ class ApiTests(unittest.TestCase):
     def test_model_listing_exposes_virtual_router_models(self):
         with self.make_client() as client:
             models = client.get("/v1/models").json()["data"]
-            virtual = client.get("/v1/models/stt-smartvoice-auto")
+            virtual = client.get("/v1/models/smartvoice-auto")
         ids = {item["id"] for item in models}
-        self.assertTrue({"stt-smartvoice-auto", "tts-smartvoice-auto"}.issubset(ids))
+        self.assertEqual(models[0]["id"], "smartvoice-auto")
+        self.assertEqual(sum(item["id"] == "smartvoice-auto" for item in models), 1)
         self.assertTrue(virtual.json()["virtual"])
+        self.assertEqual(virtual.json()["tasks"], ["transcription", "speech"])
 
     def test_router_reload_keeps_previous_config_when_json_invalid(self):
         with self.make_client() as client:
@@ -527,7 +586,7 @@ class ApiTests(unittest.TestCase):
 
     def test_tts_returns_wav_and_metadata_headers(self):
         with self.make_client() as client:
-            response = client.post("/v1/audio/speech", json={"model": "tts-smartvoice-auto", "input": "你好"})
+            response = client.post("/v1/audio/speech", json={"model": "smartvoice-auto", "input": "你好"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["content-type"], "audio/wav")
             self.assertEqual(response.headers["x-audio-sample-rate"], "24000")
@@ -542,7 +601,7 @@ class ApiTests(unittest.TestCase):
 
     def test_tts_language_hint_is_returned_in_metadata(self):
         with self.make_client() as client:
-            response = client.post("/v1/audio/speech", json={"model": "tts-smartvoice-auto", "input": "Hello", "language": "en"})
+            response = client.post("/v1/audio/speech", json={"model": "smartvoice-auto", "input": "Hello", "language": "en"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["x-requested-language"], "en")
             self.assertEqual(response.headers["x-resolved-language"], "en")
@@ -551,58 +610,38 @@ class ApiTests(unittest.TestCase):
         provider = FakeProvider()
         text = "Bonjour, je voudrais réserver une table pour deux personnes ce soir."
         provider.synthesize = lambda text, voice="default", speed=1.0, model_id=None, language="auto": (
-            setattr(provider, "synthesize_call", (text, model_id, language)) or (b"RIFF-test-wav", 24000, 0.8)
+            setattr(provider, "synthesize_call", (text, model_id, language))
+            or SynthesizedSpeech(audio=b"RIFF-test-wav", sample_rate=24000, duration=0.8)
         )
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
-            with self.assertLogs("smartvoice.api", level="DEBUG") as captured:
-                response = client.post("/v1/audio/speech", json={"input": text, "model": "tts-smartvoice-auto"})
+            with self.assertLogs("smartvoice.application.speech", level="DEBUG") as captured:
+                response = client.post("/v1/audio/speech", json={"input": text, "model": "smartvoice-auto"})
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.headers["x-resolved-language"], "fr")
         self.assertEqual(response.headers["x-model-id"], "tts-supertonic-v3-multilingual-int8")
         self.assertEqual(response.headers["x-model-mode"], "router")
         self.assertEqual(provider.synthesize_call, (text, "tts-supertonic-v3-multilingual-int8", "fr"))
         detection_log = next(line for line in captured.output if "language_detection_completed" in line)
-        self.assertIn("detector=langid", detection_log)
+        self.assertIn("task=speech", detection_log)
         self.assertIn("language=fr", detection_log)
         self.assertIn("confidence=", detection_log)
         self.assertNotIn(text, detection_log)
 
-    def test_tts_short_text_uses_best_low_confidence_language_after_retries(self):
+    def test_tts_short_text_is_padded_for_one_detection_and_original_is_synthesized(self):
         self.set_english_tts_router()
-        with self.make_client() as client:
-            response = client.post("/v1/audio/speech", json={
-                "input": "Hi", "model": "tts-smartvoice-auto",
-            })
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertTrue(response.headers["x-resolved-language"] in {"en", "fr", "de"})
-        self.assertLess(float(response.headers["x-language-confidence"]), 0.70)
-
-    def test_tts_retries_until_confidence_reaches_threshold(self):
-        self.set_english_tts_router()
-        with self.make_client() as client, patch(
-            "smartvoice.api.v1.routes.detect_text_language",
-            side_effect=[("en", 0.42), ("en", 0.70)],
+        provider = FakeProvider()
+        with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client, patch(
+            "smartvoice.services.speech.detect_text_language", return_value=("en", 0.31),
         ) as detect:
             response = client.post("/v1/audio/speech", json={
-                "input": "Hello", "model": "tts-smartvoice-auto",
+                "input": "Hi", "model": "smartvoice-auto",
             })
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.headers["x-resolved-language"], "en")
-        self.assertEqual(detect.call_count, 2)
-
-    def test_tts_uses_best_language_after_three_low_confidence_attempts(self):
-        self.set_english_tts_router()
-        with self.make_client() as client, patch(
-            "smartvoice.api.v1.routes.detect_text_language",
-            side_effect=[("fr", 0.62), ("en", 0.69), ("de", 0.65)],
-        ) as detect:
-            response = client.post("/v1/audio/speech", json={
-                "input": "Hello", "model": "tts-smartvoice-auto",
-            })
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.headers["x-resolved-language"], "en")
-        self.assertEqual(response.headers["x-language-confidence"], "0.690")
-        self.assertEqual(detect.call_count, 3)
+        self.assertEqual(response.headers["x-language-confidence"], "0.310")
+        self.assertEqual(detect.call_count, 1)
+        self.assertEqual(detect.call_args.args[0], "Hi Hi Hi Hi Hi")
+        self.assertEqual(provider.synthesize_call, ("Hi", "tts-melo-zh-en", "en"))
 
     def test_tts_accepts_explicit_french_with_supertonic(self):
         provider = FakeProvider()
@@ -614,21 +653,21 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(provider.synthesize_call, ("Bonjour", "tts-supertonic-v3-multilingual-int8", "fr"))
 
     def test_tts_detects_japanese_and_korean_scripts(self):
-        from smartvoice.api.v1.routes import _tts_script_language
+        from smartvoice.services.language_detection import script_language
 
-        self.assertEqual(_tts_script_language("こんにちは"), "ja")
-        self.assertEqual(_tts_script_language("안녕하세요"), "ko")
+        self.assertEqual(script_language("こんにちは"), "ja")
+        self.assertEqual(script_language("안녕하세요"), "ko")
 
     def test_tts_explicit_language_hint_wins_over_text_script(self):
         with self.make_client() as client:
-            response = client.post("/v1/audio/speech", json={"model": "tts-smartvoice-auto", "input": "你好", "language": "en"})
+            response = client.post("/v1/audio/speech", json={"model": "smartvoice-auto", "input": "你好", "language": "en"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["x-resolved-language"], "en")
             self.assertEqual(response.headers["x-model-mode"], "router")
 
     def test_tts_rejects_whitespace_only_input(self):
         with self.make_client() as client:
-            response = client.post("/v1/audio/speech", json={"model": "tts-smartvoice-auto", "input": "   "})
+            response = client.post("/v1/audio/speech", json={"model": "smartvoice-auto", "input": "   "})
             self.assertEqual(response.status_code, 422)
             self.assertEqual(response.json()["error"]["code"], "validation_error")
             self.assertEqual(response.json()["error"]["details"][0]["field"], "body.input")
@@ -645,7 +684,7 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
-                data={"model": "stt-smartvoice-auto"},
+                data={"model": "smartvoice-auto"},
             )
         self.assertEqual(response.status_code, 504)
         self.assertEqual(response.json()["error"]["code"], "inference_timeout")
@@ -668,7 +707,7 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("sample.wav", b"too large", "audio/wav")},
-                data={"model": "stt-smartvoice-auto"},
+                data={"model": "smartvoice-auto"},
             )
             self.assertEqual(response.status_code, 413)
             self.assertEqual(response.json()["error"]["code"], "file_too_large")

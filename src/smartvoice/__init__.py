@@ -1,3 +1,3 @@
 """SmartVoice local speech service."""
 
-__version__ = "0.1.0"
+from smartvoice._version import __version__

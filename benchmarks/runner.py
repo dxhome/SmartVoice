@@ -434,13 +434,18 @@ def _report_runtime(runtime: dict[str, Any]) -> dict[str, Any]:
 
 def run_benchmark(
     config: dict[str, Any], config_path: Path, *, profile_name: str,
-    selected_models: set[str] | None = None, output_path: Path | None = None,
+    selected_models: set[str] | None = None, selected_categories: set[str] | None = None,
+    output_path: Path | None = None,
 ) -> Path:
     settings = Settings.from_env()
     profiles = config["profiles"]
     if profile_name not in profiles:
         raise ValueError(f"Unknown profile {profile_name!r}; choose from {', '.join(profiles)}")
     profile = profiles[profile_name]
+    available_categories = {"quality", "performance", "concurrency"}
+    categories = available_categories if selected_categories is None else selected_categories
+    if not categories or categories - available_categories:
+        raise ValueError(f"Categories must be selected from {', '.join(sorted(available_categories))}.")
     models = [model for model in config["models"] if selected_models is None or model["id"] in selected_models]
     if selected_models and selected_models - {model["id"] for model in models}:
         raise ValueError(f"Unknown model IDs: {', '.join(sorted(selected_models - {model['id'] for model in models}))}")
@@ -506,26 +511,29 @@ def run_benchmark(
                     raise RuntimeError(f"Model {model['id']} is not installed or not available in the active provider.")
                 if model["task"] == "speech" and tts_judge_id not in available:
                     raise RuntimeError(f"Configured TTS quality judge {tts_judge_id} is not installed or available.")
-                perf_samples = _select_samples(samples, int(profile["performance_sample_limit"]))
                 runtime_data = runtime.json()
-                logical_cpus = int((runtime_data.get("host") or {}).get("logical_cpu_count") or 1)
-                perf = _run_performance(server.base_url, model, language, perf_samples, profile["performance"], logical_cpus)
-                perf["service_startup_seconds"] = round(startup_seconds, 6)
-                perf["host_runtime"] = _report_runtime(runtime_data)
-                baseline_process = runtime_data.get("process") or {}
-                perf["resources"]["baseline_process_rss_bytes"] = baseline_process.get("working_set_bytes")
-                if perf["resources"]["steady_rss_median_bytes"] is not None and baseline_process.get("working_set_bytes") is not None:
-                    perf["resources"]["model_loaded_rss_delta_bytes"] = perf["resources"]["steady_rss_median_bytes"] - int(baseline_process["working_set_bytes"])
-                performance_results.append(perf)
-                conc = _run_concurrent(server.base_url, model, language, perf_samples[0], profile["concurrency"])
-                conc["host_runtime"] = _report_runtime(runtime_data)
-                concurrency_results.append(conc)
-                if category == "stt":
+                if "performance" in categories or "concurrency" in categories:
+                    perf_samples = _select_samples(samples, int(profile["performance_sample_limit"]))
+                if "performance" in categories:
+                    logical_cpus = int((runtime_data.get("host") or {}).get("logical_cpu_count") or 1)
+                    perf = _run_performance(server.base_url, model, language, perf_samples, profile["performance"], logical_cpus)
+                    perf["service_startup_seconds"] = round(startup_seconds, 6)
+                    perf["host_runtime"] = _report_runtime(runtime_data)
+                    baseline_process = runtime_data.get("process") or {}
+                    perf["resources"]["baseline_process_rss_bytes"] = baseline_process.get("working_set_bytes")
+                    if perf["resources"]["steady_rss_median_bytes"] is not None and baseline_process.get("working_set_bytes") is not None:
+                        perf["resources"]["model_loaded_rss_delta_bytes"] = perf["resources"]["steady_rss_median_bytes"] - int(baseline_process["working_set_bytes"])
+                    performance_results.append(perf)
+                if "concurrency" in categories:
+                    conc = _run_concurrent(server.base_url, model, language, perf_samples[0], profile["concurrency"])
+                    conc["host_runtime"] = _report_runtime(runtime_data)
+                    concurrency_results.append(conc)
+                if "quality" in categories and category == "stt":
                     quality_results["stt"].append({
                         "model_id": model["id"], "language": language,
                         **_run_stt_quality(server.base_url, model, language, config["languages"][language]["normalization"], samples, int(profile["bootstrap_samples"])),
                     })
-                else:
+                elif "quality" in categories:
                     quality_results["tts"].append({
                         "model_id": model["id"], "language": language,
                         **_run_tts_quality(
@@ -552,6 +560,7 @@ def run_benchmark(
         "benchmark_suite": config["suite_id"],
         "run_id": run_id,
         "profile": profile_name,
+        "selected_categories": sorted(categories),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "software": {"smartvoice": __version__, "python": platform.python_version()},
         "platform": {"system": platform.system(), "release": platform.release(), "machine": platform.machine(), "processor": platform.processor(), "python_implementation": platform.python_implementation()},
@@ -585,6 +594,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Compare SmartVoice models by quality, performance, and concurrent load")
     parser.add_argument("--config", type=Path, default=Path(__file__).parent / "config" / "model-comparison.json")
     parser.add_argument("--profile", choices=("smoke", "standard", "full"), default="smoke")
+    parser.add_argument("--category", action="append", choices=("quality", "performance", "concurrency"), help="Category to run; repeat to select multiple (defaults to all)")
     parser.add_argument("--model", action="append", dest="models", help="Model ID to include; repeat to select multiple")
     parser.add_argument("--output", type=Path, help="Aggregate JSON report path; defaults outside the repository")
     args = parser.parse_args()
@@ -593,6 +603,7 @@ def main() -> int:
         output = run_benchmark(
             config, args.config, profile_name=args.profile,
             selected_models=set(args.models) if args.models else None,
+            selected_categories=set(args.category) if args.category else None,
             output_path=args.output,
         )
     except (RuntimeError, ValueError, OSError, httpx.HTTPError) as exc:

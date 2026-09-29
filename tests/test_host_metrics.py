@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from smartvoice.services import host_metrics
+from smartvoice.adapters.platform import host_metrics
 
 
 class HostMetricsTests(unittest.TestCase):
