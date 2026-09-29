@@ -3,8 +3,7 @@ from __future__ import annotations
 import unittest
 
 from smartvoice.services.language_detection import detect_text_language, prepare_text_for_language_detection
-from smartvoice.services.model_catalog import load_catalog
-from smartvoice.services.model_registry import supported_language_codes
+from smartvoice.services.model_registry import load_catalog, supported_language_codes
 
 
 SHORT_TEXT_SAMPLES = {

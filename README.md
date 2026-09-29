@@ -184,10 +184,10 @@ Callers use versioned API and capability endpoints; inference details stay behin
 
 ```bash
 python -m pip install -e ".[inference,dev]"
-python -m unittest discover -s tests -v
+python scripts/test.py ci
 ```
 
-Real-inference tests require the relevant models to be installed. See [`benchmarks/README.md`](benchmarks/README.md) for model quality, latency, and concurrency comparisons.
+Run `python scripts/test.py regression` to execute the full functional suite including real STT/TTS inference. It requires the `stt-sensevoice-small-int8` and `tts-melo-zh-en` models to be installed. See [`doc/testing.md`](doc/testing.md) for prerequisites and details. See [`benchmarks/README.md`](benchmarks/README.md) for model quality, latency, and concurrency comparisons.
 See [`doc/releasing.md`](doc/releasing.md) for versioning, GitHub Releases, and optional PyPI publishing.
 
 ## Repository layout

@@ -16,11 +16,9 @@ from dataclasses import replace
 
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import InvalidRequestError
-from smartvoice.services.model_catalog import (
-    ModelDownloadCancelled, _download, _safe_extract,
-    export_model, get_model_spec, import_model, install_model, installed_models, load_catalog,
-    uninstall_model,
-)
+from smartvoice.services.model_download import ModelDownloadCancelled, _download, _safe_extract, install_model
+from smartvoice.services.model_registry import get_model_spec, load_catalog
+from smartvoice.services.model_storage import export_model, import_model, installed_models, uninstall_model
 
 
 class ModelCatalogTests(unittest.TestCase):

@@ -5,10 +5,10 @@ import io
 import json
 import os
 import tempfile
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
-from smartvoice.__main__ import _format_model_list, _router
+from smartvoice.__main__ import _format_model_list, _models, _router
 
 
 class ModelListOutputTests(unittest.TestCase):
@@ -54,6 +54,13 @@ class ModelListOutputTests(unittest.TestCase):
 
     def test_empty_model_list_has_helpful_message(self):
         self.assertEqual(_format_model_list([]), "The model catalog is empty.")
+
+    def test_model_removal_uses_only_the_uninstall_command(self):
+        errors = io.StringIO()
+        with redirect_stderr(errors), self.assertRaises(SystemExit) as raised:
+            _models(["remove", "stt-sensevoice-small-int8"])
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("invalid choice", errors.getvalue())
 
     def test_router_reload_notifies_the_running_local_service(self):
         class Response:

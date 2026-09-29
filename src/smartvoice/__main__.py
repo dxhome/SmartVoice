@@ -153,7 +153,7 @@ def _models(args: list[str]) -> None:
     list_parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
     install_parser = subparsers.add_parser("install", help="Download and install a catalog model")
     install_parser.add_argument("model_id")
-    uninstall_parser = subparsers.add_parser("uninstall", aliases=["remove"], help="Remove an installed model")
+    uninstall_parser = subparsers.add_parser("uninstall", help="Remove an installed model")
     uninstall_parser.add_argument("model_id")
     export_parser = subparsers.add_parser("export", help="Create a portable offline model package")
     export_parser.add_argument("model_id")
@@ -189,7 +189,7 @@ def _models(args: list[str]) -> None:
         print(f"Installed spoken-language detection assets at: {destination}")
         return
 
-    if parsed.action in {"uninstall", "remove"}:
+    if parsed.action == "uninstall":
         if _smartvoice_is_running(settings.server_host, settings.server_port):
             parser.error("Stop the SmartVoice service before uninstalling a model so loaded files are not removed.")
         try:

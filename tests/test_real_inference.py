@@ -4,21 +4,24 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import os
 import unittest
 
 from fastapi.testclient import TestClient
 
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
-from smartvoice.services.model_catalog import model_directory
+from smartvoice.services.model_storage import model_directory
+from smartvoice.services.spoken_language_identifier import installed_language_id_model_dir
 
 
 _settings = Settings.from_env()
+_dependencies_ready = all(importlib.util.find_spec(name) is not None for name in ("sherpa_onnx", "av", "numpy"))
+_require_real_inference = os.environ.get("SMARTVOICE_RUN_REAL_INFERENCE") == "1"
 _models_ready = all(
     (model_directory(_settings, model_id) / "smartvoice-model.json").is_file()
     for model_id in ("stt-sensevoice-small-int8", "tts-melo-zh-en")
-)
-_dependencies_ready = all(importlib.util.find_spec(name) is not None for name in ("sherpa_onnx", "av", "numpy"))
+) and installed_language_id_model_dir(_settings) is not None
 
 
 def _encode_audio(raw_wav: bytes, container_format: str, codec: str, rate: int, sample_format: str) -> bytes:
@@ -45,69 +48,136 @@ def _encode_audio(raw_wav: bytes, container_format: str, codec: str, rate: int, 
     return output_buffer.getvalue()
 
 
-@unittest.skipUnless(_models_ready and _dependencies_ready, "Install both catalog models and [inference] dependencies")
+@unittest.skipUnless(
+    _require_real_inference and _models_ready and _dependencies_ready,
+    "Install the catalog models, Whisper Tiny language detector, and [inference] dependencies; use the regression test entry point to require this test",
+)
 class RealInferenceTests(unittest.TestCase):
-    def test_local_chinese_stt_and_tts(self):
-        app = create_app(settings=_settings)
-        with TestClient(app) as client:
-            runtime = client.get("/v1/runtime")
-            self.assertEqual(runtime.status_code, 200)
-            self.assertEqual(runtime.json()["actual_device"], "cpu")
-            self.assertGreater(runtime.json()["host"]["logical_cpu_count"], 0)
-            self.assertGreater(runtime.json()["host"]["total_physical_memory_bytes"], 0)
-            process = runtime.json()["process"]
-            self.assertGreater(
-                process.get("working_set_bytes", process.get("peak_working_set_bytes", 0)), 0
-            )
-            for language in ("zh", "en"):
-                sample = next(model_directory(_settings, "stt-sensevoice-small-int8").rglob(f"{language}.wav"))
-                with sample.open("rb") as audio:
-                    stt = client.post(
-                        "/v1/audio/transcriptions",
-                        files={"file": (sample.name, audio, "audio/wav")},
-                        data={"model": "smartvoice-auto", "language": language, "response_format": "verbose_json", "timestamps": "true"},
-                    )
-                self.assertEqual(stt.status_code, 200, stt.text)
-                self.assertTrue(stt.json()["text"])
-                self.assertEqual(stt.json()["language"], language)
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client = TestClient(create_app(settings=_settings))
+        cls.client.__enter__()
 
-            source_wav = next(model_directory(_settings, "stt-sensevoice-small-int8").rglob("zh.wav")).read_bytes()
-            audio_formats = (
-                ("sample.wav", source_wav, "audio/wav"),
-                ("sample.mp3", _encode_audio(source_wav, "mp3", "libmp3lame", 44100, "fltp"), "audio/mpeg"),
-                ("sample.flac", _encode_audio(source_wav, "flac", "flac", 16000, "s16"), "audio/flac"),
-                ("sample.m4a", _encode_audio(source_wav, "mp4", "aac", 44100, "fltp"), "audio/mp4"),
-            )
-            for filename, audio_bytes, content_type in audio_formats:
-                response = client.post(
-                    "/v1/audio/transcriptions",
-                    files={"file": (filename, audio_bytes, content_type)},
-                    data={"model": "smartvoice-auto", "language": "zh"},
-                )
-                self.assertEqual(response.status_code, 200, f"{filename}: {response.text}")
-                self.assertTrue(response.json()["text"], filename)
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.__exit__(None, None, None)
+        super().tearDownClass()
 
-            invalid_audio = client.post(
+    @classmethod
+    def _audio_sample(cls, language: str) -> tuple[str, bytes]:
+        sample = next(model_directory(_settings, "stt-sensevoice-small-int8").rglob(f"{language}.wav"))
+        return sample.name, sample.read_bytes()
+
+    def test_service_discovery_reports_real_models_and_cpu_runtime(self):
+        health = self.client.get("/health")
+        ready = self.client.get("/ready")
+        runtime = self.client.get("/v1/runtime")
+        models = self.client.get("/v1/models")
+        capabilities = self.client.get("/v1/capabilities")
+
+        self.assertEqual(health.status_code, 200)
+        self.assertEqual(ready.status_code, 200, ready.text)
+        self.assertEqual(runtime.status_code, 200)
+        self.assertEqual(runtime.json()["actual_device"], "cpu")
+        self.assertGreater(runtime.json()["host"]["logical_cpu_count"], 0)
+        self.assertGreater(runtime.json()["host"]["total_physical_memory_bytes"], 0)
+        self.assertGreater(runtime.json()["process"].get("working_set_bytes", runtime.json()["process"].get("peak_working_set_bytes", 0)), 0)
+        self.assertEqual(models.status_code, 200)
+        model_ids = {item["id"] for item in models.json()["data"]}
+        self.assertIn("stt-sensevoice-small-int8", model_ids)
+        self.assertIn("tts-melo-zh-en", model_ids)
+        self.assertTrue(capabilities.json()["language_identification"]["available"])
+
+    def test_real_stt_transcribes_chinese_and_english_with_segments(self):
+        for language in ("zh", "en"):
+            filename, audio_bytes = self._audio_sample(language)
+            response = self.client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("broken.wav", b"not an audio file", "audio/wav")},
+                files={"file": (filename, audio_bytes, "audio/wav")},
+                data={
+                    "model": "smartvoice-auto", "language": language,
+                    "response_format": "verbose_json", "timestamps": "true",
+                },
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertTrue(response.json()["text"])
+            self.assertEqual(response.json()["language"], language)
+            self.assertTrue(response.json()["segments"])
+            self.assertEqual(response.json()["model_mode"], "router")
+
+    def test_real_audio_language_detection_routes_chinese_and_english(self):
+        for language in ("zh", "en"):
+            filename, audio_bytes = self._audio_sample(language)
+            response = self.client.post(
+                "/v1/audio/transcriptions",
+                files={"file": (filename, audio_bytes, "audio/wav")},
+                data={"model": "smartvoice-auto", "language": "auto"},
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertTrue(response.json()["text"])
+            self.assertEqual(response.json()["language_source"], "model_detection")
+            self.assertEqual(response.json()["language"], language)
+
+    def test_real_stt_supports_direct_model_selection_and_audio_formats(self):
+        filename, source_wav = self._audio_sample("zh")
+        direct = self.client.post(
+            "/v1/audio/transcriptions",
+            files={"file": (filename, source_wav, "audio/wav")},
+            data={"model": "stt-sensevoice-small-int8", "language": "zh"},
+        )
+        self.assertEqual(direct.status_code, 200, direct.text)
+        self.assertEqual(direct.json()["model_mode"], "direct")
+        self.assertTrue(direct.json()["text"])
+
+        audio_formats = (
+            ("sample.wav", source_wav, "audio/wav"),
+            ("sample.mp3", _encode_audio(source_wav, "mp3", "libmp3lame", 44100, "fltp"), "audio/mpeg"),
+            ("sample.flac", _encode_audio(source_wav, "flac", "flac", 16000, "s16"), "audio/flac"),
+            ("sample.m4a", _encode_audio(source_wav, "mp4", "aac", 44100, "fltp"), "audio/mp4"),
+        )
+        for audio_name, audio_bytes, content_type in audio_formats:
+            response = self.client.post(
+                "/v1/audio/transcriptions",
+                files={"file": (audio_name, audio_bytes, content_type)},
                 data={"model": "smartvoice-auto", "language": "zh"},
             )
-            self.assertEqual(invalid_audio.status_code, 422)
-            self.assertEqual(invalid_audio.json()["error"]["code"], "invalid_audio")
+            self.assertEqual(response.status_code, 200, f"{audio_name}: {response.text}")
+            self.assertTrue(response.json()["text"], audio_name)
 
-            for language, text in (
-                ("zh", "你好，这是 SmartVoice 的本地语音合成测试。"),
-                ("en", "Hello, this is a local SmartVoice speech synthesis test."),
-                ("zh", "这是一个用于验证长文本语音合成分段处理的测试。" * 24),
-            ):
-                tts = client.post("/v1/audio/speech", json={
-                    "model": "smartvoice-auto", "input": text, "language": language,
-                })
-                self.assertEqual(tts.status_code, 200, tts.text)
-                self.assertEqual(tts.headers["content-type"], "audio/wav")
-                self.assertEqual(tts.headers["x-requested-language"], language)
-                self.assertTrue(tts.content.startswith(b"RIFF"))
-                self.assertGreater(len(tts.content), 44)
+    def test_real_stt_rejects_invalid_audio(self):
+        response = self.client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("broken.wav", b"not an audio file", "audio/wav")},
+            data={"model": "smartvoice-auto", "language": "zh"},
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["error"]["code"], "invalid_audio")
+
+    def test_real_tts_supports_direct_and_routed_chinese_english_and_long_text(self):
+        cases = (
+            ("你好，这是 SmartVoice 的本地语音合成测试。", "zh", "smartvoice-auto"),
+            ("Hello, this is a local SmartVoice speech synthesis test.", "en", "tts-melo-zh-en"),
+            ("这是一个用于验证长文本语音合成分段处理的测试。" * 24, "zh", "smartvoice-auto"),
+        )
+        for text, language, model in cases:
+            response = self.client.post("/v1/audio/speech", json={
+                "model": model, "input": text, "language": language,
+            })
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.headers["content-type"], "audio/wav")
+            self.assertEqual(response.headers["x-requested-language"], language)
+            self.assertTrue(response.content.startswith(b"RIFF"))
+            self.assertGreater(len(response.content), 44)
+
+    def test_real_tts_detects_text_language_when_language_is_automatic(self):
+        response = self.client.post("/v1/audio/speech", json={
+            "model": "smartvoice-auto", "input": "Hello, this is an automatic language routing test.",
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers["x-resolved-language"], "en")
+        self.assertEqual(response.headers["x-language-source"], "text_detection")
+        self.assertTrue(response.content.startswith(b"RIFF"))
 
 
 if __name__ == "__main__":

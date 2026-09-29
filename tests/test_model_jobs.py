@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import InvalidRequestError
-from smartvoice.services.model_catalog import ModelDownloadCancelled
+from smartvoice.services.model_download import ModelDownloadCancelled
 from smartvoice.services.model_jobs import ModelJobManager
 
 

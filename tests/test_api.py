@@ -270,7 +270,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(delete_response.json()["error"]["code"], "not_found")
 
     def test_model_export_uninstall_and_import_routes(self):
-        from smartvoice.services.model_catalog import get_model_spec
+        from smartvoice.services.model_registry import get_model_spec
 
         with self.make_client() as client:
             settings = client.app.state.settings
