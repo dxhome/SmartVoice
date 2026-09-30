@@ -240,7 +240,12 @@ class ApiTests(unittest.TestCase):
             response = client.get("/v1/runtime")
         self.assertEqual(response.status_code, 200)
         runtime = response.json()
-        self.assertEqual(runtime["actual_device"], "cpu")
+        self.assertEqual(runtime["requested_device"], "cpu")
+        if runtime["provider_status"] == "dependency_missing":
+            self.assertIsNone(runtime["actual_device"])
+            self.assertTrue(runtime["reason"])
+        else:
+            self.assertEqual(runtime["actual_device"], "cpu")
         self.assertIn("processor", runtime["host"])
         self.assertGreater(runtime["process"]["pid"], 0)
         self.assertGreaterEqual(runtime["process"]["cpu_time_seconds"], 0)
