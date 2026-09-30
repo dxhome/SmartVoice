@@ -102,9 +102,11 @@ class SherpaOnnxProvider:
         }
 
     def language_identification_available(self) -> bool:
-        return installed_language_id_model_dir(self.settings) is not None
+        return self._runtime_issue() is None and installed_language_id_model_dir(self.settings) is not None
 
     def installed_models(self) -> list[InstalledModel]:
+        if self._runtime_issue() is not None:
+            return []
         available = [
             model for model in self.model_repository.installed_models()
             if model.get("backend") == "sherpa-onnx"
@@ -123,15 +125,18 @@ class SherpaOnnxProvider:
             return any(key[0] == model_id for key in self._recognizers) or model_id in self._tts
 
     def runtime(self) -> dict[str, object]:
+        issue = self._runtime_issue()
         models = self.installed_models()
         return {
             "backend": "sherpa-onnx",
             "requested_device": self.settings.provider,
-            "actual_device": "cpu" if self.settings.provider == "cpu" else None,
-            "provider_status": "available" if self.settings.provider == "cpu" else "unsupported",
+            "actual_device": "cpu" if issue is None else None,
+            "provider_status": "available" if issue is None else (
+                "unsupported" if self.settings.provider != "cpu" else "dependency_missing"
+            ),
             "installed_model_count": len(models),
             "runtime_version": self._runtime_version(),
-            "reason": None if self.settings.provider == "cpu" else "The initial release supports CPU only.",
+            "reason": issue,
             "host": host_info(),
             "system_memory": system_memory_info(),
             "process": process_metrics(),
@@ -501,6 +506,19 @@ class SherpaOnnxProvider:
         except ImportError as exc:
             raise ModelUnavailableError("Install the inference extra with `python -m pip install -e .[inference]`.") from exc
         return sherpa_onnx
+
+    def _runtime_issue(self) -> str | None:
+        if self.settings.provider != "cpu":
+            return "This release supports CPU inference only."
+        try:
+            self._sherpa()
+            import av  # noqa: F401
+            import numpy  # noqa: F401
+        except ModelUnavailableError as exc:
+            return str(exc)
+        except (ImportError, OSError) as exc:
+            return f"An inference dependency is unavailable: {type(exc).__name__}. Install the inference extra."
+        return None
 
     @staticmethod
     def _runtime_version() -> str | None:

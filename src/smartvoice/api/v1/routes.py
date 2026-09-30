@@ -53,15 +53,9 @@ def get_provider(request: Request):
     return request.app.state.provider
 
 
-def _installed_models_for_api(request: Request) -> list[dict[str, object]]:
-    """List verified installed models even when their optional backend is unavailable."""
-    models_by_id = {
-        str(model["id"]): model
-        for model in request.app.state.model_repository.installed_models()
-    }
-    for model in get_provider(request).installed_models():
-        models_by_id.setdefault(str(model["id"]), model)
-    return list(models_by_id.values())
+def _available_models_for_api(request: Request) -> list[dict[str, object]]:
+    """List only models that the active inference adapters can currently use."""
+    return list(get_provider(request).installed_models())
 
 
 def _router_model(requested_model: str | None, task: str) -> str:
@@ -133,8 +127,14 @@ async def runtime(request: Request) -> dict[str, object]:
 
 @router.get("/models", tags=["models"])
 async def models(request: Request) -> dict[str, object]:
-    data = [_openai_model_object(model) for model in _installed_models_for_api(request)]
-    data.insert(0, _virtual_model_object(ROUTER_MODEL_IDS["transcription"]))
+    available = _available_models_for_api(request)
+    data = [_openai_model_object(model) for model in available]
+    available_tasks = [
+        task for task in ("transcription", "speech")
+        if any(model.get("task") == task for model in available)
+    ]
+    if available_tasks:
+        data.insert(0, _virtual_model_object(ROUTER_MODEL_IDS["transcription"], available_tasks))
     task_order = {"transcription": 0, "speech": 1}
     data[1:] = sorted(data[1:], key=lambda model: (
         task_order.get(str(model.get("task")), 2),
@@ -152,18 +152,19 @@ def _openai_model_object(model: dict[str, object]) -> dict[str, object]:
         # The local catalog does not track publication timestamps.
         "created": 0,
         "owned_by": "smartvoice",
-        **{key: value for key, value in model.items() if key != "id"},
+        "availability": "available",
+        **{key: value for key, value in model.items() if key not in {"id", "installed"}},
     }
 
 
-def _virtual_model_object(model_id: str) -> dict[str, object]:
+def _virtual_model_object(model_id: str, tasks: list[str] | None = None) -> dict[str, object]:
     return {
         "id": model_id,
         "object": "model",
         "created": 0,
         "owned_by": "smartvoice",
         "name": "SmartVoice Auto",
-        "tasks": ["transcription", "speech"],
+        "tasks": tasks or ["transcription", "speech"],
         "virtual": True,
     }
 
@@ -171,13 +172,20 @@ def _virtual_model_object(model_id: str) -> dict[str, object]:
 @router.get("/models/{model_id}", tags=["models"])
 async def retrieve_model(request: Request, model_id: str) -> dict[str, object]:
     if model_id == ROUTER_MODEL_IDS["transcription"]:
-        return _virtual_model_object(model_id)
+        available = _available_models_for_api(request)
+        tasks = [
+            task for task in ("transcription", "speech")
+            if any(model.get("task") == task for model in available)
+        ]
+        if tasks:
+            return _virtual_model_object(model_id, tasks)
+        raise HTTPException(status_code=404, detail=f"Model {model_id!r} is unavailable because no task has an available route.")
     model = next(
-        (item for item in _installed_models_for_api(request) if item.get("id") == model_id),
+        (item for item in _available_models_for_api(request) if item.get("id") == model_id),
         None,
     )
     if model is None:
-        raise HTTPException(status_code=404, detail=f"Model {model_id!r} is not installed.")
+        raise HTTPException(status_code=404, detail=f"Model {model_id!r} is not installed or unavailable for inference.")
     return _openai_model_object(model)
 
 

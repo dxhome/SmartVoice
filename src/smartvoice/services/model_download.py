@@ -22,7 +22,7 @@ from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import InvalidRequestError
 from smartvoice.services.model_catalog_constants import MAX_ARCHIVE_BYTES, MAX_ARCHIVE_MEMBERS, MAX_EXTRACTED_BYTES
 from smartvoice.services.model_registry import get_model_spec
-from smartvoice.services.file_integrity import sha256 as _sha256
+from smartvoice.services.file_integrity import cache_verified_files, sha256 as _sha256
 
 
 class ModelDownloadCancelled(Exception):
@@ -113,7 +113,7 @@ def _download_once(
                 if progress:
                     progress(downloaded, expected)
             if expected is not None and downloaded != expected:
-                raise ValueError(f"Incomplete download: expected {expected} bytes, received {downloaded}")
+                raise ConnectionError(f"Incomplete download: expected {expected} bytes, received {downloaded}")
 
 
 def _safe_extract(archive_path: Path, destination: Path) -> None:
@@ -294,6 +294,41 @@ def install_model(
             json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         os.replace(extracted, destination)
+        try:
+            cache_verified_files(
+                settings.models_dir / ".integrity-cache.json",
+                {
+                    destination / relative: digest
+                    for relative, digest in manifest["file_sha256"].items()
+                },
+            )
+        except OSError:
+            logging.getLogger(__name__).warning(
+                "Could not persist model integrity cache for %s; the next model scan will hash its files.",
+                spec.id,
+                exc_info=True,
+            )
+        try:
+            from smartvoice.services.model_local_state import record_state
+
+            installed_size = sum(
+                (destination / relative).stat().st_size
+                for relative in manifest["file_sha256"]
+            ) + (destination / "smartvoice-model.json").stat().st_size
+            record_state(
+                settings,
+                spec.id,
+                "installed",
+                backend=spec.backend,
+                manifest_path=destination / "smartvoice-model.json",
+                installed_size_bytes=installed_size,
+            )
+        except OSError:
+            logging.getLogger(__name__).warning(
+                "Could not persist local model state for %s; the next model scan will rebuild it.",
+                spec.id,
+                exc_info=True,
+            )
         if spec.file_sources or spec.extra_files:
             for part_path in component_parts:
                 part_path.unlink(missing_ok=True)

@@ -42,7 +42,10 @@ class ProviderContractTests(unittest.TestCase):
             with patch("smartvoice.adapters.inference.sherpa_onnx.provider.installed_language_id_model_dir", return_value=Path("/lid")):
                 result = provider.identify_language(b"fixture")
 
-        self.assertEqual(calls["whisper"], {"encoder": "/lid/tiny-encoder.int8.onnx", "decoder": "/lid/tiny-decoder.int8.onnx"})
+        self.assertEqual(calls["whisper"], {
+            "encoder": str(Path("/lid") / "tiny-encoder.int8.onnx"),
+            "decoder": str(Path("/lid") / "tiny-decoder.int8.onnx"),
+        })
         self.assertEqual(calls["config"]["num_threads"], provider.settings.num_threads)
         self.assertEqual(result["language"], "fr")
         self.assertEqual(result["model"], "sherpa-onnx-whisper-tiny-int8-language-id")

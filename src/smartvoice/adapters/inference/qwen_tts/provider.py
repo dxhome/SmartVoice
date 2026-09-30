@@ -299,9 +299,13 @@ class QwenTTSProvider:
                     process.wait(timeout=2)
             self._native_process = None
             self._native_port = None
+            detail = self._native_failure_detail()
+            if exit_code is not None:
+                unsigned_exit_code = exit_code & 0xFFFFFFFF
+                detail = f"Native process exited with code {exit_code} (0x{unsigned_exit_code:08X}). {detail}"
             raise InferenceError(
                 "The native Qwen3-TTS engine failed to become ready.",
-                detail=self._native_failure_detail(),
+                detail=detail,
             )
 
     @staticmethod

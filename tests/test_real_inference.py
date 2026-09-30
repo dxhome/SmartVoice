@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 import io
-import os
 import unittest
 from pathlib import Path
 
@@ -19,7 +18,6 @@ from smartvoice.services.spoken_language_identifier import installed_language_id
 
 _settings = Settings.from_env()
 _dependencies_ready = all(importlib.util.find_spec(name) is not None for name in ("sherpa_onnx", "av", "numpy"))
-_require_real_inference = os.environ.get("SMARTVOICE_RUN_REAL_INFERENCE") == "1"
 _models_ready = all(
     (model_directory(_settings, model_id) / "smartvoice-model.json").is_file()
     for model_id in ("stt-sensevoice-small-int8", "tts-kokoro-multilingual-v1-1-zh-en")
@@ -52,7 +50,7 @@ def _encode_audio(raw_wav: bytes, container_format: str, codec: str, rate: int, 
 
 
 @unittest.skipUnless(
-    _require_real_inference and _models_ready and _dependencies_ready,
+    _models_ready and _dependencies_ready,
     "Install SenseVoice, Kokoro, Whisper Tiny language-ID assets, and [inference] dependencies to run routed integration scenarios",
 )
 class RealInferenceTests(unittest.TestCase):
@@ -184,8 +182,8 @@ class RealInferenceTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    _require_real_inference and _dependencies_ready,
-    "Set SMARTVOICE_RUN_REAL_INFERENCE=1 and install [inference] dependencies to run model inference tests",
+    _dependencies_ready,
+    "Install [inference] dependencies to run model inference tests",
 )
 class InstalledCatalogModelInferenceTests(unittest.TestCase):
     """Directly smoke-test each catalog model that is installed and runtime-available."""

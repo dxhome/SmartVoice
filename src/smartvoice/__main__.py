@@ -23,15 +23,27 @@ from smartvoice.services.model_jobs import ModelJobManager
 from smartvoice.services.model_management import ModelManagementService
 
 
-def _format_model_list(models: list[dict[str, object]]) -> str:
-    if not models:
+def _format_model_list(
+    models: list[dict[str, object]],
+    native_models: list[dict[str, object]] | None = None,
+) -> str:
+    native_models = native_models or []
+    all_models = [*models, *native_models]
+    if not all_models:
         return "The model catalog is empty."
 
-    noun = "model" if len(models) == 1 else "models"
-    lines = [f"SmartVoice model catalog ({len(models)} {noun})"]
-    task_groups = (("transcription", "STT"), ("speech", "TTS"))
-    for installed, state_title in ((True, "Installed"), (False, "Uninstalled")):
-        state_models = [model for model in models if bool(model.get("installed")) is installed]
+    noun = "model" if len(all_models) == 1 else "models"
+    lines = [f"SmartVoice models ({len(all_models)} {noun})"]
+    task_groups = (("transcription", "STT"), ("speech", "TTS"), ("native", "SmartVoice native"))
+    for is_installed, state_title in (
+        (True, "Installed"),
+        (False, "Not installed"),
+    ):
+        state_models = [
+            model for model in all_models
+            if model.get("status", model.get("availability", "available" if model.get("installed") else "not_installed"))
+            in ({"available", "unavailable"} if is_installed else {"not_installed"})
+        ]
         lines.extend(["", f"{state_title} ({len(state_models)})"])
         if not state_models:
             lines.append("  (none)")
@@ -48,13 +60,108 @@ def _format_model_list(models: list[dict[str, object]]) -> str:
                 backend = model.get("backend", "Unknown")
                 size = model.get("installed_size_bytes")
                 if isinstance(size, int):
-                    size_label = f"{float(size) / 1024**2:.0f} MiB installed"
+                    size_label = f"{float(size) / 1024**2:.0f} MiB on disk"
                 else:
                     estimate = model.get("estimated_size_bytes")
                     size_label = f"~{float(estimate) / 1024**2:.0f} MiB estimated" if isinstance(estimate, int) else "Size unknown"
-                status_label = " | Invalid files" if model.get("status") == "invalid" else ""
+                status = model.get("status", model.get("availability", "available" if model.get("installed") else "not_installed"))
+                if status == "unavailable":
+                    status_label = f" | Unavailable ({model.get('availability_reason') or 'The active inference runtime cannot use this model.'})"
+                elif status == "available":
+                    status_label = " | Available"
+                else:
+                    status_label = " | Not installed"
                 lines.append(f"    - {name} ({model_id}) | {languages} | {backend} | {size_label}{status_label}")
     return "\n".join(lines)
+
+
+def _models_with_availability(models: list[dict[str, object]], settings: Settings, repository) -> list[dict[str, object]]:
+    from smartvoice.adapters.inference.qwen_tts.provider import QwenTTSProvider
+    from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
+
+    providers = {
+        "sherpa-onnx": SherpaOnnxProvider(settings, repository),
+        "qwen-tts": QwenTTSProvider(settings, repository),
+    }
+    runtime_by_backend: dict[str, dict[str, object]] = {}
+    sherpa_provider = providers["sherpa-onnx"]
+    sherpa_issue = sherpa_provider._runtime_issue()
+    runtime_by_backend["sherpa-onnx"] = {
+        "reason": sherpa_issue,
+    }
+    qwen_provider = providers["qwen-tts"]
+    runtime_by_backend["qwen-tts"] = {
+        "reason": (
+            "Qwen3-TTS currently supports CPU inference in SmartVoice."
+            if settings.provider != "cpu" else
+            "The native C INT8 Qwen3-TTS runtime is not installed for this platform."
+            if qwen_provider._native_binary() is None else None
+        ),
+    }
+
+    results = []
+    for original in models:
+        model = dict(original)
+        model_id = str(model.get("id"))
+        if model.get("status") == "uninstalled":
+            model["availability"] = "not_installed"
+        elif model.get("status") == "invalid":
+            model["availability"] = "unavailable"
+            model["availability_reason"] = "Model files are incomplete or fail integrity checks. Reinstall this model."
+        elif model.get("status") == "installed" and not runtime_by_backend.get(
+            str(model.get("backend")), {}
+        ).get("reason"):
+            model["availability"] = "available"
+        else:
+            model["availability"] = "unavailable"
+            runtime = runtime_by_backend.get(str(model.get("backend")), {})
+            model["availability_reason"] = runtime.get("reason") or (
+                "The model files or required inference runtime failed verification."
+            )
+        model["status"] = model.pop("availability")
+        model.pop("installed", None)
+        results.append(model)
+    return results
+
+
+def _native_model_status(settings: Settings) -> dict[str, object]:
+    from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
+    from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
+    from smartvoice.services.spoken_language_identifier import (
+        installed_language_id_model_dir,
+        language_id_model_dir,
+    )
+
+    directory = language_id_model_dir(settings)
+    installed = installed_language_id_model_dir(settings)
+    runtime_issue = SherpaOnnxProvider(settings, CatalogModelRepository(settings))._runtime_issue()
+    if installed is not None and runtime_issue is None:
+        availability = "available"
+        reason = None
+    elif installed is not None:
+        availability = "unavailable"
+        reason = runtime_issue
+    elif directory.exists():
+        availability = "unavailable"
+        reason = "Whisper Tiny files are incomplete or fail integrity checks. Run models install-language-id to repair them."
+    else:
+        availability = "not_installed"
+        reason = None
+    return {
+        "id": "sherpa-onnx-whisper-tiny-int8-language-id",
+        "name": "Whisper Tiny (spoken-language identification)",
+        "task": "native",
+        "languages": ["multilingual"],
+        "backend": "SmartVoice native",
+        "status": availability,
+        "availability_reason": reason,
+        "installed_size_bytes": (
+            sum((installed / filename).stat().st_size for filename in (
+                "tiny-encoder.int8.onnx", "tiny-decoder.int8.onnx", "tiny-tokens.txt"
+            ))
+            if installed else None
+        ),
+    }
 
 
 def _is_loopback(host: str) -> bool:
@@ -156,7 +263,7 @@ def _models(args: list[str]) -> None:
     list_parser = subparsers.add_parser("list", help="List catalog entries and installation state")
     list_parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
     install_parser = subparsers.add_parser("install", help="Download and install a catalog model")
-    install_parser.add_argument("model_id")
+    install_parser.add_argument("model_id", help="Catalog model ID, or 'all' to install every uninstalled catalog model")
     install_parser.add_argument("--source", help="Optional HTTPS base URL for a Hugging Face-compatible model mirror")
     uninstall_parser = subparsers.add_parser("uninstall", help="Remove an installed model")
     uninstall_parser.add_argument("model_id")
@@ -165,7 +272,7 @@ def _models(args: list[str]) -> None:
     export_parser.add_argument("destination", type=Path)
     import_parser = subparsers.add_parser("import", help="Import and verify a portable offline model package")
     import_parser.add_argument("archive", type=Path)
-    subparsers.add_parser("install-language-id", help="Install the optional spoken-language detection assets")
+    subparsers.add_parser("install-language-id", help="Install the Whisper Tiny spoken-language detection assets")
     parsed = parser.parse_args(args)
     try:
         settings = Settings.from_env(parsed.config)
@@ -174,24 +281,47 @@ def _models(args: list[str]) -> None:
     model_management = ModelManagementService(
         ModelJobManager(settings), CatalogModelRepository(settings)
     )
+    last_output = 0.0
+
+    def progress(downloaded: int, total: int | None) -> None:
+        nonlocal last_output
+        now = time.monotonic()
+        if now - last_output < 0.5 and total and downloaded < total:
+            return
+        if total:
+            percent = downloaded * 100 / total
+            end = "\n" if downloaded >= total else ""
+            print(f"\rDownloading {downloaded / 1024**2:.1f}/{total / 1024**2:.1f} MiB ({percent:.1f}%)", end=end, flush=True)
+        else:
+            print(f"\rDownloaded {downloaded / 1024**2:.1f} MiB", end="", flush=True)
+        last_output = now
+
+    def status(message: str) -> None:
+        print(f"\n{message}", flush=True)
+
     if parsed.action == "list":
+        from smartvoice.services.model_storage import catalog_models
+
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8")
-        models = model_management.catalog()["data"]
+        models = _models_with_availability(
+            catalog_models(settings), settings, model_management.model_repository
+        )
+        native_models = [_native_model_status(settings)]
         if parsed.json:
-            print(json.dumps(models, ensure_ascii=False, indent=2))
+            print(json.dumps([*models, *native_models], ensure_ascii=False, indent=2))
         else:
-            print(_format_model_list(models))
+            print(_format_model_list(models, native_models))
         return
 
     if parsed.action == "install-language-id":
         from smartvoice.services.spoken_language_identifier import ensure_language_id_model
 
         try:
-            destination = ensure_language_id_model(settings)
+            destination = ensure_language_id_model(settings, progress, status)
         except (OSError, ValueError, SmartVoiceError) as exc:
             parser.error(str(exc))
-        print(f"Installed spoken-language detection assets at: {destination}")
+        print(f"\nInstalled spoken-language detection assets at: {destination}")
         return
 
     if parsed.action == "uninstall":
@@ -219,32 +349,52 @@ def _models(args: list[str]) -> None:
         print(f"Imported model {result['id']}.")
         return
 
-    last_output = 0.0
-
-    def progress(downloaded: int, total: int | None) -> None:
-        nonlocal last_output
-        now = time.monotonic()
-        if now - last_output < 0.5 and total and downloaded < total:
-            return
-        if total:
-            percent = downloaded * 100 / total
-            print(f"\rDownloading {downloaded / 1024**2:.1f}/{total / 1024**2:.1f} MiB ({percent:.1f}%)", end="", flush=True)
+    if parsed.model_id == "all":
+        if parsed.source:
+            parser.error("--source cannot be used with 'install all'; each model uses its catalog source.")
+        catalog = model_management.catalog()["data"]
+        pending = [model for model in catalog if model.get("status") == "uninstalled"]
+        invalid = [model for model in catalog if model.get("status") == "invalid"]
+        if invalid:
+            print(
+                "Skipping models with existing invalid files: "
+                + ", ".join(str(model.get("id")) for model in invalid)
+                + ". Remove them with 'models uninstall <model-id>' before retrying."
+            )
+        if not pending:
+            print("No uninstalled catalog models to install.")
         else:
-            print(f"\rDownloaded {downloaded / 1024**2:.1f} MiB", end="", flush=True)
-        last_output = now
-
-    spec = model_management.get_spec(parsed.model_id)
-    source_label = parsed.source or "catalog source"
-    if spec.file_sources:
-        print(f"Model files are fetched from the {source_label}; each file is checked against its catalog SHA-256.")
+            print(f"Installing {len(pending)} uninstalled catalog models.")
+        model_ids = [str(model["id"]) for model in pending]
     else:
-        print(f"The archive is fetched from the {source_label} and checked against its catalog SHA-256.")
-    print("Review the model license before redistribution.")
-    try:
-        destination = model_management.install(parsed.model_id, progress, source=parsed.source)
-    except (OSError, ValueError, SmartVoiceError, ModelDownloadCancelled) as exc:
-        parser.error(str(exc))
-    print(f"\nInstalled at: {destination}")
+        model_ids = [parsed.model_id]
+
+    for model_id in model_ids:
+        last_output = 0.0
+        try:
+            spec = model_management.get_spec(model_id)
+            source_label = parsed.source or "catalog source"
+            if parsed.model_id == "all":
+                print(f"\nInstalling {spec.name} ({spec.id})")
+            if spec.file_sources:
+                print(f"Model files are fetched from the {source_label}; each file is checked against its catalog SHA-256.")
+            else:
+                print(f"The archive is fetched from the {source_label} and checked against its catalog SHA-256.")
+            print("Review the model license before redistribution.")
+            destination = model_management.install(model_id, progress, source=parsed.source)
+        except (OSError, ValueError, SmartVoiceError, ModelDownloadCancelled) as exc:
+            parser.error(f"Failed to install {model_id}: {exc}")
+        print(f"\nInstalled at: {destination}")
+
+    if parsed.model_id == "all":
+        from smartvoice.services.spoken_language_identifier import ensure_language_id_model
+
+        print("\nEnsuring Whisper Tiny is installed for automatic language identification.")
+        try:
+            destination = ensure_language_id_model(settings, progress, status)
+        except (OSError, ValueError) as exc:
+            parser.error(f"Failed to install Whisper Tiny language-identification assets: {exc}")
+        print(f"\nWhisper Tiny language-identification assets ready at: {destination}")
 
 
 def _router(args: list[str]) -> None:

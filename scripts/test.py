@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import os
 import sys
 import unittest
 from pathlib import Path
@@ -21,6 +20,16 @@ def _regression_prerequisites() -> list[str]:
         for name in ("sherpa_onnx", "av", "numpy")
         if importlib.util.find_spec(name) is None
     ]
+
+
+def _without_real_inference(suite: unittest.TestSuite) -> unittest.TestSuite:
+    filtered = unittest.TestSuite()
+    for test in suite:
+        if isinstance(test, unittest.TestSuite):
+            filtered.addTests(_without_real_inference(test))
+        elif not test.__class__.__module__.endswith("test_real_inference"):
+            filtered.addTest(test)
+    return filtered
 
 
 def main() -> int:
@@ -41,13 +50,11 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 2
-        os.environ["SMARTVOICE_RUN_REAL_INFERENCE"] = "1"
-    else:
-        os.environ.pop("SMARTVOICE_RUN_REAL_INFERENCE", None)
-
     suite = unittest.defaultTestLoader.discover(
         start_dir=str(TESTS), pattern="test_*.py", top_level_dir=str(ROOT)
     )
+    if mode == "ci":
+        suite = _without_real_inference(suite)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return 0 if result.wasSuccessful() else 1
 

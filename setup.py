@@ -17,16 +17,22 @@ def is_apple_silicon() -> bool:
     return sys.platform == "darwin" and platform.machine().lower() in {"arm64", "aarch64"}
 
 
+def is_windows_x64() -> bool:
+    return sys.platform == "win32" and platform.machine().lower() in {"amd64", "x86_64"}
+
+
 class SmartVoiceDistribution(Distribution):
     def has_ext_modules(self):
-        # The macOS arm64 package contains a native Qwen inference executable.
-        return is_apple_silicon()
+        # These platform wheels contain a native Qwen inference executable.
+        return is_apple_silicon() or is_windows_x64()
 
 
 class SmartVoiceBdistWheel(bdist_wheel):
     def get_tag(self):
         if is_apple_silicon():
             return "py3", "none", "macosx_11_0_arm64"
+        if is_windows_x64():
+            return "py3", "none", "win_amd64"
         return super().get_tag()
 
 
@@ -62,6 +68,10 @@ class BuildPyWithResources(build_py):
             binary_destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(native_source / "qwen_tts", binary_destination)
             binary_destination.chmod(binary_destination.stat().st_mode | 0o111)
+        elif is_windows_x64():
+            from scripts.build_qwen3_tts_windows import build_windows_runtime
+
+            build_windows_runtime(destination / "bin")
 
 
 setup(

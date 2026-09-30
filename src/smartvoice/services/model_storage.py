@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import uuid
@@ -14,8 +15,14 @@ from pathlib import Path, PurePosixPath
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import InvalidRequestError
 from smartvoice.services.model_catalog_constants import MAX_EXTRACTED_BYTES
-from smartvoice.services.file_integrity import sha256 as _sha256
+from smartvoice.services.file_integrity import (
+    cache_verified_files,
+    load_hash_cache,
+    save_hash_cache,
+    sha256 as _sha256,
+)
 from smartvoice.services.model_registry import get_model_spec, load_catalog
+from smartvoice.services.model_local_state import load_state as load_local_model_state, record_state as record_local_model_state
 
 
 @lru_cache(maxsize=4096)
@@ -32,12 +39,29 @@ def model_directory(settings: Settings, model_id: str) -> Path:
 
 def installed_models(settings: Settings) -> list[dict[str, object]]:
     results: list[dict[str, object]] = []
+    integrity_cache_path = settings.models_dir / ".integrity-cache.json"
+    integrity_cache = load_hash_cache(integrity_cache_path)
+    integrity_cache_changed = False
+    model_state = load_local_model_state(settings)
+    model_state_changed = False
     for spec in load_catalog():
         root = model_directory(settings, spec.id)
         manifest_path = root / "smartvoice-model.json"
         if not manifest_path.is_file():
+            status = "invalid" if root.exists() else "not_installed"
+            reason = "Model manifest is missing." if root.exists() else None
+            entry = {
+                "status": status,
+                "reason": reason,
+                "availability": "unavailable" if status == "invalid" else "not_installed",
+                "backend": spec.backend,
+            }
+            if model_state.get(spec.id) != entry:
+                model_state[spec.id] = entry
+                model_state_changed = True
             continue
         try:
+            manifest_stat = manifest_path.stat()
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             valid = (
                 manifest.get("id") == spec.id
@@ -70,12 +94,51 @@ def installed_models(settings: Settings) -> list[dict[str, object]]:
                         valid = False
                         break
                     stat = resolved.stat()
-                    if _cached_sha256(str(resolved), stat.st_size, stat.st_mtime_ns) != expected:
+                    cache_key = str(resolved)
+                    cached = integrity_cache.get(cache_key, {})
+                    if (
+                        cached.get("size") == stat.st_size
+                        and cached.get("mtime_ns") == stat.st_mtime_ns
+                        and cached.get("sha256") == expected
+                    ):
+                        continue
+                    actual = _cached_sha256(cache_key, stat.st_size, stat.st_mtime_ns)
+                    if actual != expected:
+                        integrity_cache.pop(cache_key, None)
+                        integrity_cache_changed = True
                         valid = False
                         break
+                    integrity_cache[cache_key] = {
+                        "size": stat.st_size,
+                        "mtime_ns": stat.st_mtime_ns,
+                        "sha256": actual,
+                    }
+                    integrity_cache_changed = True
         except (OSError, KeyError, AttributeError, TypeError, json.JSONDecodeError):
             valid = False
+            manifest_stat = None
+        state_entry = model_state.get(spec.id, {})
+        same_manifest = (
+            manifest_stat is not None
+            and state_entry.get("manifest_size") == manifest_stat.st_size
+            and state_entry.get("manifest_mtime_ns") == manifest_stat.st_mtime_ns
+        )
         if valid:
+            installed_size = state_entry.get("installed_size_bytes") if same_manifest else None
+            if not isinstance(installed_size, int):
+                installed_size = sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
+            next_entry = {
+                "status": "installed",
+                "reason": None,
+                "availability": "runtime_check_required",
+                "backend": spec.backend,
+                "manifest_size": manifest_stat.st_size if manifest_stat else None,
+                "manifest_mtime_ns": manifest_stat.st_mtime_ns if manifest_stat else None,
+                "installed_size_bytes": installed_size,
+            }
+            if model_state.get(spec.id) != next_entry:
+                model_state[spec.id] = next_entry
+                model_state_changed = True
             results.append({
                 "id": spec.id,
                 "name": spec.name,
@@ -84,15 +147,50 @@ def installed_models(settings: Settings) -> list[dict[str, object]]:
                 "backend": spec.backend,
                 "archive_sha256": manifest.get("archive_sha256"),
                 "installed": True,
-                "installed_size_bytes": sum(path.stat().st_size for path in root.rglob("*") if path.is_file()),
+                "installed_size_bytes": installed_size,
                 "estimated_size_bytes": spec.estimated_size_bytes,
                 "license_note": spec.license_note,
             })
+        else:
+            next_entry = {
+                "status": "invalid",
+                "reason": "Model files are incomplete or fail integrity checks.",
+                "availability": "unavailable",
+                "backend": spec.backend,
+                "manifest_size": manifest_stat.st_size if manifest_stat else None,
+                "manifest_mtime_ns": manifest_stat.st_mtime_ns if manifest_stat else None,
+            }
+            if model_state.get(spec.id) != next_entry:
+                model_state[spec.id] = next_entry
+                model_state_changed = True
+    if integrity_cache_changed:
+        try:
+            settings.models_dir.mkdir(parents=True, exist_ok=True)
+            save_hash_cache(integrity_cache_path, integrity_cache)
+        except OSError:
+            logging.getLogger(__name__).warning(
+                "Could not persist model integrity cache; the next model scan will hash its files.",
+                exc_info=True,
+            )
+    if model_state_changed:
+        try:
+            from smartvoice.services.model_local_state import state_path
+
+            settings.models_dir.mkdir(parents=True, exist_ok=True)
+            save_hash_cache(state_path(settings), model_state)
+        except OSError:
+            logging.getLogger(__name__).warning(
+                "Could not persist local model state; the next model scan will rebuild it.",
+                exc_info=True,
+            )
     return results
 
 
 def catalog_models(settings: Settings) -> list[dict[str, object]]:
-    installed_by_id = {str(model["id"]): model for model in installed_models(settings)}
+    installed_by_id = {
+        str(model["id"]): model
+        for model in installed_models(settings)
+    }
     output = [{
         "id": spec.id, "name": spec.name, "task": spec.task,
         "languages": list(spec.languages), "backend": spec.backend,
@@ -143,6 +241,7 @@ def uninstall_model(settings: Settings, model_id: str, *, loaded: bool = False) 
         raise InvalidRequestError(f"Model {model_id!r} is not installed.")
     size = sum(path.stat().st_size for path in directory.rglob("*") if path.is_file())
     shutil.rmtree(directory)
+    record_local_model_state(settings, spec.id, "not_installed")
     return size
 
 
@@ -238,6 +337,36 @@ def import_model(settings: Settings, archive_path: Path) -> Path:
             raise InvalidRequestError(f"Model directory already exists: {destination}")
         destination.parent.mkdir(parents=True, exist_ok=True)
         os.replace(model_root, destination)
+        try:
+            cache_verified_files(
+                settings.models_dir / ".integrity-cache.json",
+                {destination / relative: digest for relative, digest in hashes.items()},
+            )
+        except OSError:
+            logging.getLogger(__name__).warning(
+                "Could not persist model integrity cache for %s; the next model scan will hash its files.",
+                spec.id,
+                exc_info=True,
+            )
+        try:
+            installed_size = sum(
+                (destination / relative).stat().st_size
+                for relative in hashes
+            ) + (destination / "smartvoice-model.json").stat().st_size
+            record_local_model_state(
+                settings,
+                spec.id,
+                "installed",
+                backend=spec.backend,
+                manifest_path=destination / "smartvoice-model.json",
+                installed_size_bytes=installed_size,
+            )
+        except OSError:
+            logging.getLogger(__name__).warning(
+                "Could not persist local model state for %s; the next model scan will rebuild it.",
+                spec.id,
+                exc_info=True,
+            )
         return destination
     finally:
         shutil.rmtree(temporary_root, ignore_errors=True)

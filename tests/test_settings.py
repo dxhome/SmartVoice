@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import uuid
 import unittest
 from pathlib import Path
@@ -11,10 +12,13 @@ from smartvoice.config.settings import Settings
 
 
 class SettingsTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "darwin", "macOS data-directory semantics are tested on macOS")
     def test_macos_default_data_dir_uses_application_support(self):
         from smartvoice.config.settings import default_data_dir
 
-        with patch.dict(os.environ, {}, clear=True), patch("smartvoice.config.settings.sys.platform", "darwin"), patch("smartvoice.config.settings.Path.home", return_value=Path("/Users/example")):
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "smartvoice.config.settings.Path.home", return_value=Path("/Users/example")
+        ):
             self.assertEqual(default_data_dir(), Path("/Users/example/Library/Application Support/SmartVoice"))
 
     def test_json_configuration_and_environment_overrides(self):

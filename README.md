@@ -19,7 +19,7 @@ SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It 
 | Area | Capability |
 |---|---|
 | Platforms | Windows x64 and macOS Apple Silicon, run from source |
-| Inference | sherpa-onnx and native C INT8 Qwen3-TTS adapter on macOS Apple Silicon |
+| Inference | sherpa-onnx on Windows x64 and macOS Apple Silicon; native C INT8 Qwen3-TTS on macOS Apple Silicon and Windows x64 |
 | STT | Whisper Base multilingual, SenseVoice Small, Qwen3-ASR 0.6B |
 | TTS | Kokoro 1.1, Matcha Baker, Supertonic 3, Qwen3-TTS 0.6B |
 | Smart routing | Selects an installed model by task and language using an editable priority list; `smartvoice-auto` works for both STT and TTS |
@@ -72,11 +72,11 @@ Models use the inference adapter identified in the catalog. Language availabilit
 | `tts-supertonic-v3-multilingual-int8` | TTS | 31 languages; no Chinese | ~0.15 GB | Recommended for its supported languages |
 | `tts-qwen3-0-6b-customvoice` | TTS | 10 languages; 9 preset voices | ~2.50 GB | Recommended for Chinese and measured multilingual routes |
 
-Model sizes are estimates of the unpacked model files, rounded to two decimal places in decimal GB; actual disk use can vary slightly. Installation may need additional temporary space. Qwen3-TTS 0.6B needs at least 6 GiB free disk space during installation. See [`catalog/models.json`](catalog/models.json) for the byte estimates, exact language codes, sources, and model details.
+Catalog model sizes are estimates of the unpacked model files, rounded to two decimal places in decimal GB; actual disk use can vary slightly. The web test page shows the recorded on-disk size when available and otherwise labels the catalog estimate. Installation may need additional temporary space. Qwen3-TTS 0.6B needs at least 6 GiB free disk space during installation. See [`catalog/models.json`](catalog/models.json) for the byte estimates, exact language codes, sources, and model details.
 
 Melo TTS has been removed from the supported catalog, and Supertonic 3 does not support Chinese. Existing model files are left on disk. If an older `<data_dir>/router.json` references the removed Melo model or routes Supertonic for Chinese, SmartVoice rejects that saved routing table, uses the built-in router, and reports a warning. Remove those stale entries and run `python -m smartvoice router reload` to clear the warning.
 
-For routed STT requests with `language=auto`, SmartVoice can use an optional dedicated spoken-language detector. Install it explicitly with `python -m smartvoice models install-language-id`; without it, SmartVoice falls back to an installed STT model that supports automatic language detection. The detector is not downloaded during service startup. Its availability is reported by `/v1/capabilities`.
+For routed STT requests with `language=auto`, SmartVoice uses the Whisper Tiny spoken-language detector when it is installed, then routes to an STT model for the detected language. `python -m smartvoice models install all` installs this detector by default. Without it, SmartVoice falls back to an installed STT model that supports automatic language detection. The detector is not downloaded during service startup. Its availability is reported by `/v1/capabilities`.
 
 ## Quick start
 
@@ -84,7 +84,7 @@ SmartVoice requires Python 3.11 or newer and runs inference on CPU. The service 
 
 ### 1. Install SmartVoice
 
-From a source checkout, create a virtual environment and install the inference dependencies.
+From a source checkout, create a virtual environment and install the inference dependencies. Windows x64 source builds include the Qwen native runtime, so install the MSYS2 UCRT64 build tools described below before running `pip install`.
 
 macOS:
 
@@ -97,52 +97,59 @@ python -m pip install -e ".[inference]"
 Windows PowerShell:
 
 ```powershell
-py -3.11 -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[inference]"
 ```
 
-On macOS Apple Silicon, the source install builds the native INT8 Qwen3-TTS runtime using Xcode Command Line Tools. Qwen3-TTS is not available in native Windows builds. When the PyPI package is available, install it with `python -m pip install "smartvoice[inference]"` instead.
+Run these commands from the repository root. You do not need to activate the virtual environment. In the model and server commands below, replace `python` with `.\.venv\Scripts\python.exe` in Windows PowerShell.
+
+On macOS Apple Silicon, the source install builds the native INT8 Qwen3-TTS runtime using Xcode Command Line Tools. On Windows x64, build the native runtime from the source checkout as described below.
+
+#### Build the Qwen3-TTS runtime on Windows
+
+The Windows source deployment builds Qwen3-TTS with MSYS2 UCRT64 GCC and OpenBLAS. Install MSYS2 and its UCRT64 toolchain packages in an elevated MSYS2 UCRT64 terminal before installing SmartVoice:
+
+```bash
+pacman -S --needed make gcc diffutils mingw-w64-ucrt-x86_64-openblas
+```
+
+Then, from the SmartVoice repository root in PowerShell, build the runtime into the source package and check that it starts:
+
+```powershell
+# Omit this if MSYS2 is installed at C:\msys64 or %USERPROFILE%\msys64.
+$env:SMARTVOICE_MSYS2_ROOT = "C:\msys64"
+$env:SMARTVOICE_QWEN_OUTPUT = "$PWD\src\smartvoice\resources\bin"
+.\.venv\Scripts\python.exe .\scripts\build_qwen3_tts_windows.py
+```
+
+The build script runs the native runtime self-test and stages `qwen_tts.exe`, its required runtime DLLs, and license notices in `src/smartvoice/resources/bin` for the editable source checkout. The Windows package build also bundles the runtime in its build output. These generated binaries are local build artifacts and are not committed. If MSYS2 is installed elsewhere, set `SMARTVOICE_MSYS2_ROOT` to that directory. Python source installation remains editable; a SmartVoice wheel is not required.
 
 ### 2. Download models
 
 Install a basic STT and TTS model. Model files are downloaded once and stored outside the source checkout, under `~/Library/Application Support/SmartVoice` on macOS or `%LOCALAPPDATA%\SmartVoice` on Windows.
 
-macOS, with the virtual environment activated:
-
 ```bash
 python -m smartvoice models install stt-sensevoice-small-int8
 python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
+python -m smartvoice models install-language-id
 ```
 
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\python.exe -m smartvoice models install stt-sensevoice-small-int8
-.\.venv\Scripts\python.exe -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
-```
-
-On macOS Apple Silicon, install Qwen3-TTS to use the configured Chinese and multilingual routes:
+On macOS Apple Silicon and Windows x64 after building its native runtime, install Qwen3-TTS to use the configured Chinese and multilingual routes:
 
 ```bash
 python -m smartvoice models install tts-qwen3-0-6b-customvoice
 ```
 
-On Windows, use the `.venv` Python for model installation commands. Qwen3-TTS requires the macOS Apple Silicon native runtime and is unavailable on Windows.
+On Windows, first build the native runtime as described in [Build the Qwen3-TTS runtime on Windows](#build-the-qwen3-tts-runtime-on-windows). Then install the model as above. Without that runtime, the model will be listed as unavailable and other installed TTS models remain usable.
 
 The first model installation requires internet access. After installation, inference runs locally. See [Model catalog](#model-catalog) for supported languages and estimated sizes.
 
 ### 3. Start SmartVoice
 
-macOS, with the virtual environment activated:
+Start SmartVoice:
 
 ```bash
 python -m smartvoice --host 127.0.0.1 --port 8000
-```
-
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\python.exe -m smartvoice --host 127.0.0.1 --port 8000
 ```
 
 Open the [test page](http://127.0.0.1:8000/test) to verify basic STT and TTS functionality with your installed models. Open [API docs](http://127.0.0.1:8000/docs) for endpoint details. Service settings are stored in `<data_dir>/smartvoice.json`; routing priorities are stored separately in `<data_dir>/router.json` and can be reloaded with `python -m smartvoice router reload`.
@@ -181,7 +188,7 @@ TTS returns mono WAV audio. Requests support up to 4,000 characters; generated a
 
 ## Manage models
 
-The CLI supports `models list`, `install`, `uninstall`, `export`, and `import`. Models can also be installed through API download jobs. Exported model packages can be transferred to offline machines and imported there. An installed model cannot be uninstalled while the service is using it.
+The CLI supports `models list`, `install`, `uninstall`, `export`, and `import`. `models list` groups models by installed state, then by STT, TTS, and SmartVoice native; each model shows its availability, and unavailable models include a reason. Availability checks both model-file integrity and the active inference runtime/device. Use `python -m smartvoice models install all` to install every catalog model that is not already installed and the Whisper Tiny language detector. Model downloads run sequentially from their catalog sources; invalid existing model directories are skipped with a repair hint. Installing all models can require several gigabytes of disk space. On Windows x64, Qwen3-TTS is available only when its native runtime has been built; see [Build the Qwen3-TTS runtime on Windows](#build-the-qwen3-tts-runtime-on-windows). Models can also be installed through API download jobs. Exported model packages can be transferred to offline machines and imported there. An installed model cannot be uninstalled while the service is using it.
 
 Install a model with `python -m smartvoice models install <model-id>`. By default, SmartVoice uses the model's catalog source. For Hugging Face models, pass `--source` with a compatible mirror base URL to use another source, such as:
 
@@ -221,7 +228,7 @@ Client / Agent ──► Versioned HTTP API ──► Application services
               Platform diagnostics adapter
 ```
 
-Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The source deployment supports CPU inference on Windows x64 and macOS Apple Silicon. Qwen3-TTS uses the same native C INT8 adapter where its platform binary is available; packaged support targets macOS Apple Silicon. GPU providers, streaming, Linux and Android runtimes are not available in SmartVoice.
+Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The source deployment supports CPU inference on Windows x64 and macOS Apple Silicon. Qwen3-TTS uses the native C INT8 adapter on both platforms; Windows x64 source deployments build its runtime with MSYS2 as described above. GPU providers, streaming, Linux and Android runtimes are not available in SmartVoice.
 
 ## Development
 

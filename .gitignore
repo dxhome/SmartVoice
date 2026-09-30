@@ -235,3 +235,6 @@ native/qwen3-tts/**/*.o
 native/qwen3-tts/**/*.d
 native/qwen3-tts/**/*.a
 native/qwen3-tts/third_party/ingot/build/
+
+# Locally staged Qwen runtime binaries and dependency DLLs
+src/smartvoice/resources/bin/

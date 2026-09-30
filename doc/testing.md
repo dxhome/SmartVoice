@@ -10,13 +10,13 @@ Run the complete automated test suite without invoking real speech models:
 python scripts/test.py ci
 ```
 
-This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The real inference test is explicitly skipped, even if model files happen to be present locally.
+This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The CI entry point excludes `test_real_inference.py` so it remains fast and does not depend on local models.
 
 The repository contains a GitHub Actions CI workflow that installs the development dependencies and runs this entry point on pull requests and pushes to `main`. CI is currently paused in the GitHub repository settings; until it is re-enabled, run this command locally before merging and do not expect a remote check to appear.
 
 ## Full regression tests
 
-Run the same complete functional suite and exercise real CPU inference through the REST routes. The tests include the routed integration scenarios below plus one direct smoke test for every catalog model that is installed and runtime-available. Each model uses one representative language (Chinese when supported, otherwise English or the first concrete catalog language). Uninstalled models and models whose runtime is unavailable are reported as individual skips. Direct STT tests use `tests/fixtures/zh.wav`, a short Chinese sample generated locally with Kokoro TTS.
+Run the same complete functional suite and exercise real CPU inference through the REST routes. Real inference tests run by default when their dependencies and required models are present; no environment flag is needed. The tests include the routed integration scenarios below plus one direct smoke test for every catalog model that is installed and runtime-available. Each model uses one representative language (Chinese when supported, otherwise English or the first concrete catalog language). Uninstalled models and models whose runtime is unavailable are reported as individual skips. Direct STT tests use `tests/fixtures/zh.wav`, a short Chinese sample generated locally with Kokoro TTS.
 
 ```bash
 python scripts/test.py regression
