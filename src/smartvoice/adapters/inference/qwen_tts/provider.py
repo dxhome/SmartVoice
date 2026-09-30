@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-import importlib.metadata
+import http.client
 import io
+import json
+import math
+import os
+import socket
+import subprocess
 import threading
 import time
 import wave
+from collections import deque
+from pathlib import Path
 
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import InstalledModel, SynthesizedSpeech
@@ -21,6 +28,7 @@ from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRep
 
 MODEL_ID = "tts-qwen3-0-6b-customvoice"
 BACKEND = "qwen-tts"
+NATIVE_ENGINE_VERSION = "ef339be58a778b062e1c14382347964552eae007"
 SPEAKERS = {
     "aiden": "Aiden",
     "dylan": "Dylan",
@@ -45,7 +53,6 @@ LANGUAGES = {
     "zh": "Chinese",
 }
 DEFAULT_SPEAKER = "Vivian"
-MAX_CODEC_TOKENS = 8192
 
 
 class QwenTTSProvider:
@@ -56,12 +63,35 @@ class QwenTTSProvider:
     def __init__(self, settings: Settings, model_repository: ModelRepository | None = None) -> None:
         self.settings = settings
         self.model_repository = model_repository or CatalogModelRepository(settings)
-        self._load_lock = threading.Lock()
         self._inference_lock = threading.Lock()
-        self._model = None
+        self._native_process: subprocess.Popen[str] | None = None
+        self._native_port: int | None = None
+        self._native_startup_lock = threading.Lock()
+        self._native_log_lock = threading.Lock()
+        self._native_log_lines: deque[str] = deque(maxlen=100)
+
+    @staticmethod
+    def _native_binary() -> Path | None:
+        source_root = Path(__file__).resolve().parents[5]
+        package_root = Path(__file__).resolve().parents[3]
+        binary_names = ("qwen_tts.exe", "qwen_tts") if os.name == "nt" else ("qwen_tts",)
+        candidates = [
+            base / name
+            for base in (
+                package_root / "resources" / "bin",
+                source_root / "native" / "qwen3-tts",
+            )
+            for name in binary_names
+        ]
+        for candidate in candidates:
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return candidate
+        return None
 
     def installed_models(self) -> list[InstalledModel]:
-        if self.settings.provider != "cpu" or self._runtime_version() is None:
+        if self.settings.provider != "cpu":
+            return []
+        if self._native_binary() is None:
             return []
         return self._catalogued_models()
 
@@ -71,38 +101,32 @@ class QwenTTSProvider:
             if model.get("backend") == self.backend
         ]
 
-    @staticmethod
-    def _runtime_version() -> str | None:
-        try:
-            return importlib.metadata.version("qwen-tts")
-        except importlib.metadata.PackageNotFoundError:
-            return None
-
     def runtime(self) -> dict[str, object]:
-        runtime_version = self._runtime_version()
-        available = self.settings.provider == "cpu" and runtime_version is not None
-        if runtime_version is None:
-            status = "dependency_missing"
-            reason = "Install the optional Qwen3-TTS dependencies with `pip install 'smartvoice[qwen-tts]'`."
-        elif self.settings.provider != "cpu":
-            status = "unsupported"
-            reason = "Qwen3-TTS currently supports CPU inference in SmartVoice."
-        else:
-            status = "available"
-            reason = None
+        if self.settings.provider != "cpu":
+            return {
+                "backend": self.backend,
+                "requested_device": self.settings.provider,
+                "actual_device": None,
+                "provider_status": "unsupported",
+                "runtime_version": None,
+                "installed_model_count": 0,
+                "reason": "Qwen3-TTS currently supports CPU inference in SmartVoice.",
+            }
+        binary = self._native_binary()
+        available = binary is not None
         return {
             "backend": self.backend,
-            "requested_device": self.settings.provider,
+            "requested_device": "cpu",
             "actual_device": "cpu" if available else None,
-            "provider_status": status,
-            "runtime_version": runtime_version,
+            "provider_status": "available" if available else "dependency_missing",
+            "runtime_version": f"native-c:{NATIVE_ENGINE_VERSION[:12]}" if available else None,
             "installed_model_count": len(self.installed_models()),
-            "reason": reason,
+            "reason": None if available else "The native C INT8 Qwen3-TTS runtime is not installed for this platform.",
         }
 
     def capabilities(self) -> dict[str, object]:
         tasks = []
-        runtime_available = self.settings.provider == "cpu" and self._runtime_version() is not None
+        runtime_available = bool(self.installed_models())
         for model in self._catalogued_models():
             tasks.append({
                 "task": model["task"],
@@ -149,88 +173,173 @@ class QwenTTSProvider:
             available = ", ".join(SPEAKERS.values())
             raise UnsupportedFeatureError(f"Qwen3-TTS voice must be default or one of: {available}.")
 
-        model = self._get_model(canonical_id)
-        runtime_wait_started = time.perf_counter()
-        self._inference_lock.acquire()
-        runtime_wait = time.perf_counter() - runtime_wait_started
-        try:
-            max_new_tokens = min(
-                MAX_CODEC_TOKENS,
-                max(32, int(self.settings.max_tts_audio_seconds * 12.5) + 16),
-            )
-            try:
-                waveforms, sample_rate = model.generate_custom_voice(
-                    text=text,
-                    speaker=speaker,
-                    language=qwen_language,
-                    max_new_tokens=max_new_tokens,
-                )
-            except Exception as exc:
-                raise InferenceError("Qwen3-TTS speech synthesis failed.", detail=type(exc).__name__) from exc
-        finally:
-            self._inference_lock.release()
-
-        if not waveforms:
-            raise InferenceError("Qwen3-TTS returned no audio.")
-        try:
-            import numpy as np
-
-            samples = np.asarray(waveforms[0], dtype=np.float32).reshape(-1)
-            sample_rate = int(sample_rate)
-            if samples.size == 0 or sample_rate <= 0:
-                raise ValueError("The runtime returned empty audio or an invalid sample rate.")
-            duration = samples.size / sample_rate
-            pcm_bytes = samples.size * 2 + 44
-            if duration > self.settings.max_tts_audio_seconds or pcm_bytes > self.settings.max_tts_output_bytes:
-                raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio output limit.")
-            pcm = (np.clip(samples, -1.0, 1.0) * 32767.0).astype("<i2", copy=False)
-            output = io.BytesIO()
-            with wave.open(output, "wb") as wav:
-                wav.setnchannels(1)
-                wav.setsampwidth(2)
-                wav.setframerate(sample_rate)
-                wav.writeframes(pcm.tobytes())
-        except SpeechOutputTooLargeError:
-            raise
-        except Exception as exc:
-            raise InferenceError("Could not encode Qwen3-TTS audio output.", detail=type(exc).__name__) from exc
-
-        return SynthesizedSpeech(
-            audio=output.getvalue(),
-            sample_rate=sample_rate,
-            duration=duration,
-            runtime_wait_seconds=runtime_wait,
-        )
+        return self._synthesize_native(canonical_id, text, speaker, qwen_language)
 
     def is_model_loaded(self, model_id: str) -> bool:
-        return model_id == MODEL_ID and self._model is not None
+        process = self._native_process
+        return model_id == MODEL_ID and process is not None and process.poll() is None
 
-    def _get_model(self, model_id: str):
-        if self._model is not None:
-            return self._model
+    def close(self) -> None:
+        """Stop the lazily started native engine during application shutdown."""
+        with self._native_startup_lock:
+            process = self._native_process
+            self._native_process = None
+            self._native_port = None
+            if process is None or process.poll() is not None:
+                return
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+    def _synthesize_native(self, model_id: str, text: str, speaker: str, language: str) -> SynthesizedSpeech:
         if model_id not in {str(model.get("id")) for model in self.installed_models()}:
             raise ModelUnavailableError(
                 f"Model {model_id!r} is not installed or failed integrity validation. "
                 f"Install it with `python -m smartvoice models install {model_id}`."
             )
-        model_dir = self.model_repository.model_directory(model_id)
-        with self._load_lock:
-            if self._model is not None:
-                return self._model
+        port = self._ensure_native_server(model_id)
+        payload = json.dumps(
+            {"text": text, "speaker": speaker, "language": language},
+            ensure_ascii=False,
+        ).encode("utf-8")
+        wait_started = time.perf_counter()
+        with self._inference_lock:
+            runtime_wait = time.perf_counter() - wait_started
+            connection = http.client.HTTPConnection(
+                "127.0.0.1", port,
+                timeout=self.settings.inference_execution_timeout_seconds,
+            )
             try:
-                import torch
-                from qwen_tts import Qwen3TTSModel
-            except ImportError as exc:
-                raise UnsupportedFeatureError(
-                    "Qwen3-TTS dependencies are not installed. Install SmartVoice with the [qwen-tts] extra."
-                ) from exc
-            try:
-                torch.set_num_threads(self.settings.num_threads)
-                self._model = Qwen3TTSModel.from_pretrained(
-                    str(model_dir),
-                    device_map="cpu",
-                    dtype=torch.float32,
+                connection.request(
+                    "POST", "/v1/tts", body=payload,
+                    headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
                 )
-            except Exception as exc:
-                raise InferenceError("Could not load the installed Qwen3-TTS model.", detail=type(exc).__name__) from exc
-            return self._model
+                response = connection.getresponse()
+                audio = response.read(self.settings.max_tts_output_bytes + 1)
+                if response.status != 200:
+                    detail = audio[:4096].decode("utf-8", errors="replace")
+                    raise InferenceError("Qwen3-TTS speech synthesis failed.", detail=detail)
+            except (OSError, http.client.HTTPException) as exc:
+                raise InferenceError(
+                    "The native Qwen3-TTS engine could not complete synthesis.",
+                    detail=self._native_failure_detail(exc),
+                ) from exc
+            finally:
+                connection.close()
+        if len(audio) > self.settings.max_tts_output_bytes:
+            raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio output limit.")
+        try:
+            with wave.open(io.BytesIO(audio), "rb") as wav:
+                sample_rate = wav.getframerate()
+                if wav.getnchannels() != 1 or wav.getsampwidth() != 2 or sample_rate <= 0:
+                    raise ValueError("The native runtime returned an unsupported WAV format.")
+                duration = wav.getnframes() / sample_rate
+        except (wave.Error, EOFError, ValueError, ZeroDivisionError) as exc:
+            raise InferenceError(
+                "The native Qwen3-TTS engine returned invalid WAV audio.", detail=type(exc).__name__
+            ) from exc
+        if duration > self.settings.max_tts_audio_seconds:
+            raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio duration limit.")
+        return SynthesizedSpeech(
+            audio=audio, sample_rate=sample_rate, duration=duration,
+            runtime_wait_seconds=runtime_wait,
+        )
+
+    def _ensure_native_server(self, model_id: str) -> int:
+        with self._native_startup_lock:
+            process = self._native_process
+            if process is not None and process.poll() is None and self._native_port is not None:
+                return self._native_port
+            if process is not None:
+                self._native_process = None
+                self._native_port = None
+            binary = self._native_binary()
+            if binary is None:
+                raise UnsupportedFeatureError("The native C INT8 Qwen3-TTS runtime is unavailable for this platform.")
+            if model_id not in {str(model.get("id")) for model in self.installed_models()}:
+                raise ModelUnavailableError(
+                    f"Model {model_id!r} is not installed or failed integrity validation. "
+                    f"Install it with `python -m smartvoice models install {model_id}`."
+                )
+            model_dir = self.model_repository.model_directory(model_id)
+            port = self._free_loopback_port()
+            command = [
+                str(binary), "-d", str(model_dir), "-j", str(self.settings.num_threads),
+                "--int8", "--serve", str(port),
+                "--max-request-seconds", str(max(1, math.ceil(self.settings.max_tts_audio_seconds))),
+                "--max-text-chars", str(max(1, self.settings.max_tts_characters)),
+            ]
+            with self._native_log_lock:
+                self._native_log_lines.clear()
+            try:
+                process = subprocess.Popen(
+                    command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", bufsize=1,
+                )
+            except OSError as exc:
+                raise InferenceError("Could not start the native Qwen3-TTS engine.", detail=str(exc)) from exc
+            self._native_process = process
+            self._native_port = port
+            threading.Thread(
+                target=self._drain_native_logs, args=(process,), daemon=True,
+                name="smartvoice-qwen3-tts-log",
+            ).start()
+            if self._wait_for_native_server(process, port):
+                return port
+            exit_code = process.poll()
+            if exit_code is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=2)
+            self._native_process = None
+            self._native_port = None
+            raise InferenceError(
+                "The native Qwen3-TTS engine failed to become ready.",
+                detail=self._native_failure_detail(),
+            )
+
+    @staticmethod
+    def _free_loopback_port() -> int:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            return int(listener.getsockname()[1])
+
+    def _wait_for_native_server(self, process: subprocess.Popen[str], port: int) -> bool:
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                return False
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
+            try:
+                connection.request("GET", "/v1/health")
+                response = connection.getresponse()
+                response.read(1024)
+                if response.status == 200:
+                    return True
+            except (OSError, http.client.HTTPException):
+                pass
+            finally:
+                connection.close()
+            time.sleep(0.1)
+        return False
+
+    def _drain_native_logs(self, process: subprocess.Popen[str]) -> None:
+        if process.stderr is None:
+            return
+        for line in process.stderr:
+            with self._native_log_lock:
+                self._native_log_lines.append(line.rstrip())
+
+    def _native_failure_detail(self, error: Exception | None = None) -> str:
+        with self._native_log_lock:
+            diagnostic_lines = [line for line in self._native_log_lines if "[HTTP] TTS:" not in line]
+        diagnostics = "\n".join(diagnostic_lines[-30:])[-8192:]
+        if error is not None:
+            return f"{type(error).__name__}: {error}"
+        return diagnostics or "No diagnostics were reported by the native engine."

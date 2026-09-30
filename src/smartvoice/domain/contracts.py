@@ -12,6 +12,7 @@ class InstalledModel(TypedDict, total=False):
     backend: str
     installed: bool
     installed_size_bytes: int
+    estimated_size_bytes: int
     license_note: str
 
 

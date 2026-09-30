@@ -37,7 +37,8 @@
       "decoder_file": "base-decoder.int8.onnx",
       "tokens_file": "base-tokens.txt",
       "license_note": "Whisper is multilingual; review the model license and archive notices before redistribution.",
-      "model_type": "whisper"
+      "model_type": "whisper",
+      "estimated_size_bytes": 160610247
     },
     {
       "id": "stt-sensevoice-small-int8",
@@ -62,7 +63,8 @@
       "model_file": "model.int8.onnx",
       "tokens_file": "tokens.txt",
       "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution.",
-      "model_type": "sense_voice"
+      "model_type": "sense_voice",
+      "estimated_size_bytes": 240507515
     },
     {
       "id": "stt-qwen3-asr-600m-int8",
@@ -137,9 +139,10 @@
       "tokens_file": "tokenizer",
       "minimum_free_bytes": 2200000000,
       "license_note": "The Qwen3-ASR upstream is Apache-2.0; review the sherpa-onnx conversion notices and derived artifacts before redistribution.",
-      "model_type": "qwen3_asr"
+      "model_type": "qwen3_asr",
+      "estimated_size_bytes": 987016766
     },
-   {
+    {
       "id": "tts-kokoro-multilingual-v1-1-zh-en",
       "task": "speech",
       "name": "Kokoro 1.1 Chinese and English (103 voices)",
@@ -168,7 +171,8 @@
       "lexicon_file": "lexicon-us-en.txt,lexicon-zh.txt",
       "data_dir": "espeak-ng-data",
       "license_note": "Review the source model and voice licenses before use or redistribution.",
-      "model_type": "kokoro"
+      "model_type": "kokoro",
+      "estimated_size_bytes": 426739711
     },
     {
       "id": "tts-matcha-zh-baker",
@@ -203,7 +207,8 @@
         }
       },
       "license_note": "Review the Matcha checkpoint and Vocos vocoder licenses before use or redistribution.",
-      "model_type": "matcha"
+      "model_type": "matcha",
+      "estimated_size_bytes": 145678495
     },
     {
       "id": "tts-supertonic-v3-multilingual-int8",
@@ -268,7 +273,8 @@
         "voice.bin"
       ],
       "license_note": "Model weights are subject to OpenRAIL-M; review the bundled license for usage and redistribution terms.",
-      "model_type": "supertonic"
+      "model_type": "supertonic",
+      "estimated_size_bytes": 145318372
     },
     {
       "id": "tts-qwen3-0-6b-customvoice",
@@ -334,7 +340,8 @@
       "voice_count": 9,
       "minimum_free_bytes": 6442450944,
       "license_note": "Qwen3-TTS is Apache-2.0. This 0.6B CustomVoice model includes Qwen3-TTS-Tokenizer-12Hz assets; review upstream terms before redistribution.",
-      "model_type": "qwen3_tts"
+      "model_type": "qwen3_tts",
+      "estimated_size_bytes": 2498385866
     }
   ]
 }

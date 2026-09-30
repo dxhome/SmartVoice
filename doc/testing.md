@@ -16,20 +16,22 @@ The repository contains a GitHub Actions CI workflow that installs the developme
 
 ## Full regression tests
 
-Run the same complete functional suite and require real CPU inference through the REST routes. The integration tests exercise service discovery, model and capability reporting, routed and direct STT, Chinese/English speech-language detection, supported audio formats, malformed audio errors, routed/direct TTS, automatic text-language detection, and long-text synthesis.
+Run the same complete functional suite and exercise real CPU inference through the REST routes. The tests include the routed integration scenarios below plus one direct smoke test for every catalog model that is installed and runtime-available. Each model uses one representative language (Chinese when supported, otherwise English or the first concrete catalog language). Uninstalled models and models whose runtime is unavailable are reported as individual skips. Direct STT tests use `tests/fixtures/zh.wav`, a short Chinese sample generated locally with Kokoro TTS.
 
 ```bash
 python scripts/test.py regression
 ```
 
-The regression entry point checks for the `[inference]` dependencies, the `stt-sensevoice-small-int8` model and its `zh.wav`/`en.wav` samples, the `tts-kokoro-multilingual-v1-1-zh-en` model, and verified Whisper Tiny language-ID assets before starting. Missing prerequisites cause a clear failure instead of silently skipping real inference.
+The regression entry point requires the `[inference]` dependencies. Existing multi-route integration cases run when their SenseVoice, Kokoro, and Whisper Tiny language-ID assets are available; otherwise those cases are skipped. The per-catalog direct tests independently run for every installed model, while uninstalled models are skipped by model ID. This lets a local regression cover whichever supported models are present without requiring the full catalog.
 
 Install dependencies and models first:
 
 ```bash
 python -m pip install -e ".[inference,dev]"
+# Install any catalog models you want to include in real inference coverage.
 python -m smartvoice models install stt-sensevoice-small-int8
 python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
+# Optional: enables the existing routed language-identification scenarios.
 python -m smartvoice models install-language-id
 ```
 

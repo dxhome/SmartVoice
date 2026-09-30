@@ -53,6 +53,17 @@ def get_provider(request: Request):
     return request.app.state.provider
 
 
+def _installed_models_for_api(request: Request) -> list[dict[str, object]]:
+    """List verified installed models even when their optional backend is unavailable."""
+    models_by_id = {
+        str(model["id"]): model
+        for model in request.app.state.model_repository.installed_models()
+    }
+    for model in get_provider(request).installed_models():
+        models_by_id.setdefault(str(model["id"]), model)
+    return list(models_by_id.values())
+
+
 def _router_model(requested_model: str | None, task: str) -> str:
     virtual_id = ROUTER_MODEL_IDS[task]
     if requested_model in {None, virtual_id}:
@@ -122,7 +133,7 @@ async def runtime(request: Request) -> dict[str, object]:
 
 @router.get("/models", tags=["models"])
 async def models(request: Request) -> dict[str, object]:
-    data = [_openai_model_object(model) for model in get_provider(request).installed_models()]
+    data = [_openai_model_object(model) for model in _installed_models_for_api(request)]
     data.insert(0, _virtual_model_object(ROUTER_MODEL_IDS["transcription"]))
     task_order = {"transcription": 0, "speech": 1}
     data[1:] = sorted(data[1:], key=lambda model: (
@@ -162,7 +173,7 @@ async def retrieve_model(request: Request, model_id: str) -> dict[str, object]:
     if model_id == ROUTER_MODEL_IDS["transcription"]:
         return _virtual_model_object(model_id)
     model = next(
-        (item for item in get_provider(request).installed_models() if item.get("id") == model_id),
+        (item for item in _installed_models_for_api(request) if item.get("id") == model_id),
         None,
     )
     if model is None:

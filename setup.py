@@ -1,10 +1,33 @@
 """Copy repository model metadata into wheel package resources at build time."""
 
 from pathlib import Path
+import os
+import platform
 import shutil
+import subprocess
+import sys
 
 from setuptools import setup
 from setuptools.command.build_py import build_py
+from setuptools.dist import Distribution
+from wheel.bdist_wheel import bdist_wheel
+
+
+def is_apple_silicon() -> bool:
+    return sys.platform == "darwin" and platform.machine().lower() in {"arm64", "aarch64"}
+
+
+class SmartVoiceDistribution(Distribution):
+    def has_ext_modules(self):
+        # The macOS arm64 package contains a native Qwen inference executable.
+        return is_apple_silicon()
+
+
+class SmartVoiceBdistWheel(bdist_wheel):
+    def get_tag(self):
+        if is_apple_silicon():
+            return "py3", "none", "macosx_11_0_arm64"
+        return super().get_tag()
 
 
 class BuildPyWithResources(build_py):
@@ -16,6 +39,32 @@ class BuildPyWithResources(build_py):
         for name in ("models.json", "router.json"):
             shutil.copy2(root / "catalog" / name, destination / name)
         shutil.copy2(root / "config" / "smartvoice.example.json", destination / "smartvoice.json")
+        if is_apple_silicon():
+            make = shutil.which("make")
+            clang = shutil.which("clang")
+            if not make or not clang:
+                raise RuntimeError("Building the Qwen3-TTS Apple Silicon runtime requires Xcode Command Line Tools.")
+            native_source = root / "native" / "qwen3-tts"
+            jobs = str(max(1, min(os.cpu_count() or 1, 8)))
+            build_env = os.environ.copy()
+            build_env["MACOSX_DEPLOYMENT_TARGET"] = "11.0"
+            subprocess.run(
+                [
+                    make, "blas", f"CC={clang}",
+                    "ARCH_FLAGS=-march=native -mmacosx-version-min=11.0",
+                    f"-j{jobs}",
+                ],
+                cwd=native_source,
+                check=True,
+                env=build_env,
+            )
+            binary_destination = destination / "bin" / "qwen_tts"
+            binary_destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(native_source / "qwen_tts", binary_destination)
+            binary_destination.chmod(binary_destination.stat().st_mode | 0o111)
 
 
-setup(cmdclass={"build_py": BuildPyWithResources})
+setup(
+    distclass=SmartVoiceDistribution,
+    cmdclass={"build_py": BuildPyWithResources, "bdist_wheel": SmartVoiceBdistWheel},
+)

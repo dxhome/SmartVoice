@@ -18,7 +18,10 @@
     "pt": {"display_name": "Portuguese (Brazilian)", "dataset_config": "pt_br", "normalization": "latin_wer"},
     "ru": {"display_name": "Russian", "dataset_config": "ru_ru", "normalization": "whitespace_wer"},
     "de": {"display_name": "German", "dataset_config": "de_de", "normalization": "latin_wer"},
-    "yue": {"display_name": "Cantonese", "dataset_config": "yue_hant_hk", "normalization": "han_cer"}
+    "yue": {"display_name": "Cantonese", "dataset_config": "yue_hant_hk", "normalization": "han_cer"},
+    "ja": {"display_name": "Japanese", "dataset_config": "ja_jp", "normalization": "char_cer"},
+    "ko": {"display_name": "Korean", "dataset_config": "ko_kr", "normalization": "whitespace_wer"},
+    "it": {"display_name": "Italian", "dataset_config": "it_it", "normalization": "latin_wer"}
   },
   "models": [
     {"id": "stt-whisper-base-multilingual-int8", "task": "transcription", "languages": ["en", "zh", "fr", "de"]},
@@ -26,7 +29,8 @@
     {"id": "stt-qwen3-asr-600m-int8", "task": "transcription", "languages": ["en", "zh", "hi", "es", "ar", "fr", "pt", "ru", "de", "yue"]},
     {"id": "tts-kokoro-multilingual-v1-1-zh-en", "task": "speech", "languages": ["en", "zh"]},
     {"id": "tts-matcha-zh-baker", "task": "speech", "languages": ["zh"]},
-    {"id": "tts-supertonic-v3-multilingual-int8", "task": "speech", "languages": ["en", "hi", "es", "ar", "fr", "pt", "ru", "de"]}
+    {"id": "tts-supertonic-v3-multilingual-int8", "task": "speech", "languages": ["en", "hi", "es", "ar", "fr", "pt", "ru", "de"]},
+    {"id": "tts-qwen3-0-6b-customvoice", "task": "speech", "languages": ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"]}
   ],
   "tts_quality_judge_model_id": "stt-qwen3-asr-600m-int8",
   "mixed_concurrency_scenarios": [
@@ -48,6 +52,7 @@
   "server": {"host": "127.0.0.1", "startup_timeout_seconds": 90},
   "profiles": {
     "smoke": {
+      "categories": ["quality", "performance"],
       "quality_sample_limit": 8,
       "performance_sample_limit": 2,
       "bootstrap_samples": 100,
@@ -70,6 +75,14 @@
       "performance": {"warmup_iterations": 5, "iterations": 50},
       "concurrency": {"concurrency_levels": [1, 2, 4, 8], "requests_per_worker": 25, "soak_workers": 4, "soak_seconds": 300},
       "mixed_concurrency": {"concurrency_levels": [4, 8], "requests_per_worker": 25}
+    },
+    "cpu_bounded": {
+      "quality_sample_limit": 5,
+      "performance_sample_limit": 1,
+      "bootstrap_samples": 1000,
+      "performance": {"warmup_iterations": 1, "iterations": 2},
+      "concurrency": {"concurrency_levels": [1, 2, 4], "requests_per_worker": 2, "soak_workers": 4, "soak_seconds": 15},
+      "mixed_concurrency": null
     }
   }
 }

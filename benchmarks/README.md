@@ -4,7 +4,7 @@ The first benchmark layer compares models on one fixed platform. Results are rep
 
 ## Scope
 
-- Configured languages: English (`en_us`), Simplified Chinese (`cmn_hans_cn`), Hindi (`hi_in`), Spanish (`es_419`), Arabic (`ar_eg`), French (`fr_fr`), Brazilian Portuguese (`pt_br`), Russian (`ru_ru`), German (`de_de`), and Cantonese (`yue_hant_hk`). Language profiles and model-language combinations are configuration-driven.
+- Configured languages: English (`en_us`), Simplified Chinese (`cmn_hans_cn`), Hindi (`hi_in`), Spanish (`es_419`), Arabic (`ar_eg`), French (`fr_fr`), Brazilian Portuguese (`pt_br`), Russian (`ru_ru`), German (`de_de`), Cantonese (`yue_hant_hk`), Japanese (`ja_jp`), Korean (`ko_kr`), and Italian (`it_it`). Language profiles and model-language combinations are configuration-driven.
 - STT primary corpus: the pinned `google/fleurs` test split. Each model report records the Hugging Face revision, split, dataset config, license, and sample-ID digest by language.
 - TTS prompts: the pinned FLEURS test transcripts for each configured model-language pair. Generated speech is prepared for local blinded listening; MOS ratings are not invented or inferred from an automatic metric.
 - Models and language support are declared in `config/model-comparison.json`. Requests pass the model ID explicitly.
@@ -23,6 +23,7 @@ FLEURS is a public multilingual speech corpus; its Hugging Face dataset card dec
 
 - A fresh server process per model/language case gives a process-cold first request. OS file cache is not cleared, so this is not a cold-disk measurement.
 - Serial warm measurements report request wall time, API inference time, queue time, RTF, process CPU time, all-logical-CPU-normalized utilization, RSS, and peak RSS. TTS also reports characters per inference second.
+- For adapters that run inference in a child process, request latency and inference time cover the operation, while the existing CPU/RSS response headers measure only the SmartVoice API process; reports identify this resource-measurement limit explicitly.
 - Warm-up count, measurement count, and performance sample count are configured by profile.
 
 ### Concurrency
@@ -34,7 +35,7 @@ FLEURS is a public multilingual speech corpus; its Hugging Face dataset card dec
 
 ## Git and local data policy
 
-Git tracks the runner, config, benchmark instructions, and one JSON result report per model under `result/`. The public dataset is downloaded only when requested. Hugging Face cache, converted audio, server logs, generated TTS audio, blind mappings, and raw rating sheets live under the SmartVoice user data directory (`<data_dir>/benchmark-cache` and `<data_dir>/benchmark-runs`) and are ignored if copied below this directory. Model reports contain no utterance text, audio, user paths, process IDs, or individual listening ratings.
+Git tracks the runner, config, benchmark instructions, and reviewed formal result reports under `result/`. Smoke reports are quick-validation artifacts only: they default to the local SmartVoice user data directory, are marked `quick_validation_only`, must not be used as formal model evaluations, and the runner rejects attempts to write them under `benchmarks/result/`. Do not copy smoke reports into Git. The public dataset is downloaded only when requested. Hugging Face cache, converted audio, server logs, generated TTS audio, blind mappings, raw rating sheets, and default reports live under the SmartVoice user data directory (`<data_dir>/benchmark-cache` and `<data_dir>/benchmark-runs`) and are ignored if copied below this directory. Model reports contain no utterance text, audio, user paths, process IDs, or individual listening ratings.
 
 The default report is written outside the repository. When saving a result under `result/`, select one model with `--model` and use a model-specific filename so each report contains one model only. Review the report before committing it.
 
@@ -52,7 +53,7 @@ The adapter downloads the pinned FLEURS test Parquet shards as data, without exe
 
 ## Run
 
-Quick pipeline check using a small sample set, two workers, and a short soak:
+The `smoke` profile is for quick validation only, not formal model evaluation. It runs quality and performance only: 8 quality samples per language, then one cold request, one warm-up request, and two measured requests per model/language case. It does not run concurrent-load, mixed-model concurrency, or soak tests. Its report stays in the local user data directory and cannot be written to `benchmarks/result/`:
 
 ```bash
 python -m benchmarks.runner --profile smoke --model stt-sensevoice-small-int8 --model tts-kokoro-multilingual-v1-1-zh-en
@@ -66,15 +67,15 @@ python -m benchmarks.runner --profile standard \
   --output benchmarks/result/macos-arm64-stt-qwen3-asr-600m-int8.json
 ```
 
-Run the command once per model when saving tracked results; do not place multi-model output in `result/`.
+For formal tracked comparisons, use `standard` or `full`, review the report, and save one model per JSON file under `result/`. Never use `smoke` results as formal evaluation evidence.
 
-Full comparison uses all available FLEURS test samples, 50 warm iterations, concurrency up to 8 workers, and a 5-minute soak. Use `--model <id>` one or more times to select a subset. Edit the tracked config to add languages, data sources, or model-language combinations; keep dataset audio outside Git.
+Full comparison uses all available FLEURS test samples, 50 warm iterations, concurrency up to 8 workers, and a 5-minute soak. The `cpu_bounded` profile uses five quality samples per language, two warm performance iterations, and shorter concurrency phases for CPU models whose synthesis speed makes the standard profile impractical; its quality scores are exploratory and should not be treated as directly comparable to standard-profile reports. Use `--model <id>` one or more times to select a subset. Edit the tracked config to add languages, data sources, model-language combinations, or profiles; keep dataset audio outside Git.
 
-Run selected categories only with `--category <name>`; the supported values are `quality`, `performance`, and `concurrency`. Repeat the flag to run more than one category. For example, `--category quality` skips performance and load tests while measuring all quality samples in the selected model-language combinations.
+Run selected categories with `--category <name>`; the supported values are `quality`, `performance`, and `concurrency`. Explicit category flags replace the profile defaults. For example, `--profile smoke --category concurrency` runs only concurrency tests, while repeating all three flags runs the complete smoke profile plus concurrent load. Without `--category`, smoke runs quality and performance; standard and full run all three categories.
 
 The runner starts and stops an isolated local SmartVoice server per model/language case and a shared server for each configured mixed-model scenario. It requires selected models and the configured TTS judge model to be installed. It honors the current SmartVoice settings for inference threads and queue limits, which are recorded in the report. Set `SMARTVOICE_MAX_CONCURRENT_INFERENCE` and `SMARTVOICE_NUM_THREADS` in the environment to run controlled concurrency comparisons; these are recorded in the report.
 
-Example mixed workload for two STT models and an STT/TTS pair:
+Example mixed workload for two STT models and an STT/TTS pair (concurrency is explicitly selected because smoke skips it by default):
 
 ```bash
 SMARTVOICE_MAX_CONCURRENT_INFERENCE=2 SMARTVOICE_NUM_THREADS=1 \

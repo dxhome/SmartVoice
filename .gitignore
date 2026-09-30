@@ -222,3 +222,16 @@ __marimo__/
 
 # macOS metadata
 .DS_Store
+
+# Local execution session state
+:memory:.ses
+
+# Vendored Qwen3-TTS native build artifacts
+native/qwen3-tts/qwen_tts
+native/qwen3-tts/.source_fingerprint
+native/qwen3-tts/qwen_build_id.h
+native/qwen3-tts/.build_state/
+native/qwen3-tts/**/*.o
+native/qwen3-tts/**/*.d
+native/qwen3-tts/**/*.a
+native/qwen3-tts/third_party/ingot/build/

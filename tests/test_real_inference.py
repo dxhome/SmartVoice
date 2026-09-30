@@ -6,12 +6,14 @@ import importlib.util
 import io
 import os
 import unittest
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.services.model_storage import model_directory
+from smartvoice.services.model_registry import load_catalog
 from smartvoice.services.spoken_language_identifier import installed_language_id_model_dir
 
 
@@ -22,6 +24,7 @@ _models_ready = all(
     (model_directory(_settings, model_id) / "smartvoice-model.json").is_file()
     for model_id in ("stt-sensevoice-small-int8", "tts-kokoro-multilingual-v1-1-zh-en")
 ) and installed_language_id_model_dir(_settings) is not None
+_catalog = load_catalog()
 
 
 def _encode_audio(raw_wav: bytes, container_format: str, codec: str, rate: int, sample_format: str) -> bytes:
@@ -50,7 +53,7 @@ def _encode_audio(raw_wav: bytes, container_format: str, codec: str, rate: int, 
 
 @unittest.skipUnless(
     _require_real_inference and _models_ready and _dependencies_ready,
-    "Install the catalog models, Whisper Tiny language detector, and [inference] dependencies; use the regression test entry point to require this test",
+    "Install SenseVoice, Kokoro, Whisper Tiny language-ID assets, and [inference] dependencies to run routed integration scenarios",
 )
 class RealInferenceTests(unittest.TestCase):
     @classmethod
@@ -178,6 +181,80 @@ class RealInferenceTests(unittest.TestCase):
         self.assertEqual(response.headers["x-resolved-language"], "en")
         self.assertEqual(response.headers["x-language-source"], "text_detection")
         self.assertTrue(response.content.startswith(b"RIFF"))
+
+
+@unittest.skipUnless(
+    _require_real_inference and _dependencies_ready,
+    "Set SMARTVOICE_RUN_REAL_INFERENCE=1 and install [inference] dependencies to run model inference tests",
+)
+class InstalledCatalogModelInferenceTests(unittest.TestCase):
+    """Directly smoke-test each catalog model that is installed and runtime-available."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client = TestClient(create_app(settings=_settings))
+        cls.client.__enter__()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.__exit__(None, None, None)
+        super().tearDownClass()
+
+    def _run_model_smoke_test(self, spec):
+        installed_ids = {str(model["id"]) for model in self.client.app.state.provider.installed_models()}
+        if spec.id not in installed_ids:
+            self.skipTest(f"{spec.id} is not installed or its inference runtime is unavailable")
+
+        # Prefer Chinese for this project's primary use case; use English for
+        # multilingual models without Chinese, then the first concrete language.
+        language = next(
+            (code for code in ("zh", "en") if code in spec.languages),
+            next((code for code in spec.languages if code != "auto"), None),
+        )
+        self.assertIsNotNone(language, f"{spec.id} has no concrete language to test")
+
+        if spec.task == "transcription":
+            sample = Path(__file__).parent / "fixtures" / "zh.wav"
+            if not sample.is_file():
+                self.skipTest("shared Chinese STT sample is unavailable")
+            response = self.client.post(
+                "/v1/audio/transcriptions",
+                files={"file": (sample.name, sample.read_bytes(), "audio/wav")},
+                data={"model": spec.id, "language": language},
+            )
+            self.assertEqual(response.status_code, 200, f"{spec.id}: {response.text}")
+            result = response.json()
+            self.assertEqual(result["model"], spec.id)
+            self.assertEqual(result["model_mode"], "direct")
+            self.assertTrue(result["text"])
+        else:
+            text = "你好，这是 SmartVoice 语音合成测试。" if language == "zh" else "Hello, this is a SmartVoice speech test."
+            response = self.client.post("/v1/audio/speech", json={
+                "model": spec.id, "input": text, "language": language,
+            })
+            self.assertEqual(response.status_code, 200, f"{spec.id}: {response.text}")
+            self.assertEqual(response.headers["content-type"], "audio/wav")
+            self.assertEqual(response.headers["x-model-id"], spec.id)
+            self.assertTrue(response.content.startswith(b"RIFF"))
+            self.assertGreater(len(response.content), 44)
+
+
+def _model_test(spec):
+    def test_model_inference(self):
+        self._run_model_smoke_test(spec)
+
+    test_model_inference.__name__ = f"test_{spec.id.replace('-', '_')}"
+    test_model_inference.__doc__ = f"Run a one-language inference smoke test for {spec.id}."
+    return test_model_inference
+
+
+for _model_spec in _catalog:
+    setattr(
+        InstalledCatalogModelInferenceTests,
+        f"test_{_model_spec.id.replace('-', '_')}",
+        _model_test(_model_spec),
+    )
 
 
 if __name__ == "__main__":

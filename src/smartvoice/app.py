@@ -194,8 +194,13 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
         )
     @asynccontextmanager
     async def lifespan(application: FastAPI):
-        yield
-        application.state.model_jobs.cancel_all()
+        try:
+            yield
+        finally:
+            application.state.model_jobs.cancel_all()
+            close = getattr(application.state.provider, "close", None)
+            if callable(close):
+                close()
 
     logger.setLevel(logging.DEBUG if debug_http else getattr(logging, settings.log_level, logging.INFO))
     app = FastAPI(
@@ -207,6 +212,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     )
     app.state.settings = settings
     app.state.provider = provider
+    app.state.model_repository = model_repository
     app.state.inference_queue = InferenceQueue(
         settings.max_concurrent_inference, settings.max_queued_inference
     )

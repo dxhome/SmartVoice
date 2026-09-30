@@ -16,34 +16,11 @@ sys.path.insert(0, str(ROOT))
 
 
 def _regression_prerequisites() -> list[str]:
-    from smartvoice.config.settings import Settings
-    from smartvoice.services.model_storage import model_directory
-    from smartvoice.services.spoken_language_identifier import installed_language_id_model_dir
-
-    missing = [
+    return [
         f"Python package '{name}' is missing; install with: python -m pip install -e '.[inference]'"
         for name in ("sherpa_onnx", "av", "numpy")
         if importlib.util.find_spec(name) is None
     ]
-    settings = Settings.from_env()
-    required_models = {
-        "stt-sensevoice-small-int8": ("zh.wav", "en.wav"),
-        "tts-kokoro-multilingual-v1-1-zh-en": (),
-    }
-    for model_id, required_samples in required_models.items():
-        directory = model_directory(settings, model_id)
-        if not (directory / "smartvoice-model.json").is_file():
-            missing.append(f"Model '{model_id}' is not installed under {directory}")
-            continue
-        for sample_name in required_samples:
-            if not any(directory.rglob(sample_name)):
-                missing.append(f"Model '{model_id}' is missing its required test sample '{sample_name}'")
-    if installed_language_id_model_dir(settings) is None:
-        missing.append(
-            "The verified Whisper Tiny language-ID assets are not installed; install them with: "
-            "python -m smartvoice models install-language-id"
-        )
-    return missing
 
 
 def main() -> int:
@@ -59,7 +36,7 @@ def main() -> int:
             for item in missing:
                 print(f"- {item}", file=sys.stderr)
             print(
-                "Install the listed models and inference dependencies, then rerun "
+                "Install the listed inference dependencies, then rerun "
                 "'python scripts/test.py regression'.",
                 file=sys.stderr,
             )

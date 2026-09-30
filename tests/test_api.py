@@ -213,6 +213,26 @@ class ApiTests(unittest.TestCase):
             )
             self.assertEqual(enum_schema["enum"], ["transcription", "speech"])
 
+    def test_model_endpoints_list_installed_models_without_an_available_inference_backend(self):
+        qwen_model = {
+            "id": "tts-qwen3-0-6b-customvoice",
+            "name": "Qwen3-TTS 0.6B CustomVoice",
+            "task": "speech",
+            "backend": "qwen-tts",
+            "languages": ["zh", "en"],
+            "installed": True,
+        }
+        with self.make_client() as client:
+            with patch.object(client.app.state.model_repository, "installed_models", return_value=[qwen_model]):
+                model_list = client.get("/v1/models")
+                model_detail = client.get("/v1/models/tts-qwen3-0-6b-customvoice")
+
+        self.assertEqual(model_list.status_code, 200)
+        listed_ids = [item["id"] for item in model_list.json()["data"]]
+        self.assertIn("tts-qwen3-0-6b-customvoice", listed_ids)
+        self.assertEqual(model_detail.status_code, 200)
+        self.assertEqual(model_detail.json()["backend"], "qwen-tts")
+
     def test_runtime_includes_cpu_host_and_process_resource_metrics(self):
         from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 

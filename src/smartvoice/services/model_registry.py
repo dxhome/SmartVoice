@@ -65,6 +65,7 @@ def load_catalog() -> list[ModelSpec]:
             file_sources=file_sources, file_sha256=file_sha256,
             extra_files=extra_files, voices_file=item.get("voices_file"),
             vocoder_file=item.get("vocoder_file"), voice_count=item.get("voice_count"),
+            estimated_size_bytes=item.get("estimated_size_bytes"),
             minimum_free_bytes=item.get("minimum_free_bytes"),
             rule_fsts=item.get("rule_fsts"),
         ))

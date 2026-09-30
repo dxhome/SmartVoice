@@ -42,6 +42,7 @@ class ModelRouterTests(unittest.TestCase):
         self.assertEqual(selected, "tts-supertonic-v3-multilingual-int8")
         self.assertEqual(states, [
             {"model": "tts-supertonic-v3-multilingual-int8", "installed": True},
+            {"model": "tts-qwen3-0-6b-customvoice", "installed": False},
         ])
 
     def test_no_installed_candidate_returns_actionable_model_error(self):

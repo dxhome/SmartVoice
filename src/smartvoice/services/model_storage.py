@@ -85,6 +85,7 @@ def installed_models(settings: Settings) -> list[dict[str, object]]:
                 "archive_sha256": manifest.get("archive_sha256"),
                 "installed": True,
                 "installed_size_bytes": sum(path.stat().st_size for path in root.rglob("*") if path.is_file()),
+                "estimated_size_bytes": spec.estimated_size_bytes,
                 "license_note": spec.license_note,
             })
     return results
@@ -102,6 +103,7 @@ def catalog_models(settings: Settings) -> list[dict[str, object]]:
         "archive_name": spec.archive_name,
         "archive_sha256": spec.archive_sha256,
         "installed_size_bytes": installed_by_id.get(spec.id, {}).get("installed_size_bytes"),
+        "estimated_size_bytes": spec.estimated_size_bytes,
         "required_files": list(spec.required_files),
         "license_note": spec.license_note,
         "extra_files": spec.extra_files,

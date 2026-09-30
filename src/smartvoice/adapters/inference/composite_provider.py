@@ -101,6 +101,13 @@ class CompositeInferenceProvider:
         is_loaded = getattr(self._provider_for_model(model_id), "is_model_loaded", None)
         return bool(is_loaded(model_id)) if callable(is_loaded) else False
 
+    def close(self) -> None:
+        """Close managed runtimes owned by the composed adapters."""
+        for provider in self.providers.values():
+            close = getattr(provider, "close", None)
+            if callable(close):
+                close()
+
     def _provider_for_model(self, model_id: str) -> InferenceProvider:
         spec = self.model_repository.get_spec(model_id)
         provider = self.providers.get(spec.backend)

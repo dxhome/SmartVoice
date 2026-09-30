@@ -146,6 +146,24 @@ def _safe_extract(archive_path: Path, destination: Path) -> None:
                 shutil.copyfileobj(source, output, length=1024 * 1024)
 
 
+def _find_required_paths(root: Path, required: str, *, directory: bool = False) -> list[Path]:
+    """Resolve a catalog path, allowing archives with one extra top-level folder."""
+    parts = PurePosixPath(required).parts
+    exact = root.joinpath(*parts)
+    exact_exists = exact.is_dir() if directory else exact.is_file()
+    if exact_exists:
+        return [exact]
+
+    matches = []
+    for candidate in root.rglob(parts[-1]):
+        if directory != candidate.is_dir():
+            continue
+        relative_parts = candidate.relative_to(root).parts
+        if len(relative_parts) >= len(parts) and relative_parts[-len(parts):] == parts:
+            matches.append(candidate)
+    return matches
+
+
 def _download_urls(spec, source: str | None) -> list[str]:
     """Resolve catalog-pinned Hugging Face URLs against an explicitly selected base URL."""
     urls = list(spec.file_sources.values()) if spec.file_sources else [spec.source]
@@ -234,13 +252,13 @@ def install_model(
 
         found: dict[str, Path] = {}
         for required in spec.required_files:
-            matches = list(extracted.rglob(required))
+            matches = _find_required_paths(extracted, required)
             if len(matches) != 1:
                 raise ValueError(f"Expected one {required!r} in model archive, found {len(matches)}")
             found[required] = matches[0]
         for required in spec.required_dirs:
-            matches = list(extracted.rglob(required))
-            if len(matches) != 1 or not matches[0].is_dir():
+            matches = _find_required_paths(extracted, required, directory=True)
+            if len(matches) != 1:
                 raise ValueError(f"Expected one model directory {required!r} in archive, found {len(matches)}")
             found[required] = matches[0]
         file_map: dict[str, str] = {}

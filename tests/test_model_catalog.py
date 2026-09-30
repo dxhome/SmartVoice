@@ -218,6 +218,44 @@ class ModelCatalogTests(unittest.TestCase):
             self.assertTrue((restored / "smartvoice-model.json").is_file())
             self.assertEqual(uninstall_model(settings, "stt-sensevoice-small-int8"), released)
 
+    def test_model_install_resolves_same_named_files_by_catalog_path(self):
+        test_dir = Path.cwd() / ".smartvoice-dev" / f"duplicate-config-test-{uuid.uuid4().hex}"
+        settings = Settings(data_dir=test_dir / "data")
+        spec = get_model_spec("tts-qwen3-0-6b-customvoice")
+
+        def fixture_content(relative_name: str) -> bytes:
+            return f"fixture:{relative_name}".encode()
+
+        fixture_hashes = {
+            name: hashlib.sha256(fixture_content(name)).hexdigest()
+            for name in spec.required_files
+        }
+        fixture_spec = replace(spec, file_sha256=fixture_hashes)
+
+        def fake_download(url, target, _progress, _cancel_event=None):
+            relative_name = url.split("/resolve/", 1)[1].split("/", 1)[1]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(fixture_content(relative_name))
+
+        test_dir.mkdir(parents=True)
+        disk_usage = type("DiskUsage", (), {"free": 8 * 1024**3})()
+        with patch("smartvoice.services.model_download._download", fake_download), patch(
+            "smartvoice.services.model_download.get_model_spec", return_value=fixture_spec
+        ), patch("smartvoice.services.model_download.shutil.disk_usage", return_value=disk_usage), patch(
+            "smartvoice.services.model_storage.get_model_spec", return_value=fixture_spec
+        ), patch("smartvoice.services.model_storage.load_catalog", return_value=[fixture_spec]):
+            destination = install_model(settings, fixture_spec.id)
+            self.assertEqual(installed_models(settings)[0]["id"], fixture_spec.id)
+
+        manifest = json.loads((destination / "smartvoice-model.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["files"]["config.json"], "config.json")
+        self.assertEqual(manifest["files"]["speech_tokenizer/config.json"], "speech_tokenizer/config.json")
+        self.assertEqual((destination / "config.json").read_bytes(), fixture_content("config.json"))
+        self.assertEqual(
+            (destination / "speech_tokenizer/config.json").read_bytes(),
+            fixture_content("speech_tokenizer/config.json"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

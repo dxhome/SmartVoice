@@ -1,3 +1,7 @@
 include catalog/models.json
 include catalog/router.json
 include config/smartvoice.example.json
+include native/qwen3-tts/LICENSE
+include native/qwen3-tts/.source_fingerprint
+include native/qwen3-tts/UPSTREAM.md
+recursive-include native/qwen3-tts *.c *.h *.S *.inc Makefile LICENSE NOTICE.md

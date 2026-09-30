@@ -47,7 +47,11 @@ def _format_model_list(models: list[dict[str, object]]) -> str:
                 model_id = model.get("id", "Unknown")
                 backend = model.get("backend", "Unknown")
                 size = model.get("installed_size_bytes")
-                size_label = f"{float(size) / 1024**2:.0f} MiB" if isinstance(size, int) else "Not installed"
+                if isinstance(size, int):
+                    size_label = f"{float(size) / 1024**2:.0f} MiB installed"
+                else:
+                    estimate = model.get("estimated_size_bytes")
+                    size_label = f"~{float(estimate) / 1024**2:.0f} MiB estimated" if isinstance(estimate, int) else "Size unknown"
                 status_label = " | Invalid files" if model.get("status") == "invalid" else ""
                 lines.append(f"    - {name} ({model_id}) | {languages} | {backend} | {size_label}{status_label}")
     return "\n".join(lines)

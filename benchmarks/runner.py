@@ -505,6 +505,42 @@ def _fingerprint_models(settings: Settings, model_ids: set[str]) -> list[dict[st
     return sorted(rows, key=lambda row: row["id"])
 
 
+def _fingerprint_inference_engines(model_ids: set[str]) -> list[dict[str, Any]]:
+    """Record native engine build identity when a selected model uses one."""
+    try:
+        catalog = json.loads((REPO_ROOT / "catalog" / "models.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    backends = {
+        str(model.get("id")): str(model.get("backend"))
+        for model in catalog.get("models", []) if isinstance(model, dict)
+    }
+    fingerprints = []
+    if any(backends.get(model_id) == "qwen-tts" for model_id in model_ids):
+        candidates = (
+            REPO_ROOT / "src" / "smartvoice" / "resources" / "bin" / "qwen_tts",
+            REPO_ROOT / "native" / "qwen3-tts" / "qwen_tts",
+        )
+        binary = next((path for path in candidates if path.is_file()), None)
+        if binary is not None:
+            digest = hashlib.sha256()
+            with binary.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            fingerprint_path = binary.parent / ".source_fingerprint"
+            try:
+                source_fingerprint = fingerprint_path.read_text(encoding="utf-8").strip()
+            except OSError:
+                source_fingerprint = None
+            fingerprints.append({
+                "backend": "qwen-tts",
+                "binary": str(binary.relative_to(REPO_ROOT)),
+                "binary_sha256": digest.hexdigest(),
+                "source_fingerprint": source_fingerprint,
+            })
+    return fingerprints
+
+
 def _report_runtime(runtime: dict[str, Any]) -> dict[str, Any]:
     process = runtime.get("process") or {}
     return {
@@ -512,11 +548,31 @@ def _report_runtime(runtime: dict[str, Any]) -> dict[str, Any]:
         for key in ("backend", "requested_device", "actual_device", "provider_status", "runtime_version", "host", "system_memory")
         if key in runtime
     } | {
+        "backends": {
+            name: {
+                key: value.get(key)
+                for key in ("backend", "actual_device", "provider_status", "runtime_version", "installed_model_count")
+                if key in value
+            }
+            for name, value in (runtime.get("backends") or {}).items()
+            if isinstance(value, dict)
+        },
         "process_resources": {
             key: process[key] for key in ("cpu_time_seconds", "working_set_bytes", "peak_working_set_bytes", "private_bytes")
             if key in process
         }
     }
+
+
+def _resource_measurement_limit(runtime: dict[str, Any]) -> str | None:
+    """Explain when API process headers omit a separately managed inference engine."""
+    qwen_runtime = (runtime.get("backends") or {}).get("qwen-tts")
+    if isinstance(qwen_runtime, dict) and str(qwen_runtime.get("runtime_version", "")).startswith("native-c:"):
+        return (
+            "CPU time and RSS headers measure the SmartVoice API process only; "
+            "the native Qwen3-TTS engine subprocess is excluded."
+        )
+    return None
 
 
 def run_benchmark(
@@ -529,8 +585,18 @@ def run_benchmark(
     if profile_name not in profiles:
         raise ValueError(f"Unknown profile {profile_name!r}; choose from {', '.join(profiles)}")
     profile = profiles[profile_name]
+    tracked_results_dir = (REPO_ROOT / "benchmarks" / "result").resolve()
+    if (
+        profile_name == "smoke"
+        and output_path is not None
+        and output_path.resolve().is_relative_to(tracked_results_dir)
+    ):
+        raise ValueError("Smoke results are for quick validation only and cannot be written under benchmarks/result/.")
     available_categories = {"quality", "performance", "concurrency"}
-    categories = available_categories if selected_categories is None else selected_categories
+    profile_categories = profile.get("categories", sorted(available_categories))
+    if not isinstance(profile_categories, list) or not all(isinstance(item, str) for item in profile_categories):
+        raise ValueError(f"Profile {profile_name!r} categories must be a list of category names.")
+    categories = set(profile_categories) if selected_categories is None else selected_categories
     if not categories or categories - available_categories:
         raise ValueError(f"Categories must be selected from {', '.join(sorted(available_categories))}.")
     models = [model for model in config["models"] if selected_models is None or model["id"] in selected_models]
@@ -609,6 +675,9 @@ def run_benchmark(
                     perf = _run_performance(server.base_url, model, language, perf_samples, profile["performance"], logical_cpus)
                     perf["service_startup_seconds"] = round(startup_seconds, 6)
                     perf["host_runtime"] = _report_runtime(runtime_data)
+                    resource_limit = _resource_measurement_limit(runtime_data)
+                    if resource_limit:
+                        perf["resource_measurement_limit"] = resource_limit
                     baseline_process = runtime_data.get("process") or {}
                     perf["resources"]["baseline_process_rss_bytes"] = baseline_process.get("working_set_bytes")
                     if perf["resources"]["steady_rss_median_bytes"] is not None and baseline_process.get("working_set_bytes") is not None:
@@ -617,6 +686,9 @@ def run_benchmark(
                 if "concurrency" in categories:
                     conc = _run_concurrent(server.base_url, model, language, perf_samples[0], profile["concurrency"])
                     conc["host_runtime"] = _report_runtime(runtime_data)
+                    resource_limit = _resource_measurement_limit(runtime_data)
+                    if resource_limit:
+                        conc["resource_measurement_limit"] = resource_limit
                     concurrency_results.append(conc)
                 if "quality" in categories and category == "stt":
                     quality_results["stt"].append({
@@ -688,6 +760,7 @@ def run_benchmark(
         "platform": {"system": platform.system(), "release": platform.release(), "machine": platform.machine(), "processor": platform.processor(), "python_implementation": platform.python_implementation()},
         "dataset": {"repo_id": dataset_config["repo_id"], "revision": dataset_config["revision"], "split": dataset_config["split"], "license": dataset_config["license"], "languages": dataset_meta},
         "models": _fingerprint_models(settings, {model["id"] for model in models} | ({str(tts_judge_id)} if tts_judge_id and any(model["task"] == "speech" for model in models) else set())),
+        "inference_engine_fingerprints": _fingerprint_inference_engines({str(model["id"]) for model in models}),
         "config_sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
         "profile_settings": profile,
         "service_settings": {
@@ -704,7 +777,12 @@ def run_benchmark(
             "concurrency": concurrency_results,
         },
         "local_artifacts": {"tts_listening_files_generated": bool(ratings_rows)},
-        "interpretation": "Observed comparison results only; not an acceptance threshold or cross-platform ranking.",
+        "evaluation_status": "quick_validation_only" if profile_name == "smoke" else "benchmark_observation",
+        "interpretation": (
+            "Quick validation only. Do not use as a formal model evaluation, recommendation, or tracked comparison."
+            if profile_name == "smoke"
+            else "Observed comparison results only; not an acceptance threshold or cross-platform ranking."
+        ),
     }
     destination = output_path or run_dir / "aggregate-result.json"
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -715,8 +793,8 @@ def run_benchmark(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Compare SmartVoice models by quality, performance, and concurrent load")
     parser.add_argument("--config", type=Path, default=Path(__file__).parent / "config" / "model-comparison.json")
-    parser.add_argument("--profile", choices=("smoke", "standard", "full"), default="smoke")
-    parser.add_argument("--category", action="append", choices=("quality", "performance", "concurrency"), help="Category to run; repeat to select multiple (defaults to all)")
+    parser.add_argument("--profile", default="smoke", help="Profile name declared in the benchmark config")
+    parser.add_argument("--category", action="append", choices=("quality", "performance", "concurrency"), help="Categories to run; repeat to select more than one (defaults to the profile's categories, or all if unspecified)")
     parser.add_argument("--model", action="append", dest="models", help="Model ID to include; repeat to select multiple")
     parser.add_argument("--server-source", type=Path, help="Source checkout used by benchmark server processes (for controlled code comparisons)")
     parser.add_argument("--output", type=Path, help="Aggregate JSON report path; defaults outside the repository")

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=68", "wheel>=0.43"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -21,9 +21,6 @@ inference = [
     "numpy>=1.26,<3.0",
     "av>=12.0,<19.0",
 ]
-qwen-tts = [
-    "qwen-tts==0.1.1",
-]
 dev = [
     "httpx>=0.27,<1.0",
     "jiwer>=4.0,<5.0",
@@ -41,4 +38,4 @@ version = {attr = "smartvoice._version.__version__"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-smartvoice = ["web/*.html", "resources/*.json", "resources/*.png", "ascii-art.txt"]
+smartvoice = ["web/*.html", "resources/*.json", "resources/*.png", "resources/bin/*", "ascii-art.txt"]

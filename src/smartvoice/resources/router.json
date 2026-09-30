@@ -106,23 +106,30 @@
     },
     "speech": {
       "zh": [
+        "tts-qwen3-0-6b-customvoice",
         "tts-matcha-zh-baker",
         "tts-kokoro-multilingual-v1-1-zh-en"
       ],
       "en": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice",
+        "tts-kokoro-multilingual-v1-1-zh-en"
       ],
       "fr": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice"
       ],
       "de": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice"
       ],
       "ja": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice"
       ],
       "ko": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice"
       ],
       "ar": [
         "tts-supertonic-v3-multilingual-int8"
@@ -140,7 +147,8 @@
         "tts-supertonic-v3-multilingual-int8"
       ],
       "es": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice"
       ],
       "et": [
         "tts-supertonic-v3-multilingual-int8"
@@ -161,7 +169,8 @@
         "tts-supertonic-v3-multilingual-int8"
       ],
       "it": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice"
       ],
       "lt": [
         "tts-supertonic-v3-multilingual-int8"
@@ -176,13 +185,15 @@
         "tts-supertonic-v3-multilingual-int8"
       ],
       "pt": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice"
       ],
       "ro": [
         "tts-supertonic-v3-multilingual-int8"
       ],
       "ru": [
-        "tts-supertonic-v3-multilingual-int8"
+        "tts-supertonic-v3-multilingual-int8",
+        "tts-qwen3-0-6b-customvoice"
       ],
       "sk": [
         "tts-supertonic-v3-multilingual-int8"

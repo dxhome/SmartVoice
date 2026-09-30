@@ -145,6 +145,47 @@ This JSON illustrates a possible structure and semantics; it does not define the
 
 **Implementation status (2026-09-28):** Static JSON routing, startup initialization and validation, runtime hot reload, virtual model ID, explicit/automatic language routing, installed-model filtering, request diagnostics metadata, and removal of the default-model mechanism are complete. Unit, API, and real-inference tests were added. First-release requests still select one model each; mixed-language chunked synthesis is not included.
 
+## Cross-platform Compatibility Plan
+
+This section tracks platform work that must be completed before SmartVoice claims equivalent support across operating systems. Keep API and provider contracts shared; build and validate platform-specific runtime artifacts behind those contracts. Do not report a model as available unless its runtime executable and required model files are usable on that host.
+
+### Known Platform Status
+
+| Platform | SmartVoice status | Qwen3-TTS C INT8 status | Known constraints |
+|---|---|---|---|
+| macOS Apple Silicon | Supported from source; wheel build verified on Apple Silicon | Built and packaged; real Chinese synthesis and OpenAI-compatible API verified | Requires Xcode Command Line Tools when building from source. The wheel targets `macosx_11_0_arm64`. |
+| Windows x64 | Supported for the other catalogued CPU models | Not packaged; Qwen3-TTS is reported unavailable. The former PyTorch fallback has been removed. | Upstream C engine documents Windows through WSL2, not a native Windows build. Native Windows Qwen support needs a port/build or a deliberately designed WSL2 bridge. |
+| Linux x86_64 / ARM64 | Not currently supported by SmartVoice | Upstream C build is documented for Linux | Linux build requires OpenBLAS and a SmartVoice packaging/runtime-library plan. |
+| Android | Not supported | Not evaluated | Requires a separate NDK/ABI and embedded lifecycle design. |
+
+### Qwen3-TTS Native C INT8 Runtime
+
+The provider uses one native C INT8 execution path and does not retain a PyTorch fallback. The vendored engine is pinned at the revision and license recorded in [`native/qwen3-tts/UPSTREAM.md`](../native/qwen3-tts/UPSTREAM.md). SmartVoice owns its child process, binds the engine to loopback, and proxies requests through the provider. Keep those behaviors consistent on every platform.
+
+Known model behavior:
+
+- The current catalog model, `tts-qwen3-0-6b-customvoice`, uses the same pinned Qwen safetensors and tokenizer assets with either implementation. Switching from PyTorch to C INT8 does not require downloading different model weights.
+- C INT8 quantizes supported Talker/Code Predictor weights during model load. It can reduce runtime memory use, but it does not shrink the existing model download or user model directory. Measure resident/peak memory separately from disk size.
+- The official 0.6B model is already the smallest Qwen3-TTS size currently selected by SmartVoice. Third-party 4-bit/MLX/GGUF conversions are not interchangeable by assumption; validate the exact tensor layout, loader path, quality, and license before adding one to the catalog.
+
+### Work Items
+
+1. **Define the supported build matrix.** Record OS version, CPU architecture/ABI, compiler, BLAS implementation, minimum OS version, and the exact runtime artifact for every target. Distinguish native Windows from Windows under WSL2. Keep unsupported combinations unavailable in runtime/capability responses.
+2. **Complete Qwen3-TTS binary delivery per platform.** Keep the shared C INT8 provider path and add platform-specific build and packaging jobs. macOS Apple Silicon is verified; next evaluate Linux with OpenBLAS, then choose whether Windows support means a native Windows port/build or a separately managed WSL2 service. Do not restore a PyTorch fallback to bridge platform gaps.
+3. **Harden executable discovery and lifecycle.** Validate executable format and architecture before advertising Qwen availability. Verify paths containing spaces, port allocation, loopback-only binding, child startup failure diagnostics, request timeout/cancellation, and clean application shutdown on each supported OS.
+4. **Keep packaging reproducible.** Pin the upstream revision, retain all bundled notices, use platform-specific wheel tags, set and verify minimum OS targets, and confirm each built artifact contains the expected executable. Avoid publishing a native binary in a universal/pure-Python wheel.
+5. **Verify model reuse and integrity.** Confirm the existing catalog hashes and model directory work unchanged on each runtime target. A runtime change alone must not trigger a second download. If adding persisted pre-quantized weights to lower startup cost or disk use, version/cache them separately, make them reproducible, and preserve the original pinned model source.
+6. **Evaluate smaller model artifacts separately from C INT8.** Compare the current 0.6B BF16 download and runtime memory with C INT8 and any C-compatible pre-quantized format. Include disk size, peak RSS, cold/warm synthesis speed, and Chinese/English listening or quality results. Do not substitute an MLX-only conversion or switch production precision without compatibility and quality evidence.
+7. **Run a platform acceptance suite.** For each target, build/install from a clean environment; verify `/v1/runtime`, `/v1/capabilities`, direct and routed Chinese/English TTS, valid WAV format, model install/reuse, concurrency/queue behavior, timeout and shutdown behavior, CPU/thread reporting, peak RSS, and quality/performance against the same corpus. Record OS, CPU, compiler, C engine revision, model revision, and build flags with results.
+8. **Keep other backend portability work visible.** Continue verifying sherpa-onnx runtime/lock behavior, audio codec dependencies, filesystem paths and permissions, CLI signals, and HTTP lifecycle on every OS. The sherpa-onnx concurrency investigation remains staged separately above; do not change its concurrency defaults without target-device evidence.
+
+### Completion Criteria
+
+- Every platform in the published support matrix has a reproducible build/install path and a tested artifact.
+- Qwen3-TTS either runs through the same C INT8 provider implementation on that platform or is explicitly unavailable with an actionable reason; no silent backend or precision switch occurs.
+- API contracts and model IDs remain platform-neutral, while runtime/capability output identifies the actual native runtime and device accurately.
+- Chinese and English quality, cold/warm latency, RTF, peak memory, and model disk footprint are recorded per target before support is marked verified.
+
 ### Future Core Capability: Streaming Speech Processing (Transcription, Translation Subtitles, and Interpretation)
 
 **Goal:** Provide a session capability that continuously receives audio and returns incremental results in three modes:
