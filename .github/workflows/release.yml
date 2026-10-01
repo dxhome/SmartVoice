@@ -141,9 +141,12 @@ jobs:
                       archive.extractall(temporary)
                   executable = Path(temporary) / "smartvoice/resources/bin/qwen_tts"
                   executable.chmod(executable.stat().st_mode | 0o111)
-                  result = subprocess.run([executable, "--self-test"], capture_output=True, text=True)
+                  result = subprocess.run([executable, "--self-test"], cwd=temporary, capture_output=True, text=True)
                   if result.returncode or "SELF-TEST PASSED" not in result.stdout:
-                      raise SystemExit(f"Repaired Linux runtime self-test failed: {result.stderr}")
+                      raise SystemExit(
+                          f"Repaired Linux runtime self-test failed (exit {result.returncode}); "
+                          f"stdout={result.stdout!r}; stderr={result.stderr!r}"
+                      )
           missing = required - names
           if missing:
               raise SystemExit(f"{target} wheel is missing files: {sorted(missing)}")
