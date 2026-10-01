@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           expected="${GITHUB_REF_NAME#v}"
-          actual="$(python -c 'from smartvoice._version import __version__; print(__version__)')"
+          actual="$(python -c 'import runpy; print(runpy.run_path("src/smartvoice/_version.py")["__version__"])')"
           if [[ "$GITHUB_REF_NAME" != v* || "$expected" != "$actual" ]]; then
             echo "Tag $GITHUB_REF_NAME must match package version $actual (v$actual)." >&2
             exit 1
@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           expected="${GITHUB_REF_NAME#v}"
-          actual="$(python -c 'from smartvoice._version import __version__; print(__version__)')"
+          actual="$(python -c 'import runpy; print(runpy.run_path("src/smartvoice/_version.py")["__version__"])')"
           if [[ "$GITHUB_REF_NAME" != v* || "$expected" != "$actual" ]]; then
             echo "Tag $GITHUB_REF_NAME must match package version $actual (v$actual)." >&2
             exit 1
