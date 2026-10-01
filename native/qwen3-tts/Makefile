@@ -108,7 +108,7 @@ KAI_SRCS += $(KAI_DIR)/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f32.c
 KAI_ASM  += $(KAI_I8_DIR)/kai_matmul_clamp_f32_qai8dxp1x4_qsi8cxp4x4_1x4_neon_dotprod_asm.S \
             $(KAI_I8_DIR)/kai_matmul_clamp_f32_qai8dxp4x8_qsi8cxp4x8_16x4_neon_i8mm_asm.S
 
-KAI_HAS_BF16 := $(shell $(CC) $(ARCH_FLAGS) -dM -E -x c /dev/null 2>/dev/null | grep -qE '^#define __ARM_FEATURE_BF16 ' && echo 1 || echo 0)
+KAI_HAS_BF16 ?= 0
 ifeq ($(KAI_HAS_BF16),1)
 KAI_BF_DIR = $(KAI_DIR)/kai/ukernels/matmul/matmul_clamp_f32_bf16p_bf16p
 KAI_SRCS += $(KAI_DIR)/kai/ukernels/matmul/pack/kai_lhs_quant_pack_bf16p1x4_f32_neon.c \

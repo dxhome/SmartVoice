@@ -54,10 +54,20 @@ class BuildPyWithResources(build_py):
             jobs = str(max(1, min(os.cpu_count() or 1, 8)))
             build_env = os.environ.copy()
             build_env["MACOSX_DEPLOYMENT_TARGET"] = "11.0"
+            arch_flags = ["-march=native", "-mmacosx-version-min=11.0"]
+            compiler_macros = subprocess.run(
+                [clang, *arch_flags, "-dM", "-E", "-x", "c", "/dev/null"],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=build_env,
+            ).stdout
+            has_bf16 = any(line.startswith("#define __ARM_FEATURE_BF16 ") for line in compiler_macros.splitlines())
             subprocess.run(
                 [
                     make, "blas", f"CC={clang}",
-                    "ARCH_FLAGS=-march=native -mmacosx-version-min=11.0",
+                    f"ARCH_FLAGS={' '.join(arch_flags)}",
+                    f"KAI_HAS_BF16={int(has_bf16)}",
                     f"-j{jobs}",
                 ],
                 cwd=native_source,
@@ -69,6 +79,7 @@ class BuildPyWithResources(build_py):
             shutil.copy2(native_source / "qwen_tts", binary_destination)
             binary_destination.chmod(binary_destination.stat().st_mode | 0o111)
         elif is_windows_x64():
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
             from scripts.build_qwen3_tts_windows import build_windows_runtime
 
             build_windows_runtime(destination / "bin")
