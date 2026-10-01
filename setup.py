@@ -38,7 +38,7 @@ class SmartVoiceBdistWheel(bdist_wheel):
         if is_windows_x64():
             return "py3", "none", "win_amd64"
         if is_linux_x64():
-            return "py3", "none", "linux_x86_64"
+            return "py3", "none", os.environ.get("SMARTVOICE_LINUX_WHEEL_TAG", "linux_x86_64")
         return super().get_tag()
 
 

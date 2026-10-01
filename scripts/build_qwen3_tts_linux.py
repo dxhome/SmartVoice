@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import shutil
 import subprocess
 import tempfile
@@ -52,6 +53,10 @@ def build_linux_runtime(destination: Path) -> Path:
         stale_binary = destination / stale_name
         if stale_binary.is_file():
             stale_binary.unlink()
+    library_dir = destination / "lib"
+    if library_dir.exists():
+        shutil.rmtree(library_dir)
+    library_dir.mkdir(parents=True)
     fingerprint = subprocess.run(
         ["bash", str(NATIVE_SOURCE / "tools" / "source_fingerprint.sh")],
         cwd=NATIVE_SOURCE,
@@ -77,6 +82,7 @@ def build_linux_runtime(destination: Path) -> Path:
                 "-j" + str(max(1, min(os.cpu_count() or 1, 8))),
                 "blas",
                 "CC=cc",
+                "LDFLAGS=-Wl,-rpath,'$$ORIGIN/lib'",
                 # The Makefile's default auto mode detects ISA features exposed to this
                 # host. Do not pass SIMD=auto on the command line: GNU make would prevent
                 # the Makefile from resolving it to the detected profile.
@@ -98,6 +104,18 @@ def build_linux_runtime(destination: Path) -> Path:
         )
         if "SELF-TEST PASSED" not in result.stdout:
             raise RuntimeError("The Linux Qwen3-TTS runtime did not pass --self-test.")
+
+        dependencies = subprocess.run(["ldd", str(binary)], check=True, capture_output=True, text=True)
+        bundled_libraries: set[str] = set()
+        for line in dependencies.stdout.splitlines():
+            match = re.match(r"\s*(lib(?:openblas|gfortran|gomp|quadmath)[^\s]*)\s+=>\s+(\S+)", line)
+            if not match or match.group(2) == "not":
+                continue
+            library_name, source = match.groups()
+            shutil.copy2(Path(source).resolve(), library_dir / library_name)
+            bundled_libraries.add(library_name)
+        if "libopenblas.so.0" not in bundled_libraries:
+            raise RuntimeError("The Linux Qwen3-TTS runtime does not link to the expected OpenBLAS shared library.")
 
         packaged_binary = destination / "qwen_tts"
         shutil.copy2(binary, packaged_binary)

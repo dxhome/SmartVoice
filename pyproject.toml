@@ -37,4 +37,4 @@ version = {attr = "smartvoice._version.__version__"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-smartvoice = ["web/*.html", "resources/*.json", "resources/*.png", "resources/bin/*", "resources/bin/licenses/*", "ascii-art.txt"]
+smartvoice = ["web/*.html", "resources/*.json", "resources/*.png", "resources/bin/*", "resources/bin/lib/*", "resources/bin/licenses/*", "ascii-art.txt"]

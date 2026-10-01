@@ -175,7 +175,7 @@ clean-ingot:
 .PHONY: update-ingot clean-ingot
 
 $(TARGET): $(OBJS) $(INGOT_LIB)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(INGOT_LIB) $(LDLIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(INGOT_LIB) $(LDLIBS)
 
 blas: $(TARGET)
 
