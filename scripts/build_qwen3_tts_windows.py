@@ -84,7 +84,7 @@ def build_windows_runtime(destination: Path) -> Path:
     msys_root = _msys2_root()
     make = msys_root / "usr" / "bin" / "make.exe"
     openblas = msys_root / "ucrt64"
-    compiler = openblas / "bin" / "gcc.exe"
+    compiler = msys_root / "usr" / "bin" / "gcc.exe"
     required = (
         make,
         compiler,
@@ -103,7 +103,7 @@ def build_windows_runtime(destination: Path) -> Path:
 
     destination = destination.resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    path_entries = [openblas / "bin", msys_root / "usr" / "bin"]
+    path_entries = [msys_root / "usr" / "bin", openblas / "bin"]
     build_env = os.environ.copy()
     build_env["PATH"] = os.pathsep.join(map(str, path_entries)) + os.pathsep + build_env.get("PATH", "")
     build_env["MSYSTEM"] = "MSYS"
@@ -141,6 +141,7 @@ def build_windows_runtime(destination: Path) -> Path:
     # These are the non-system DLLs reported by the selected MSYS2/UCRT64 build.
     runtime_dlls = (
         (msys_root / "usr" / "bin" / "msys-2.0.dll"),
+        (msys_root / "usr" / "bin" / "msys-gcc_s-seh-1.dll"),
         (openblas / "bin" / "libgcc_s_seh-1.dll"),
         (openblas / "bin" / "libwinpthread-1.dll"),
         (openblas / "bin" / "libopenblas.dll"),
