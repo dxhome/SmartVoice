@@ -44,6 +44,13 @@ class LanguageIdentifierStatus(Protocol):
 
 @runtime_checkable
 class ModelLifecycle(Protocol):
-    """Optional provider capability for querying loaded models and releasing them."""
+    """Optional provider capability for querying loaded models."""
 
     def is_model_loaded(self, model_id: str) -> bool: ...
+
+
+@runtime_checkable
+class RuntimeLifecycle(Protocol):
+    """Optional provider capability for releasing resources owned by its runtime."""
+
+    def close(self) -> None: ...

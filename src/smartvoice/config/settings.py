@@ -54,6 +54,11 @@ class Settings:
     def models_dir(self) -> Path:
         return self.data_dir / "models"
 
+    @property
+    def device(self) -> str:
+        """Inference execution device (kept under the legacy ``provider`` config key)."""
+        return self.provider
+
     @classmethod
     def from_env(
         cls,

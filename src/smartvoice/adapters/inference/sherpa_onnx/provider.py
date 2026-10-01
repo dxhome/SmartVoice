@@ -75,7 +75,7 @@ class SherpaOnnxProvider:
                             decoder=str(model_dir / "tiny-decoder.int8.onnx"),
                         ),
                         num_threads=self.settings.num_threads,
-                        provider=self.settings.provider,
+                        provider=self.settings.device,
                     )
                     self._language_identifier = sherpa_onnx.SpokenLanguageIdentification(config)
             except Exception as exc:
@@ -129,10 +129,10 @@ class SherpaOnnxProvider:
         models = self.installed_models()
         return {
             "backend": "sherpa-onnx",
-            "requested_device": self.settings.provider,
+            "requested_device": self.settings.device,
             "actual_device": "cpu" if issue is None else None,
             "provider_status": "available" if issue is None else (
-                "unsupported" if self.settings.provider != "cpu" else "dependency_missing"
+                "unsupported" if self.settings.device != "cpu" else "dependency_missing"
             ),
             "installed_model_count": len(models),
             "runtime_version": self._runtime_version(),
@@ -371,12 +371,12 @@ class SherpaOnnxProvider:
                 if model_type == "sense_voice":
                     recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
                         model=str(model_path), tokens=str(tokens_path), num_threads=self.settings.num_threads,
-                        provider=self.settings.provider, language=language, use_itn=True,
+                        provider=self.settings.device, language=language, use_itn=True,
                     )
                 elif model_type == "whisper" and decoder_path:
                     recognizer = sherpa_onnx.OfflineRecognizer.from_whisper(
                         encoder=str(model_path), decoder=str(decoder_path), tokens=str(tokens_path),
-                        num_threads=self.settings.num_threads, provider=self.settings.provider,
+                        num_threads=self.settings.num_threads, provider=self.settings.device,
                         language="" if language == "auto" else language, task="transcribe",
                     )
                 elif model_type == "qwen3_asr":
@@ -387,7 +387,7 @@ class SherpaOnnxProvider:
                         encoder=str(self._manifest_path(model_path.parent, "encoder.int8.onnx")),
                         decoder=str(decoder_path), tokenizer=str(tokens_path),
                         num_threads=self.settings.num_threads, feature_dim=128,
-                        max_new_tokens=512, provider=self.settings.provider,
+                        max_new_tokens=512, provider=self.settings.device,
                     )
                 else:
                     raise UnsupportedFeatureError(f"Unsupported sherpa-onnx STT model type {model_type!r}.")
@@ -407,13 +407,13 @@ class SherpaOnnxProvider:
                     vocoder=str(paths["vocoder.int8.onnx"]), tts_json=str(paths["tts.json"]),
                     unicode_indexer=str(paths["unicode_indexer.bin"]), voice_style=str(paths["voice.bin"]),
                 )
-                model_config = sherpa_onnx.OfflineTtsModelConfig(supertonic=model, provider=self.settings.provider, num_threads=self.settings.num_threads)
+                model_config = sherpa_onnx.OfflineTtsModelConfig(supertonic=model, provider=self.settings.device, num_threads=self.settings.num_threads)
             elif model_type == "vits":
                 model_config = sherpa_onnx.OfflineTtsModelConfig(
                     vits=sherpa_onnx.OfflineTtsVitsModelConfig(
                         model=str(paths["model"]), lexicon=str(lexicon_path) if lexicon_path else "",
                         tokens=str(tokens_path), data_dir=str(data_dir) if data_dir else "",
-                    ), provider=self.settings.provider, num_threads=self.settings.num_threads,
+                    ), provider=self.settings.device, num_threads=self.settings.num_threads,
                 )
             elif model_type == "kokoro":
                 model_config = sherpa_onnx.OfflineTtsModelConfig(
@@ -421,7 +421,7 @@ class SherpaOnnxProvider:
                         model=str(paths["model"]), voices=str(paths["voices"]),
                         tokens=str(tokens_path), data_dir=str(data_dir) if data_dir else "",
                         lexicon=lexicon_path or "",
-                    ), provider=self.settings.provider, num_threads=self.settings.num_threads,
+                    ), provider=self.settings.device, num_threads=self.settings.num_threads,
                 )
             elif model_type == "matcha":
                 model_config = sherpa_onnx.OfflineTtsModelConfig(
@@ -429,7 +429,7 @@ class SherpaOnnxProvider:
                         acoustic_model=str(paths["model"]), vocoder=str(paths["vocoder"]),
                         tokens=str(tokens_path), data_dir=str(data_dir) if data_dir else "",
                         lexicon=lexicon_path or "",
-                    ), provider=self.settings.provider, num_threads=self.settings.num_threads,
+                    ), provider=self.settings.device, num_threads=self.settings.num_threads,
                 )
             else:
                 raise UnsupportedFeatureError(f"Unsupported sherpa-onnx TTS model type {model_type!r}.")
@@ -448,7 +448,7 @@ class SherpaOnnxProvider:
             return locks.setdefault(key, threading.Lock())
 
     def _model_dir(self, model_id: str) -> Path:
-        if self.settings.provider != "cpu":
+        if self.settings.device != "cpu":
             raise UnsupportedFeatureError("This release does not implement inference on the requested device; only CPU is supported.")
         spec = self.model_repository.get_spec(model_id)
         model_id = spec.id
@@ -508,7 +508,7 @@ class SherpaOnnxProvider:
         return sherpa_onnx
 
     def _runtime_issue(self) -> str | None:
-        if self.settings.provider != "cpu":
+        if self.settings.device != "cpu":
             return "This release supports CPU inference only."
         try:
             self._sherpa()

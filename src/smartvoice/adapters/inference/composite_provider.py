@@ -7,7 +7,13 @@ from typing import Sequence
 
 from smartvoice.domain.contracts import InstalledModel, LanguageIdentificationResult, ProviderCapabilityDocument, SynthesizedSpeech, TranscriptionResult
 from smartvoice.domain.errors import UnsupportedFeatureError
-from smartvoice.ports.inference import InferenceProvider
+from smartvoice.ports.inference import (
+    InferenceProvider,
+    LanguageIdentifier,
+    LanguageIdentifierStatus,
+    ModelLifecycle,
+    RuntimeLifecycle,
+)
 from smartvoice.ports.model_repository import ModelRepository
 
 DEFAULT_MODEL_IDS = {
@@ -85,28 +91,26 @@ class CompositeInferenceProvider:
 
     def identify_language(self, audio: bytes) -> LanguageIdentificationResult:
         for provider in self.providers.values():
-            identify = getattr(provider, "identify_language", None)
-            if callable(identify):
-                return identify(audio)
+            if isinstance(provider, LanguageIdentifier):
+                return provider.identify_language(audio)
         raise UnsupportedFeatureError("Spoken-language identification is not available from the configured adapters.")
 
     def language_identification_available(self) -> bool:
         return any(
-            callable(getattr(provider, "language_identification_available", None))
+            isinstance(provider, LanguageIdentifierStatus)
             and provider.language_identification_available()
             for provider in self.providers.values()
         )
 
     def is_model_loaded(self, model_id: str) -> bool:
-        is_loaded = getattr(self._provider_for_model(model_id), "is_model_loaded", None)
-        return bool(is_loaded(model_id)) if callable(is_loaded) else False
+        provider = self._provider_for_model(model_id)
+        return provider.is_model_loaded(model_id) if isinstance(provider, ModelLifecycle) else False
 
     def close(self) -> None:
         """Close managed runtimes owned by the composed adapters."""
         for provider in self.providers.values():
-            close = getattr(provider, "close", None)
-            if callable(close):
-                close()
+            if isinstance(provider, RuntimeLifecycle):
+                provider.close()
 
     def _provider_for_model(self, model_id: str) -> InferenceProvider:
         spec = self.model_repository.get_spec(model_id)

@@ -2,19 +2,10 @@
 
 from __future__ import annotations
 
-import http.client
 import io
-import json
-import math
-import os
-import socket
-import subprocess
-import threading
-import time
 import wave
-from collections import deque
-from pathlib import Path
 
+from smartvoice.adapters.inference.qwen_tts.native_runtime import QwenNativeRuntime
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import InstalledModel, SynthesizedSpeech
 from smartvoice.domain.errors import (
@@ -63,35 +54,12 @@ class QwenTTSProvider:
     def __init__(self, settings: Settings, model_repository: ModelRepository | None = None) -> None:
         self.settings = settings
         self.model_repository = model_repository or CatalogModelRepository(settings)
-        self._inference_lock = threading.Lock()
-        self._native_process: subprocess.Popen[str] | None = None
-        self._native_port: int | None = None
-        self._native_startup_lock = threading.Lock()
-        self._native_log_lock = threading.Lock()
-        self._native_log_lines: deque[str] = deque(maxlen=100)
-
-    @staticmethod
-    def _native_binary() -> Path | None:
-        source_root = Path(__file__).resolve().parents[5]
-        package_root = Path(__file__).resolve().parents[3]
-        binary_names = ("qwen_tts.exe", "qwen_tts") if os.name == "nt" else ("qwen_tts",)
-        candidates = [
-            base / name
-            for base in (
-                package_root / "resources" / "bin",
-                source_root / "native" / "qwen3-tts",
-            )
-            for name in binary_names
-        ]
-        for candidate in candidates:
-            if candidate.is_file() and os.access(candidate, os.X_OK):
-                return candidate
-        return None
+        self._native_runtime = QwenNativeRuntime(settings, self.model_repository, backend=self.backend)
 
     def installed_models(self) -> list[InstalledModel]:
-        if self.settings.provider != "cpu":
+        if self.settings.device != "cpu":
             return []
-        if self._native_binary() is None:
+        if self._native_runtime.binary_path() is None:
             return []
         return self._catalogued_models()
 
@@ -102,17 +70,17 @@ class QwenTTSProvider:
         ]
 
     def runtime(self) -> dict[str, object]:
-        if self.settings.provider != "cpu":
+        if self.settings.device != "cpu":
             return {
                 "backend": self.backend,
-                "requested_device": self.settings.provider,
+                "requested_device": self.settings.device,
                 "actual_device": None,
                 "provider_status": "unsupported",
                 "runtime_version": None,
                 "installed_model_count": 0,
                 "reason": "Qwen3-TTS currently supports CPU inference in SmartVoice.",
             }
-        binary = self._native_binary()
+        binary = self._native_runtime.binary_path()
         available = binary is not None
         return {
             "backend": self.backend,
@@ -161,7 +129,7 @@ class QwenTTSProvider:
         spec = self.model_repository.get_spec(canonical_id)
         if spec.backend != self.backend or spec.model_type != "qwen3_tts":
             raise UnsupportedFeatureError(f"Model {canonical_id!r} is not supported by the Qwen3-TTS adapter.")
-        if self.settings.provider != "cpu":
+        if self.settings.device != "cpu":
             raise UnsupportedFeatureError("Qwen3-TTS currently supports CPU inference in SmartVoice.")
         if speed != 1.0:
             raise UnsupportedFeatureError("Qwen3-TTS does not support speed adjustment; use speed 1.0.")
@@ -176,23 +144,11 @@ class QwenTTSProvider:
         return self._synthesize_native(canonical_id, text, speaker, qwen_language)
 
     def is_model_loaded(self, model_id: str) -> bool:
-        process = self._native_process
-        return model_id == MODEL_ID and process is not None and process.poll() is None
+        return model_id == MODEL_ID and self._native_runtime.is_running()
 
     def close(self) -> None:
         """Stop the lazily started native engine during application shutdown."""
-        with self._native_startup_lock:
-            process = self._native_process
-            self._native_process = None
-            self._native_port = None
-            if process is None or process.poll() is not None:
-                return
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
+        self._native_runtime.close()
 
     def _synthesize_native(self, model_id: str, text: str, speaker: str, language: str) -> SynthesizedSpeech:
         if model_id not in {str(model.get("id")) for model in self.installed_models()}:
@@ -200,35 +156,7 @@ class QwenTTSProvider:
                 f"Model {model_id!r} is not installed or failed integrity validation. "
                 f"Install it with `python -m smartvoice models install {model_id}`."
             )
-        port = self._ensure_native_server(model_id)
-        payload = json.dumps(
-            {"text": text, "speaker": speaker, "language": language},
-            ensure_ascii=False,
-        ).encode("utf-8")
-        wait_started = time.perf_counter()
-        with self._inference_lock:
-            runtime_wait = time.perf_counter() - wait_started
-            connection = http.client.HTTPConnection(
-                "127.0.0.1", port,
-                timeout=self.settings.inference_execution_timeout_seconds,
-            )
-            try:
-                connection.request(
-                    "POST", "/v1/tts", body=payload,
-                    headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
-                )
-                response = connection.getresponse()
-                audio = response.read(self.settings.max_tts_output_bytes + 1)
-                if response.status != 200:
-                    detail = audio[:4096].decode("utf-8", errors="replace")
-                    raise InferenceError("Qwen3-TTS speech synthesis failed.", detail=detail)
-            except (OSError, http.client.HTTPException) as exc:
-                raise InferenceError(
-                    "The native Qwen3-TTS engine could not complete synthesis.",
-                    detail=self._native_failure_detail(exc),
-                ) from exc
-            finally:
-                connection.close()
+        audio, runtime_wait = self._native_runtime.synthesize(model_id, text, speaker, language)
         if len(audio) > self.settings.max_tts_output_bytes:
             raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio output limit.")
         try:
@@ -247,103 +175,3 @@ class QwenTTSProvider:
             audio=audio, sample_rate=sample_rate, duration=duration,
             runtime_wait_seconds=runtime_wait,
         )
-
-    def _ensure_native_server(self, model_id: str) -> int:
-        with self._native_startup_lock:
-            process = self._native_process
-            if process is not None and process.poll() is None and self._native_port is not None:
-                return self._native_port
-            if process is not None:
-                self._native_process = None
-                self._native_port = None
-            binary = self._native_binary()
-            if binary is None:
-                raise UnsupportedFeatureError("The native C INT8 Qwen3-TTS runtime is unavailable for this platform.")
-            if model_id not in {str(model.get("id")) for model in self.installed_models()}:
-                raise ModelUnavailableError(
-                    f"Model {model_id!r} is not installed or failed integrity validation. "
-                    f"Install it with `python -m smartvoice models install {model_id}`."
-                )
-            model_dir = self.model_repository.model_directory(model_id)
-            port = self._free_loopback_port()
-            command = [
-                str(binary), "-d", str(model_dir), "-j", str(self.settings.num_threads),
-                "--int8", "--serve", str(port),
-                "--max-request-seconds", str(max(1, math.ceil(self.settings.max_tts_audio_seconds))),
-                "--max-text-chars", str(max(1, self.settings.max_tts_characters)),
-            ]
-            with self._native_log_lock:
-                self._native_log_lines.clear()
-            try:
-                process = subprocess.Popen(
-                    command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", bufsize=1,
-                )
-            except OSError as exc:
-                raise InferenceError("Could not start the native Qwen3-TTS engine.", detail=str(exc)) from exc
-            self._native_process = process
-            self._native_port = port
-            threading.Thread(
-                target=self._drain_native_logs, args=(process,), daemon=True,
-                name="smartvoice-qwen3-tts-log",
-            ).start()
-            if self._wait_for_native_server(process, port):
-                return port
-            exit_code = process.poll()
-            if exit_code is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=2)
-            self._native_process = None
-            self._native_port = None
-            detail = self._native_failure_detail()
-            if exit_code is not None:
-                unsigned_exit_code = exit_code & 0xFFFFFFFF
-                detail = f"Native process exited with code {exit_code} (0x{unsigned_exit_code:08X}). {detail}"
-            raise InferenceError(
-                "The native Qwen3-TTS engine failed to become ready.",
-                detail=detail,
-            )
-
-    @staticmethod
-    def _free_loopback_port() -> int:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-            listener.bind(("127.0.0.1", 0))
-            return int(listener.getsockname()[1])
-
-    def _wait_for_native_server(self, process: subprocess.Popen[str], port: int) -> bool:
-        deadline = time.monotonic() + 120
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                return False
-            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
-            try:
-                connection.request("GET", "/v1/health")
-                response = connection.getresponse()
-                response.read(1024)
-                if response.status == 200:
-                    return True
-            except (OSError, http.client.HTTPException):
-                pass
-            finally:
-                connection.close()
-            time.sleep(0.1)
-        return False
-
-    def _drain_native_logs(self, process: subprocess.Popen[str]) -> None:
-        if process.stderr is None:
-            return
-        for line in process.stderr:
-            with self._native_log_lock:
-                self._native_log_lines.append(line.rstrip())
-
-    def _native_failure_detail(self, error: Exception | None = None) -> str:
-        with self._native_log_lock:
-            diagnostic_lines = [line for line in self._native_log_lines if "[HTTP] TTS:" not in line]
-        diagnostics = "\n".join(diagnostic_lines[-30:])[-8192:]
-        if error is not None:
-            return f"{type(error).__name__}: {error}"
-        return diagnostics or "No diagnostics were reported by the native engine."

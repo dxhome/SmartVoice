@@ -1,8 +1,8 @@
 # SmartVoice Implementation Plan
 
-**Last reviewed:** 2026-09-30
+**Last reviewed:** 2026-10-01
 
-This plan reflects the current code and product scope. It separates the implemented local-service baseline from the next P1 capability and the P2 verification and expansion work. For the published model/platform support matrix, see [README.md](../README.md); for HTTP behavior, see [api-spec.md](api-spec.md); for test commands, see [testing.md](testing.md).
+This plan reflects the current code and product scope. It separates the implemented local-service baseline from the next P1 capability and the P2 verification and expansion work. For architecture principles, implementation summary, and the centralized backend/platform compatibility matrix, see [architecture-guidelines.md](architecture-guidelines.md); for HTTP behavior, see [api-spec.md](api-spec.md); for test commands, see [testing.md](testing.md).
 
 ## Priority Definitions
 
@@ -20,7 +20,7 @@ The code is divided into API, application services, domain contracts, ports, and
 
 The regression suite runs functional/API tests and real CPU inference via REST routes. Its routed integration cases exercise service/model discovery, routed and direct STT, Chinese/English speech-language detection, supported input audio formats, invalid audio, routed/direct TTS, automatic TTS language detection, and long-text synthesis when their required models/assets are installed. It also generates a direct smoke test for every catalog model and runs it for each installed model whose runtime is available; absent models are reported as skips. Run `python scripts/test.py ci` for CI and `python scripts/test.py regression` for local regression with the `[inference]` dependencies and any desired models installed.
 
-Current platform and model availability is defined in the README and runtime capability endpoints. Windows x64 and macOS Apple Silicon are supported in the documented source-install scope. Linux and Android are not currently supported. Qwen3-TTS native C INT8 support is limited to the documented macOS Apple Silicon path; it is unavailable in native Windows builds. GPU inference, streaming sessions, remote/LAN access, and a management UI are not part of the current baseline.
+Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Windows x64 and macOS Apple Silicon are supported in the documented source-install scope. Linux and Android are not currently supported. Qwen3-TTS uses the native C INT8 CPU runtime on Windows x64 and macOS Apple Silicon. GPU inference, streaming sessions, remote/LAN access, and a management UI are not part of the current baseline.
 
 ## P1 — Streaming STT, Translation, and Interpretation
 
@@ -117,14 +117,14 @@ Validate every model that the product advertises as available. For each model/ru
 
 The verification matrix must cover Windows x64 and the selected Linux targets, with the current macOS Apple Silicon path retained as an existing supported target. Confirm Linux architecture and minimum OS details before publishing a Linux support claim. Test actual API capability reporting so incompatible models are unavailable with a clear reason.
 
-For Qwen3-TTS, decide and validate the Linux runtime/packaging path and explicitly retain its native Windows unavailability unless a native build or separately supported design is proven. Preserve platform-neutral API/model contracts; keep platform execution details behind adapters.
+For Qwen3-TTS, preserve the native C INT8 CPU runtime as the shared Windows/macOS baseline and decide and validate the Linux runtime/packaging path. Recent evaluation found no PyTorch CUDA configuration, including PyTorch INT8 quantization, that outperformed the native INT8 runtime in the tested conditions; CUDA support is therefore low priority for now. Revisit it only if new hardware, workload, or benchmark evidence shows a meaningful end-to-end benefit. Preserve platform-neutral API/model contracts and keep platform execution details behind adapters.
 
 ### Platform starting point
 
 | Target | Current documented state | Remaining verification |
 |---|---|---|
-| Windows x64 | Source CPU service is supported for compatible catalog models. Native Qwen3-TTS is unavailable. | Clean-environment install, supported OS/CPU requirements, codec/runtime dependencies, model-by-model smoke tests, and release acceptance. |
-| macOS Apple Silicon | Source CPU service and native Qwen3-TTS path are documented as supported. | Maintain build reproducibility and keep model, runtime, and quality results current as dependencies change. |
+| Windows x64 | Source CPU service and native C INT8 Qwen3-TTS runtime are supported. | Clean-environment install, supported OS/CPU requirements, codec/runtime dependencies, model-by-model smoke tests, and release acceptance. |
+| macOS Apple Silicon | Source CPU service and native C INT8 Qwen3-TTS runtime are supported. | Maintain build reproducibility and keep model, runtime, and quality results current as dependencies change. |
 | Linux | Not currently supported by SmartVoice. | Choose initial architecture(s), minimum distribution/runtime requirements, native dependencies, packaging approach, and model coverage before publishing support. |
 | Android | Not supported or evaluated. | Remains a separate P2 product/platform decision; requires NDK/ABI and embedded lifecycle design. |
 
@@ -157,7 +157,7 @@ For Qwen3-TTS, decide and validate the Linux runtime/packaging path and explicit
 
 ### Other P2 extensions
 
-- **GPU inference:** Add providers only with a model/provider/device compatibility matrix, actual-device reporting, explicit fallback behavior, and hardware validation.
+- **GPU inference (low priority):** Recent evaluation found no PyTorch CUDA path, including PyTorch INT8 quantization, faster end to end than the native INT8 Qwen3-TTS runtime in the tested conditions. Do not prioritize CUDA integration without new evidence of a meaningful benefit. If reconsidered, add it as an optional provider with a model/provider/device compatibility matrix, actual-device reporting, explicit fallback behavior, and hardware validation; retain the native INT8 CPU path as the shared baseline.
 - **Concurrency tuning:** Verify same-instance safety for each runtime/model type. Use fixed-arrival-rate tests for throughput, tail latency, rejection rate, CPU, and memory. Keep current concurrency defaults until target-device evidence supports a change.
 - **Android:** Evaluate embedded runtime, NDK/ABI support, application lifecycle, permissions, and resource constraints after the Windows/Linux platform contracts are stable.
 - **Security and remote access:** Keep loopback-only behavior by default. Design authentication, authorization, upload limits, and privacy controls before enabling LAN or remote binding.

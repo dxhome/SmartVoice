@@ -25,8 +25,9 @@ from smartvoice.services.model_jobs import ModelJobManager
 from smartvoice.services.model_router import ModelRouter
 from smartvoice.services.transcription import TranscriptionService
 from smartvoice.services.speech import SpeechService
-from smartvoice.ports.inference import LanguageIdentifier, LanguageIdentifierStatus, ModelLifecycle
+from smartvoice.ports.inference import LanguageIdentifier, LanguageIdentifierStatus, ModelLifecycle, RuntimeLifecycle
 from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
+from smartvoice.adapters.inference.factory import create_inference_provider
 from smartvoice.services.model_management import ModelManagementService
 
 logger = logging.getLogger("smartvoice.api")
@@ -181,26 +182,15 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     settings = settings or Settings.from_env()
     model_repository = CatalogModelRepository(settings)
     if provider is None:
-        from smartvoice.adapters.inference.composite_provider import CompositeInferenceProvider
-        from smartvoice.adapters.inference.qwen_tts.provider import QwenTTSProvider
-        from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
-
-        provider = CompositeInferenceProvider(
-            {
-                "sherpa-onnx": SherpaOnnxProvider(settings, model_repository),
-                "qwen-tts": QwenTTSProvider(settings, model_repository),
-            },
-            model_repository,
-        )
+        provider = create_inference_provider(settings, model_repository)
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         try:
             yield
         finally:
             application.state.model_jobs.cancel_all()
-            close = getattr(application.state.provider, "close", None)
-            if callable(close):
-                close()
+            if isinstance(application.state.provider, RuntimeLifecycle):
+                application.state.provider.close()
 
     logger.setLevel(logging.DEBUG if debug_http else getattr(logging, settings.log_level, logging.INFO))
     app = FastAPI(

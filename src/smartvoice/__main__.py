@@ -75,34 +75,13 @@ def _format_model_list(
     return "\n".join(lines)
 
 
-def _models_with_availability(models: list[dict[str, object]], settings: Settings, repository) -> list[dict[str, object]]:
-    from smartvoice.adapters.inference.qwen_tts.provider import QwenTTSProvider
-    from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
-
-    providers = {
-        "sherpa-onnx": SherpaOnnxProvider(settings, repository),
-        "qwen-tts": QwenTTSProvider(settings, repository),
-    }
-    runtime_by_backend: dict[str, dict[str, object]] = {}
-    sherpa_provider = providers["sherpa-onnx"]
-    sherpa_issue = sherpa_provider._runtime_issue()
-    runtime_by_backend["sherpa-onnx"] = {
-        "reason": sherpa_issue,
-    }
-    qwen_provider = providers["qwen-tts"]
-    runtime_by_backend["qwen-tts"] = {
-        "reason": (
-            "Qwen3-TTS currently supports CPU inference in SmartVoice."
-            if settings.provider != "cpu" else
-            "The native C INT8 Qwen3-TTS runtime is not installed for this platform."
-            if qwen_provider._native_binary() is None else None
-        ),
-    }
-
+def _models_with_availability(
+    models: list[dict[str, object]],
+    runtime_by_backend: dict[str, dict[str, object]],
+) -> list[dict[str, object]]:
     results = []
     for original in models:
         model = dict(original)
-        model_id = str(model.get("id"))
         if model.get("status") == "uninstalled":
             model["availability"] = "not_installed"
         elif model.get("status") == "invalid":
@@ -124,9 +103,7 @@ def _models_with_availability(models: list[dict[str, object]], settings: Setting
     return results
 
 
-def _native_model_status(settings: Settings) -> dict[str, object]:
-    from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
-    from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
+def _native_model_status(settings: Settings, sherpa_runtime: dict[str, object]) -> dict[str, object]:
     from smartvoice.services.spoken_language_identifier import (
         installed_language_id_model_dir,
         language_id_model_dir,
@@ -134,7 +111,7 @@ def _native_model_status(settings: Settings) -> dict[str, object]:
 
     directory = language_id_model_dir(settings)
     installed = installed_language_id_model_dir(settings)
-    runtime_issue = SherpaOnnxProvider(settings, CatalogModelRepository(settings))._runtime_issue()
+    runtime_issue = sherpa_runtime.get("reason")
     if installed is not None and runtime_issue is None:
         availability = "available"
         reason = None
@@ -300,14 +277,17 @@ def _models(args: list[str]) -> None:
         print(f"\n{message}", flush=True)
 
     if parsed.action == "list":
+        from smartvoice.adapters.inference.factory import create_inference_provider
         from smartvoice.services.model_storage import catalog_models
 
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8")
-        models = _models_with_availability(
-            catalog_models(settings), settings, model_management.model_repository
-        )
-        native_models = [_native_model_status(settings)]
+        inference_provider = create_inference_provider(settings, model_management.model_repository)
+        backend_runtimes = inference_provider.runtime().get("backends", {})
+        if not isinstance(backend_runtimes, dict):
+            backend_runtimes = {}
+        models = _models_with_availability(catalog_models(settings), backend_runtimes)
+        native_models = [_native_model_status(settings, backend_runtimes.get("sherpa-onnx", {}))]
         if parsed.json:
             print(json.dumps([*models, *native_models], ensure_ascii=False, indent=2))
         else:

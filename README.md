@@ -27,6 +27,8 @@ SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It 
 | Model management | Install, uninstall, offline import/export, and resumable downloads |
 | Not yet supported | GPU inference, streaming, Linux/Android, remote access, packaged installers, MCP |
 
+For the architecture principles, implementation overview, per-backend OS/architecture/device/build matrix, and the difference between installed models and inference availability, see [Architecture Summary and Guidelines](doc/architecture-guidelines.md).
+
 SmartVoice supports a subset of OpenAI Audio API conventions; this is not a claim of full API compatibility. See the [API specification](doc/api-spec.md) for request and response details.
 
 ## Smart routing
@@ -228,7 +230,7 @@ Client / Agent ──► Versioned HTTP API ──► Application services
               Platform diagnostics adapter
 ```
 
-Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The source deployment supports CPU inference on Windows x64 and macOS Apple Silicon. Qwen3-TTS uses the native C INT8 adapter on both platforms; Windows x64 source deployments build its runtime with MSYS2 as described above. GPU providers, streaming, Linux and Android runtimes are not available in SmartVoice.
+Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The source deployment supports CPU inference on Windows x64 and macOS Apple Silicon. Qwen3-TTS uses the native C INT8 adapter on both platforms; Windows x64 source deployments build its runtime with MSYS2 as described above. GPU providers, streaming, Linux and Android runtimes are not available in SmartVoice. See [Architecture Summary and Guidelines](doc/architecture-guidelines.md) for the detailed matrix and model availability semantics.
 
 ## Development
 
