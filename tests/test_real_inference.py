@@ -51,7 +51,7 @@ def _encode_audio(raw_wav: bytes, container_format: str, codec: str, rate: int, 
 
 @unittest.skipUnless(
     _models_ready and _dependencies_ready,
-    "Install SenseVoice, Kokoro, Whisper Tiny language-ID assets, and [inference] dependencies to run routed integration scenarios",
+    "Install SenseVoice, Kokoro, and Whisper Tiny language-ID assets to run routed integration scenarios",
 )
 class RealInferenceTests(unittest.TestCase):
     @classmethod
@@ -183,7 +183,7 @@ class RealInferenceTests(unittest.TestCase):
 
 @unittest.skipUnless(
     _dependencies_ready,
-    "Install [inference] dependencies to run model inference tests",
+    "Install SmartVoice's runtime dependencies to run model inference tests",
 )
 class InstalledCatalogModelInferenceTests(unittest.TestCase):
     """Directly smoke-test each catalog model that is installed and runtime-available."""

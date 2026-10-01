@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/smartvoice-logo.png" alt="SmartVoice logo" width="220">
+  <img src="https://raw.githubusercontent.com/dxhome/SmartVoice/main/assets/smartvoice-logo.png" alt="SmartVoice logo" width="220">
   <p><strong>Local speech recognition and synthesis, with language-aware model routing.</strong></p>
   <p>Multilingual STT and TTS · CPU inference · OpenAPI · No per-request API fee</p>
 </div>
@@ -86,24 +86,49 @@ SmartVoice requires Python 3.11 or newer and runs inference on CPU. The service 
 
 ### 1. Install SmartVoice
 
-From a source checkout, create a virtual environment and install the inference dependencies. Windows x64 source builds include the Qwen native runtime, so install the MSYS2 UCRT64 build tools described below before running `pip install`.
+Choose an installation method below. The PyPI option is recommended for normal use; the source option is for development or when you want an editable checkout.
 
-macOS:
+<details>
+<summary>From PyPI</summary>
+
+Install the published package. This installs the supported local inference dependencies; the macOS Apple Silicon and Windows x64 wheels also include the native Qwen3-TTS runtime.
+
+macOS Apple Silicon:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[inference]"
+python -m pip install smartvoice
 ```
 
 Windows PowerShell:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[inference]"
+.\.venv\Scripts\python.exe -m pip install smartvoice
 ```
 
-Run these commands from the repository root. You do not need to activate the virtual environment. In the model and server commands below, replace `python` with `.\.venv\Scripts\python.exe` in Windows PowerShell.
+</details>
+
+<details>
+<summary>From source</summary>
+
+Run these commands from the repository root. Windows x64 source builds include the Qwen native runtime, so install the MSYS2 build tools described below before installing SmartVoice.
+
+macOS:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .
+```
 
 On macOS Apple Silicon, the source install builds the native INT8 Qwen3-TTS runtime using Xcode Command Line Tools. On Windows x64, build the native runtime from the source checkout as described below.
 
@@ -125,6 +150,10 @@ $env:SMARTVOICE_QWEN_OUTPUT = "$PWD\src\smartvoice\resources\bin"
 ```
 
 The build script runs the native runtime self-test and stages `qwen_tts.exe`, its required runtime DLLs, and license notices in `src/smartvoice/resources/bin` for the editable source checkout. The Windows package build also bundles the runtime in its build output. These generated binaries are local build artifacts and are not committed. If MSYS2 is installed elsewhere, set `SMARTVOICE_MSYS2_ROOT` to that directory. Python source installation remains editable; a SmartVoice wheel is not required.
+
+</details>
+
+Activate `.venv` before running the model and server commands below. On Windows PowerShell, you can instead keep the environment inactive and replace `python` with `.\.venv\Scripts\python.exe` in those commands.
 
 ### 2. Download models
 
@@ -235,7 +264,7 @@ Callers use versioned API and capability endpoints; inference details stay behin
 ## Development
 
 ```bash
-python -m pip install -e ".[inference,dev]"
+python -m pip install -e ".[dev]"
 python scripts/test.py ci
 ```
 

@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 def _regression_prerequisites() -> list[str]:
     return [
-        f"Python package '{name}' is missing; install with: python -m pip install -e '.[inference]'"
+        f"Python package '{name}' is missing; install SmartVoice with: python -m pip install -e ."
         for name in ("sherpa_onnx", "av", "numpy")
         if importlib.util.find_spec(name) is None
     ]

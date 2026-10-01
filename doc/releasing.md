@@ -33,8 +33,8 @@ PyPI publishing is disabled until explicitly enabled for this repository. To tur
 Once published, users can install or upgrade with:
 
 ```bash
-python -m pip install "smartvoice[inference]"
-python -m pip install --upgrade "smartvoice[inference]"
+python -m pip install smartvoice
+python -m pip install --upgrade smartvoice
 ```
 
 The PyPI distribution contains the application and default metadata/configuration files. Large speech model weights remain separate and are installed through SmartVoice after package installation.

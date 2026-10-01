@@ -22,12 +22,12 @@ Run the same complete functional suite and exercise real CPU inference through t
 python scripts/test.py regression
 ```
 
-The regression entry point requires the `[inference]` dependencies. Existing multi-route integration cases run when their SenseVoice, Kokoro, and Whisper Tiny language-ID assets are available; otherwise those cases are skipped. The per-catalog direct tests independently run for every installed model, while uninstalled models are skipped by model ID. This lets a local regression cover whichever supported models are present without requiring the full catalog.
+SmartVoice's required dependencies include its supported inference runtimes. Existing multi-route integration cases run when their SenseVoice, Kokoro, and Whisper Tiny language-ID assets are available; otherwise those cases are skipped. The per-catalog direct tests independently run for every installed model, while uninstalled models are skipped by model ID. This lets a local regression cover whichever supported models are present without requiring the full catalog.
 
 Install dependencies and models first:
 
 ```bash
-python -m pip install -e ".[inference,dev]"
+python -m pip install -e ".[dev]"
 # Install any catalog models you want to include in real inference coverage.
 python -m smartvoice models install stt-sensevoice-small-int8
 python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en

@@ -504,7 +504,7 @@ class SherpaOnnxProvider:
         try:
             import sherpa_onnx
         except ImportError as exc:
-            raise ModelUnavailableError("Install the inference extra with `python -m pip install -e .[inference]`.") from exc
+            raise ModelUnavailableError("Install SmartVoice with `python -m pip install smartvoice` to include its inference dependencies.") from exc
         return sherpa_onnx
 
     def _runtime_issue(self) -> str | None:
@@ -517,7 +517,7 @@ class SherpaOnnxProvider:
         except ModelUnavailableError as exc:
             return str(exc)
         except (ImportError, OSError) as exc:
-            return f"An inference dependency is unavailable: {type(exc).__name__}. Install the inference extra."
+            return f"A required inference dependency is unavailable: {type(exc).__name__}. Reinstall SmartVoice with `python -m pip install --upgrade smartvoice`."
         return None
 
     @staticmethod
