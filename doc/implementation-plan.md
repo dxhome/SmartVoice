@@ -8,7 +8,7 @@ This plan reflects the current code and product scope. It separates the implemen
 
 - **P0 — Current baseline:** The basic local speech service and its architecture are implemented. There are no known uncompleted P0 implementation items in this plan.
 - **P1 — Next product capability:** Streaming STT, translated subtitles, and spoken interpretation.
-- **P2 — Acceptance and expansion:** Formal quality/performance acceptance, verification of the model/platform matrix, Windows and Linux support, and all other platform, runtime, security, packaging, and product extensions.
+- **P2 — Acceptance and expansion:** Formal quality/performance acceptance, verification of the Windows/Linux model-platform matrix, and remaining platform, runtime, security, packaging, and product extensions.
 
 P2 work is planned but is not a promise that every item will ship in the next release. Confirm platform targets, measurable thresholds, and release scope before starting an item.
 
@@ -20,7 +20,7 @@ The code is divided into API, application services, domain contracts, ports, and
 
 The regression suite runs functional/API tests and real CPU inference via REST routes. Its routed integration cases exercise service/model discovery, routed and direct STT, Chinese/English speech-language detection, supported input audio formats, invalid audio, routed/direct TTS, automatic TTS language detection, and long-text synthesis when their required models/assets are installed. It also generates a direct smoke test for every catalog model and runs it for each installed model whose runtime is available; absent models are reported as skips. Run `python scripts/test.py ci` for CI and `python scripts/test.py regression` for local regression with SmartVoice installed and any desired models present.
 
-Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Source-install paths now cover Windows x64, macOS Apple Silicon, and Linux x86_64. Linux has passed native Qwen compile and kernel self-test on Ubuntu 26.04, while clean distribution installation and model-backed inference acceptance remain outstanding. Android is not supported. GPU inference, streaming sessions, remote/LAN access, and a management UI are not part of the current baseline.
+Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Source-install paths and release wheel builds cover Windows x64, macOS Apple Silicon, and Linux x86_64. Linux x86_64 has passed clean installation and model-backed inference validation on Ubuntu 26.04. Other Linux distributions and Linux arm64 are not yet verified. Android is not supported. GPU inference, streaming sessions, remote/LAN access, and a management UI are not part of the current baseline.
 
 ## P1 — Streaming STT, Translation, and Interpretation
 
@@ -126,9 +126,9 @@ Publish quality thresholds only after the corpus, reference hardware, and measur
 
 Validate every model that the product advertises as available. For each model/runtime/platform combination, record source and pinned revision, hashes, license obligations, task and language coverage, required assets, install behavior, cold start, latency/RTF, peak memory, disk size, and real inference results. Model presence in the catalog alone is not evidence of platform support.
 
-The verification matrix must cover Windows x64 and the selected Linux targets, with the current macOS Apple Silicon path retained as an existing supported target. Confirm Linux architecture and minimum OS details before publishing a Linux support claim. Test actual API capability reporting so incompatible models are unavailable with a clear reason.
+The verification matrix covers Windows x64, Linux x86_64 on Ubuntu 26.04, and the current macOS Apple Silicon path. Expand Linux distro or architecture claims only after validating them. Test actual API capability reporting so incompatible models are unavailable with a clear reason.
 
-For Qwen3-TTS, preserve the native C INT8 CPU runtime as the shared Windows/macOS baseline and decide and validate the Linux runtime/packaging path. Recent evaluation found no PyTorch CUDA configuration, including PyTorch INT8 quantization, that outperformed the native INT8 runtime in the tested conditions; CUDA support is therefore low priority for now. Revisit it only if new hardware, workload, or benchmark evidence shows a meaningful end-to-end benefit. Preserve platform-neutral API/model contracts and keep platform execution details behind adapters.
+For Qwen3-TTS, preserve the native C INT8 CPU runtime across Windows, macOS, and validated Linux x86_64. Recent evaluation found no PyTorch CUDA configuration, including PyTorch INT8 quantization, that outperformed the native INT8 runtime in the tested conditions; CUDA support is therefore low priority for now. Revisit it only if new hardware, workload, or benchmark evidence shows a meaningful end-to-end benefit. Preserve platform-neutral API/model contracts and keep platform execution details behind adapters.
 
 ### Platform starting point
 
@@ -136,14 +136,14 @@ For Qwen3-TTS, preserve the native C INT8 CPU runtime as the shared Windows/macO
 |---|---|---|
 | Windows x64 | Source CPU service and native C INT8 Qwen3-TTS runtime are supported. | Clean-environment install, supported OS/CPU requirements, codec/runtime dependencies, model-by-model smoke tests, and release acceptance. |
 | macOS Apple Silicon | Source CPU service and native C INT8 Qwen3-TTS runtime are supported. | Maintain build reproducibility and keep model, runtime, and quality results current as dependencies change. |
-| Linux x86_64 | Source build path for sherpa-onnx and native Qwen3-TTS; native Qwen kernel self-test passes on Ubuntu 26.04 x86_64. | Complete clean-environment dependency install, service/API startup, model-backed inference, runtime library packaging, and release acceptance. Other distributions and Linux arm64 remain unverified. |
+| Linux x86_64 | Source and wheel paths for sherpa-onnx and native Qwen3-TTS; clean installation and model-backed inference validated on Ubuntu 26.04 x86_64. | Keep Ubuntu 26.04 acceptance current as dependencies change. Other distributions and Linux arm64 remain unverified. |
 | Android | Not supported or evaluated. | Remains a separate P2 product/platform decision; requires NDK/ABI and embedded lifecycle design. |
 
 ### Platform implementation and acceptance work
 
 1. **Define the build matrix.** For every intended target, record OS version, CPU architecture/ABI, compiler/toolchain, BLAS/runtime libraries, minimum OS, and exact executable or wheel artifact. Distinguish native Windows from any proposed WSL2 arrangement; do not describe WSL2 as native Windows support.
-2. **Finish Linux acceptance deliberately.** The first build baseline is Ubuntu 26.04 x86_64. Validate sherpa-onnx and audio codec installation, OpenBLAS runtime delivery, filesystem permissions, service startup/shutdown, model installation, and real inference before expanding the supported distribution matrix.
-3. **Resolve Qwen runtime delivery by platform.** The C INT8 source builder now covers Linux x86_64; validate its system-library and ISA assumptions on clean Ubuntu targets. Keep actionable unavailable status where no compatible artifact exists, and decide whether Windows support is a native port/build or an explicitly designed WSL2 service. Do not add an implicit PyTorch fallback to cover a platform gap.
+2. **Maintain Linux acceptance.** Linux x86_64 has passed clean-install and model-backed inference validation on Ubuntu 26.04. Re-run these checks as dependencies or runtime builds change before expanding the supported distribution matrix.
+3. **Maintain Qwen runtime delivery by platform.** The C INT8 source builder and release wheel path cover Linux x86_64. Keep validating system-library and ISA assumptions on the supported Ubuntu baseline. Keep actionable unavailable status where no compatible artifact exists. Do not add an implicit PyTorch fallback to cover a platform gap.
 4. **Harden native executable lifecycle.** Validate executable format and architecture before advertising a model. Test paths containing spaces, port allocation, loopback-only binding, startup diagnostics, timeouts/cancellation, child-process cleanup, application shutdown, and errors when the binary is missing or incompatible.
 5. **Keep builds reproducible.** Pin upstream source revisions, retain notices, verify platform-specific wheel/artifact tags and minimum OS targets, and assert that release packages contain the correct executable. Do not place native binaries in an artifact whose compatibility tag claims universal or pure Python support.
 6. **Preserve model reuse and integrity.** Confirm that pinned model files and catalog hashes work unchanged on each runtime target. Changing an inference runtime must not trigger a second weight download. If pre-quantized or converted model assets are introduced, version and hash them separately and make conversion reproducible.
@@ -159,11 +159,11 @@ For Qwen3-TTS, preserve the native C INT8 CPU runtime as the shared Windows/macO
 
 ## P2 — Platform and Product Extensions
 
-### Windows and Linux support
+### Windows and Linux platform acceptance
 
-- Maintain a reproducible source-install/build and test path for Windows x64 and selected Linux target(s).
+- Maintain the implemented source-install/build and release-wheel paths for Windows x64 and Linux x86_64, and document their target-specific prerequisites.
 - Validate audio codecs, filesystem paths/permissions, CLI process signals, child-process lifecycle, loopback binding, resource reporting, and shutdown on each supported OS.
-- Build and test platform-specific native runtime artifacts. Do not advertise a model as supported until its executable and all required assets run on that platform.
+- Maintain the passing Linux x86_64 clean-install and model-backed regression baseline on Ubuntu 26.04; complete any remaining clean-install and model-backed acceptance for other target platforms before advertising them as fully verified.
 - Run the same regression and model acceptance scenarios on clean environments for each supported target.
 
 ### Other P2 extensions

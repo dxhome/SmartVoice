@@ -196,12 +196,12 @@ Only CPU inference is supported by the current SmartVoice integration. “Other 
 
 | Backend | Supported OS | Architecture | Device | Build and delivery path | Catalog models |
 |---|---|---|---|---|---|
-| `sherpa-onnx` | Windows | x64 (`win_amd64`) | CPU | Installed as the platform-specific `sherpa-onnx` Python wheel through `python -m pip install -e ".[inference]"`; SmartVoice does not compile Sherpa itself. | Whisper Base, SenseVoice Small, Qwen3-ASR; Kokoro, Matcha Baker, Supertonic 3. |
-| `sherpa-onnx` | macOS | Apple Silicon / arm64 | CPU | Installed as the platform-specific `sherpa-onnx` Python wheel through the inference extra; SmartVoice does not compile Sherpa itself. | Whisper Base, SenseVoice Small, Qwen3-ASR; Kokoro, Matcha Baker, Supertonic 3. |
+| `sherpa-onnx` | Windows | x64 (`win_amd64`) | CPU | Installed as the platform-specific `sherpa-onnx` wheel through SmartVoice's base dependencies (`pip install smartvoice` or `pip install -e .`); SmartVoice does not compile Sherpa itself. | Whisper Base, SenseVoice Small, Qwen3-ASR; Kokoro, Matcha Baker, Supertonic 3. |
+| `sherpa-onnx` | macOS | Apple Silicon / arm64 | CPU | Installed as the platform-specific `sherpa-onnx` wheel through SmartVoice's base dependencies; SmartVoice does not compile Sherpa itself. | Whisper Base, SenseVoice Small, Qwen3-ASR; Kokoro, Matcha Baker, Supertonic 3. |
 | `sherpa-onnx` | Linux | x86_64 | CPU | Installed from the platform-specific `sherpa-onnx` wheel through the project dependencies; SmartVoice does not compile Sherpa itself. | Whisper Base, SenseVoice Small, Qwen3-ASR; Kokoro, Matcha Baker, Supertonic 3. |
 | `qwen-tts` | Windows | x64; current native build uses AVX2 and FMA | CPU | Build the vendored C INT8 engine with MSYS2 UCRT64 GCC and OpenBLAS using `scripts/build_qwen3_tts_windows.py`. The build stages `qwen_tts.exe`, required DLLs, and license notices; the wheel build hook uses the same builder. | Qwen3-TTS 0.6B CustomVoice. |
 | `qwen-tts` | macOS 11.0+ wheel target | Apple Silicon / arm64 | CPU | Build the vendored C INT8 engine with Xcode Command Line Tools (`clang`/`make`) and Apple Accelerate. The wheel build hook compiles and bundles `qwen_tts`; wheel tag is `macosx_11_0_arm64`. | Qwen3-TTS 0.6B CustomVoice. |
-| `qwen-tts` | Linux | x86_64 | CPU | Build the vendored C INT8 engine with GCC, Make, and system OpenBLAS using `scripts/build_qwen3_tts_linux.py`. The builder selects the ISA exposed by the build host, runs `--self-test`, and stages the executable and license notice. | Qwen3-TTS 0.6B CustomVoice. |
+| `qwen-tts` | Linux | x86_64 | CPU | Build the vendored C INT8 engine with GCC, Make, and system OpenBLAS using `scripts/build_qwen3_tts_linux.py`. The builder selects the ISA exposed by the build host, runs `--self-test`, and stages the executable and license notice. The release wheel build uses this builder and bundles the executable. | Qwen3-TTS 0.6B CustomVoice. |
 | Either backend | Linux arm64, Windows ARM64, Intel macOS, Android | Not verified | No supported device claim | No SmartVoice source-build/package path is documented for these combinations. Do not infer support from upstream runtime availability. | None claimed. |
 
 #### Build and hardware qualifications
@@ -210,10 +210,10 @@ Only CPU inference is supported by the current SmartVoice integration. “Other 
 - The macOS Qwen build uses `-march=native` while the wheel is tagged for macOS 11.0+ arm64. The tag describes OS/architecture compatibility, but the native CPU tuning should be considered when redistributing an artifact built on one Apple Silicon generation to another. The project has not established a minimum Apple Silicon generation here.
 - Windows’ minimum OS version and Sherpa’s minimum OS versions are not pinned as SmartVoice acceptance requirements. Confirm them before publishing stricter system requirements.
 - The Qwen Windows executable depends on the side-by-side MSYS2/OpenBLAS runtime DLLs staged by the builder. A present executable is not by itself proof that every DLL loads successfully.
-- The Linux Qwen executable dynamically links to the host OpenBLAS runtime. Source builds require its development headers and compiler; locally built wheels require the matching OpenBLAS runtime on the target host.
-- Locally built Linux wheels use the `linux_x86_64` tag rather than a manylinux compatibility tag. Build them on the intended target distribution; this path does not establish compatibility with older glibc releases.
+- The Linux Qwen executable dynamically links to the host OpenBLAS runtime. Source builds require its development headers and compiler; installed wheels require the matching OpenBLAS runtime on the target host.
+- The release workflow builds Linux wheels on Ubuntu 24.04 x86_64. These wheels use the `linux_x86_64` tag rather than a manylinux compatibility tag; compatibility with older glibc releases and other Linux distributions is not established.
 - The Linux Qwen builder uses the CPU flags visible on its build host. Virtual machines can mask instructions that the physical CPU supports; `SIMD=auto` selects a safe scalar path when AVX2 is not exposed. Rebuild the runtime when moving it to a host with a weaker exposed ISA.
-- Linux bring-up compiled and passed the native Qwen kernel self-test on Ubuntu 26.04 x86_64. A real model-backed inference and clean distribution install remain required before treating the full Linux model matrix as release-verified.
+- Linux x86_64 is validated on Ubuntu 26.04, including clean installation and model-backed inference with the supported CPU runtimes. This validation does not establish compatibility with other Linux distributions, older glibc releases, Linux arm64, or CPUs lacking the instructions used by a native runtime.
 - Model weights are installed separately from backend runtimes. Building or installing a runtime does not install model weights; installing model weights does not build or install the runtime.
 
 ### Model Installation Versus Current Inference Availability
@@ -238,4 +238,4 @@ Qwen availability preflight checks CPU support, the native executable, and insta
 
 - `python scripts/test.py ci` checks mocked/unit/API behavior and excludes real model inference.
 - `python scripts/test.py regression` exercises real inference for installed models whose runtime is reported available. Missing models or unavailable runtimes are skipped individually.
-- For a platform/backend combination to be considered fully verified, retain a clean-environment build/install result and a real inference regression result for that target. A successful compile or native `--self-test` alone is not model-backed acceptance.
+- For a platform/backend combination to be considered fully verified, retain a clean-environment build/install result and a real inference regression result for that target. Linux x86_64 has passed these checks on Ubuntu 26.04; a successful compile or native `--self-test` alone is not model-backed acceptance.

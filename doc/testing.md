@@ -12,7 +12,7 @@ python scripts/test.py ci
 
 This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The CI entry point excludes `test_real_inference.py` so it remains fast and does not depend on local models.
 
-The repository contains a GitHub Actions CI workflow that installs the development dependencies and runs this entry point on pull requests and pushes to `main`. CI is currently paused in the GitHub repository settings; until it is re-enabled, run this command locally before merging and do not expect a remote check to appear.
+The active GitHub Actions CI workflow installs the development dependencies and runs this entry point on pull requests and pushes to `main`. It also builds and checks the source distribution and the Linux wheel.
 
 ## Full regression tests
 
