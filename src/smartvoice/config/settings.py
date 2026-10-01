@@ -1,4 +1,4 @@
-"""Environment-backed configuration with loopback-safe defaults."""
+"""Environment-backed configuration with loopback defaults."""
 
 from __future__ import annotations
 

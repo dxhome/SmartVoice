@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import unittest
 import uuid
 from pathlib import Path
@@ -13,6 +14,24 @@ from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvide
 
 
 class ProviderContractTests(unittest.TestCase):
+    def test_close_releases_cached_runtime_models(self):
+        provider = SherpaOnnxProvider(Settings(data_dir=Path.cwd() / ".smartvoice-dev" / "provider-close"))
+        provider._recognizers[("model", "zh")] = object()
+        provider._recognizer_locks["model"] = threading.Lock()
+        provider._tts["tts-model"] = object()
+        provider._tts_locks["tts-model"] = threading.Lock()
+        provider._language_identifier = object()
+        provider._verified_files["/model/file"] = (1, 2, "digest")
+
+        provider.close()
+
+        self.assertFalse(provider._recognizers)
+        self.assertFalse(provider._recognizer_locks)
+        self.assertFalse(provider._tts)
+        self.assertFalse(provider._tts_locks)
+        self.assertIsNone(provider._language_identifier)
+        self.assertFalse(provider._verified_files)
+
     def test_spoken_language_identifier_uses_sherpa_whisper_tiny_api(self):
         from types import ModuleType, SimpleNamespace
         from unittest.mock import Mock, patch

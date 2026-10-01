@@ -8,7 +8,7 @@ import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
-from smartvoice.__main__ import _format_model_list, _models, _router
+from smartvoice.__main__ import _format_model_list, _models, _router, _serve
 
 
 class ModelListOutputTests(unittest.TestCase):
@@ -88,6 +88,34 @@ class ModelListOutputTests(unittest.TestCase):
             with self.assertRaises(SystemExit) as raised:
                 _router(["--host", "192.168.1.4", "reload"])
         self.assertEqual(raised.exception.code, 2)
+
+    def test_service_accepts_explicit_external_http_bind_and_warns(self):
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as data_dir, patch.dict(
+            os.environ, {"SMARTVOICE_HOME": data_dir}, clear=True
+        ), patch("smartvoice.__main__.socket.create_connection", side_effect=OSError("not bound")), patch(
+            "smartvoice.__main__._print_startup_banner"
+        ), patch("smartvoice.app.create_app", return_value=object()), patch(
+            "smartvoice.__main__.uvicorn.run"
+        ) as run:
+            with redirect_stdout(output):
+                _serve(["--host", "0.0.0.0", "--port", "8123"])
+
+        self.assertEqual(run.call_args.kwargs["host"], "0.0.0.0")
+        self.assertEqual(run.call_args.kwargs["port"], 8123)
+        self.assertIn("over HTTP without authentication", output.getvalue())
+
+    def test_service_defaults_to_loopback(self):
+        with tempfile.TemporaryDirectory() as data_dir, patch.dict(
+            os.environ, {"SMARTVOICE_HOME": data_dir}, clear=True
+        ), patch("smartvoice.__main__.socket.create_connection", side_effect=OSError("not bound")), patch(
+            "smartvoice.__main__._print_startup_banner"
+        ), patch("smartvoice.app.create_app", return_value=object()), patch(
+            "smartvoice.__main__.uvicorn.run"
+        ) as run:
+            _serve([])
+
+        self.assertEqual(run.call_args.kwargs["host"], "127.0.0.1")
 
 
 if __name__ == "__main__":

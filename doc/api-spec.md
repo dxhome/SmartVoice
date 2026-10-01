@@ -1,10 +1,11 @@
 # SmartVoice API Specification
 
-This document describes the HTTP API implemented by the current source code. The interactive OpenAPI UI is available at `/docs` while the service is running. The service has no API authentication in the current release and binds to loopback by default.
+This document describes the HTTP API implemented by the current source code. The interactive OpenAPI UI is available at `/docs` while the service is running. The service has no API authentication in the current release and binds to loopback by default. An operator can explicitly configure a non-loopback HTTP bind address; such access is unencrypted and unauthenticated. HTTPS is not supported.
 
 ## Conventions
 
 - Base URL: `http://127.0.0.1:8000` by default.
+- Set `server_host` in `<data_dir>/smartvoice.json`, `SMARTVOICE_HOST`, or `--host` to choose another bind address (for example, `0.0.0.0` to listen on all IPv4 interfaces). External binding exposes the API and model-management endpoints to reachable clients without authentication; use only on a trusted network.
 - API routes are versioned under `/v1`; service routes are `/health` and `/ready`.
 - JSON request bodies use `Content-Type: application/json`. Audio upload and model import use `multipart/form-data`.
 - Responses include `X-Request-ID`. A caller may provide `X-Request-ID` containing 1–80 ASCII letters, digits, `.`, `_`, or `-`; otherwise the server generates one.

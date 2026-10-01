@@ -51,6 +51,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - runner: ubuntu-24.04
+            target: linux-x64
           - runner: macos-15
             target: macos-arm64
           - runner: windows-2022
@@ -61,6 +63,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Set up Linux toolchain
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential libopenblas-dev
       - name: Set up MSYS2 toolchain
         if: runner.os == 'Windows'
         id: msys2
@@ -114,6 +121,10 @@ jobs:
               required.add("smartvoice/resources/bin/qwen_tts.exe")
               if "win_amd64" not in wheel.name:
                   raise SystemExit(f"Unexpected Windows wheel tag: {wheel.name}")
+          elif target == "linux-x64":
+              required.add("smartvoice/resources/bin/qwen_tts")
+              if "linux_x86_64" not in wheel.name:
+                  raise SystemExit(f"Unexpected Linux wheel tag: {wheel.name}")
           missing = required - names
           if missing:
               raise SystemExit(f"{target} wheel is missing files: {sorted(missing)}")

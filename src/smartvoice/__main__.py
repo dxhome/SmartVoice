@@ -187,7 +187,7 @@ def _smartvoice_is_running(host: str, port: int) -> bool:
 def _serve(args: list[str]) -> None:
     parser = argparse.ArgumentParser(description="Run the SmartVoice local speech API")
     parser.add_argument("--config", type=Path, default=None, help="Optional JSON configuration file")
-    parser.add_argument("--host", default=None, help="Bind address (loopback only in this release)")
+    parser.add_argument("--host", default=None, help="HTTP bind address (defaults to 127.0.0.1; use 0.0.0.0 to listen on all interfaces)")
     parser.add_argument("--port", type=int, default=None, help="HTTP port")
     parser.add_argument("--data-dir", type=Path, default=None, help="Override the local SmartVoice data directory")
     parser.add_argument("--num-threads", type=int, default=None, help="Override CPU inference threads")
@@ -205,10 +205,11 @@ def _serve(args: list[str]) -> None:
         num_threads=max(1, parsed.num_threads) if parsed.num_threads else settings.num_threads,
         log_level="DEBUG" if parsed.debug else settings.log_level,
     )
-    if not _is_loopback(settings.server_host):
-        parser.error("Only loopback addresses are supported until remote access has authentication and risk controls.")
     display_host = f"[{settings.server_host}]" if ":" in settings.server_host else settings.server_host
     address = f"http://{display_host}:{settings.server_port}"
+    if not _is_loopback(settings.server_host):
+        print("WARNING: SmartVoice is exposed on a non-loopback interface over HTTP without authentication.")
+        print("Only use this on a trusted network; anyone who can connect can use the API and manage local models.")
     try:
         with socket.create_connection((settings.server_host, settings.server_port), timeout=0.2):
             try:

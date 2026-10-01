@@ -7,6 +7,7 @@ import platform
 import subprocess
 import time
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 
@@ -109,19 +110,63 @@ def _mac_memory_status() -> dict[str, int] | None:
         return {"total_physical_bytes": total}
 
 
+def _linux_memory_status() -> dict[str, int] | None:
+    if platform.system() != "Linux":
+        return None
+    try:
+        values: dict[str, int] = {}
+        for line in Path("/proc/meminfo").read_text(encoding="ascii").splitlines():
+            name, separator, raw_value = line.partition(":")
+            if not separator:
+                continue
+            parts = raw_value.split()
+            if parts:
+                values[name] = int(parts[0]) * 1024
+        total = values["MemTotal"]
+        available = values.get("MemAvailable")
+        if available is None:
+            available = sum(values.get(name, 0) for name in (
+                "MemFree", "Buffers", "Cached", "SReclaimable"
+            )) - values.get("Shmem", 0)
+        available = max(0, min(total, available))
+        return {
+            "total_physical_bytes": total,
+            "available_physical_bytes": available,
+            "memory_load_percent": round((total - available) * 100 / total),
+        }
+    except (OSError, ValueError, KeyError, ZeroDivisionError):
+        return None
+
+
+def _linux_processor_name() -> str | None:
+    if platform.system() != "Linux":
+        return None
+    try:
+        for line in Path("/proc/cpuinfo").read_text(encoding="ascii").splitlines():
+            name, separator, value = line.partition(":")
+            if separator and name.strip() in {"model name", "Hardware", "Processor"} and value.strip():
+                return value.strip()
+    except OSError:
+        pass
+    return None
+
+
 def _system_memory_status() -> dict[str, int] | None:
-    return _windows_memory_status() or _mac_memory_status()
+    return _windows_memory_status() or _mac_memory_status() or _linux_memory_status()
 
 
 def _process_memory() -> dict[str, int] | None:
     windows = _windows_process_memory()
     if windows is not None:
         return windows
-    if platform.system() == "Darwin":
+    system = platform.system()
+    if system in {"Darwin", "Linux"}:
         import resource
 
-        # macOS reports ru_maxrss in bytes (Linux reports it in KiB).
+        # macOS reports ru_maxrss in bytes; Linux reports it in KiB.
         peak = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+        if system == "Linux":
+            peak *= 1024
         return {"peak_working_set_bytes": peak}
     return None
 
@@ -137,6 +182,8 @@ def host_info() -> dict[str, Any]:
                 cpu_name = str(winreg.QueryValueEx(key, "ProcessorNameString")[0]).strip()
         except OSError:
             pass
+    elif platform.system() == "Linux":
+        cpu_name = _linux_processor_name() or cpu_name
     return {
         "os": platform.platform(),
         "processor": cpu_name,

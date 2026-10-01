@@ -18,14 +18,14 @@ SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It 
 
 | Area | Capability |
 |---|---|
-| Platforms | Windows x64 and macOS Apple Silicon, run from source |
-| Inference | sherpa-onnx on Windows x64 and macOS Apple Silicon; native C INT8 Qwen3-TTS on macOS Apple Silicon and Windows x64 |
+| Platforms | Windows x64, macOS Apple Silicon, and Linux x86_64 source builds (validated on Ubuntu 26.04) |
+| Inference | sherpa-onnx and native C INT8 Qwen3-TTS source paths on Windows x64, macOS Apple Silicon, and Linux x86_64 |
 | STT | Whisper Base multilingual, SenseVoice Small, Qwen3-ASR 0.6B |
 | TTS | Kokoro 1.1, Matcha Baker, Supertonic 3, Qwen3-TTS 0.6B |
 | Smart routing | Selects an installed model by task and language using an editable priority list; `smartvoice-auto` works for both STT and TTS |
 | API | OpenAPI docs, transcription, speech synthesis, model catalog and runtime status |
 | Model management | Install, uninstall, offline import/export, and resumable downloads |
-| Not yet supported | GPU inference, streaming, Linux/Android, remote access, packaged installers, MCP |
+| Not yet supported | GPU inference, streaming, Android, HTTPS, packaged installers, MCP |
 
 For the architecture principles, implementation overview, per-backend OS/architecture/device/build matrix, and the difference between installed models and inference availability, see [Architecture Summary and Guidelines](doc/architecture-guidelines.md).
 
@@ -91,7 +91,7 @@ Choose an installation method below. The PyPI option is recommended for normal u
 <details>
 <summary>From PyPI</summary>
 
-Install the published package. This installs the supported local inference dependencies; the macOS Apple Silicon and Windows x64 wheels also include the native Qwen3-TTS runtime.
+Install the published package. This installs the supported local inference dependencies; the macOS Apple Silicon and Windows x64 wheels also include the native Qwen3-TTS runtime. Linux source installation is documented below.
 
 macOS Apple Silicon:
 
@@ -113,7 +113,7 @@ python -m venv .venv
 <details>
 <summary>From source</summary>
 
-Run these commands from the repository root. Windows x64 source builds include the Qwen native runtime, so install the MSYS2 build tools described below before installing SmartVoice.
+Run these commands from the repository root. Windows x64 source builds include the Qwen native runtime, so install the MSYS2 build tools described below before installing SmartVoice. Linux x86_64 source builds require GCC, Make, and OpenBLAS development files.
 
 macOS:
 
@@ -130,7 +130,34 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e .
 ```
 
-On macOS Apple Silicon, the source install builds the native INT8 Qwen3-TTS runtime using Xcode Command Line Tools. On Windows x64, build the native runtime from the source checkout as described below.
+Ubuntu 26.04, x86_64 (the validated Linux baseline):
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3-venv build-essential libopenblas-dev
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+On macOS Apple Silicon, the source install builds the native INT8 Qwen3-TTS runtime using Xcode Command Line Tools. Windows x64 and Linux x86_64 source deployments need the explicit native build step described below.
+
+#### Build the Qwen3-TTS runtime on Linux
+
+The Linux x86_64 source build uses GCC, Make, and OpenBLAS. The builder detects the CPU instructions exposed by the current machine and runs the native kernel self-test before staging the runtime. On Ubuntu, install the prerequisites with:
+
+```bash
+sudo apt-get install -y build-essential libopenblas-dev
+```
+
+The source install does not rebuild this runtime implicitly. Build or refresh it explicitly after installing the package:
+
+```bash
+SMARTVOICE_QWEN_OUTPUT="$PWD/src/smartvoice/resources/bin" \
+  python scripts/build_qwen3_tts_linux.py
+```
+
+The builder stages `qwen_tts` and its license notice in the package resources. The executable links to the system OpenBLAS library, so keep the OpenBLAS runtime package installed. Linux Qwen wheels built locally require the same system library on the target host.
 
 #### Build the Qwen3-TTS runtime on Windows
 
@@ -157,7 +184,7 @@ Activate `.venv` before running the model and server commands below. On Windows 
 
 ### 2. Download models
 
-Install a basic STT and TTS model. Model files are downloaded once and stored outside the source checkout, under `~/Library/Application Support/SmartVoice` on macOS or `%LOCALAPPDATA%\SmartVoice` on Windows.
+Install a basic STT and TTS model. Model files are downloaded once and stored outside the source checkout, under `~/Library/Application Support/SmartVoice` on macOS, `~/.smartvoice` on Linux, or `%LOCALAPPDATA%\SmartVoice` on Windows.
 
 ```bash
 python -m smartvoice models install stt-sensevoice-small-int8
@@ -165,23 +192,27 @@ python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
 python -m smartvoice models install-language-id
 ```
 
-On macOS Apple Silicon and Windows x64 after building its native runtime, install Qwen3-TTS to use the configured Chinese and multilingual routes:
+On macOS Apple Silicon, Windows x64, and Linux x86_64 after building the native runtime, install Qwen3-TTS to use the configured Chinese and multilingual routes:
 
 ```bash
 python -m smartvoice models install tts-qwen3-0-6b-customvoice
 ```
 
-On Windows, first build the native runtime as described in [Build the Qwen3-TTS runtime on Windows](#build-the-qwen3-tts-runtime-on-windows). Then install the model as above. Without that runtime, the model will be listed as unavailable and other installed TTS models remain usable.
+On Windows and Linux, first build the native runtime as described above. Then install the model as above. Without that runtime, the model will be listed as unavailable and other installed TTS models remain usable.
 
 The first model installation requires internet access. After installation, inference runs locally. See [Model catalog](#model-catalog) for supported languages and estimated sizes.
 
 ### 3. Start SmartVoice
 
-Start SmartVoice:
+By default the HTTP service listens only on `127.0.0.1`. To allow other machines to connect, explicitly bind to an external interface, for example:
 
 ```bash
 python -m smartvoice --host 127.0.0.1 --port 8000
+# To listen on all IPv4 interfaces:
+python -m smartvoice --host 0.0.0.0 --port 8000
 ```
+
+External binding is plain HTTP without API authentication. Use it only on a trusted network and configure the machine firewall as needed. HTTPS is not currently supported.
 
 Open the [test page](http://127.0.0.1:8000/test) to verify basic STT and TTS functionality with your installed models. Open [API docs](http://127.0.0.1:8000/docs) for endpoint details. Service settings are stored in `<data_dir>/smartvoice.json`; routing priorities are stored separately in `<data_dir>/router.json` and can be reloaded with `python -m smartvoice router reload`.
 
@@ -259,7 +290,7 @@ Client / Agent ──► Versioned HTTP API ──► Application services
               Platform diagnostics adapter
 ```
 
-Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The source deployment supports CPU inference on Windows x64 and macOS Apple Silicon. Qwen3-TTS uses the native C INT8 adapter on both platforms; Windows x64 source deployments build its runtime with MSYS2 as described above. GPU providers, streaming, Linux and Android runtimes are not available in SmartVoice. See [Architecture Summary and Guidelines](doc/architecture-guidelines.md) for the detailed matrix and model availability semantics.
+Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The source deployment supports CPU inference on Windows x64, macOS Apple Silicon, and Linux x86_64. Qwen3-TTS uses the native C INT8 adapter on all three platforms; Linux source deployments build against the system OpenBLAS library as described above. GPU providers, streaming, and Android runtimes are not available in SmartVoice. See [Architecture Summary and Guidelines](doc/architecture-guidelines.md) for the detailed matrix and model availability semantics.
 
 ## Development
 

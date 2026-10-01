@@ -124,6 +124,16 @@ class SherpaOnnxProvider:
         with self._cache_lock:
             return any(key[0] == model_id for key in self._recognizers) or model_id in self._tts
 
+    def close(self) -> None:
+        """Release cached native model instances when the application stops."""
+        with self._cache_lock:
+            self._recognizers.clear()
+            self._recognizer_locks.clear()
+            self._tts.clear()
+            self._tts_locks.clear()
+            self._language_identifier = None
+            self._verified_files.clear()
+
     def runtime(self) -> dict[str, object]:
         issue = self._runtime_issue()
         models = self.installed_models()

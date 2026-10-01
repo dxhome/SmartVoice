@@ -1,0 +1,114 @@
+"""Build the bundled Qwen3-TTS CPU runtime for Linux x86_64."""
+
+from __future__ import annotations
+
+import os
+import platform
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+NATIVE_SOURCE = ROOT / "native" / "qwen3-tts"
+
+
+def build_linux_runtime(destination: Path) -> Path:
+    """Build against the host OpenBLAS and stage a verified executable."""
+    if platform.system() != "Linux" or platform.machine().lower() not in {"x86_64", "amd64"}:
+        raise RuntimeError("The bundled Qwen3-TTS Linux runtime currently supports x86_64 only.")
+
+    missing = [name for name in ("make", "cc", "bash") if shutil.which(name) is None]
+    if missing:
+        raise RuntimeError(
+            "Building the Linux Qwen3-TTS runtime requires make, a C compiler, and bash. "
+            "Install build-essential and retry. Missing: " + ", ".join(missing)
+        )
+    openblas_headers = Path("/usr/include/openblas/cblas.h").is_file() or any(
+        Path("/usr/include").glob("*-linux-gnu/openblas-*/cblas.h")
+    )
+    if not openblas_headers:
+        raise RuntimeError(
+            "Building the Linux Qwen3-TTS runtime requires OpenBLAS development headers. "
+            "On Ubuntu, install libopenblas-dev."
+        )
+
+    destination = destination.resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    # A developer may have built another platform into this ignored resource directory.
+    # Do not let Windows executables or DLLs leak into a Linux source tree or wheel.
+    for stale_name in (
+        "qwen_tts.exe",
+        "msys-2.0.dll",
+        "msys-gcc_s-seh-1.dll",
+        "libgcc_s_seh-1.dll",
+        "libwinpthread-1.dll",
+        "libopenblas.dll",
+        "libgomp-1.dll",
+        "libgfortran-5.dll",
+        "libquadmath-0.dll",
+    ):
+        stale_binary = destination / stale_name
+        if stale_binary.is_file():
+            stale_binary.unlink()
+    fingerprint = subprocess.run(
+        ["bash", str(NATIVE_SOURCE / "tools" / "source_fingerprint.sh")],
+        cwd=NATIVE_SOURCE,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    with tempfile.TemporaryDirectory(prefix="smartvoice-qwen3-tts-linux-") as temporary:
+        build_source = Path(temporary) / "qwen3-tts"
+        shutil.copytree(
+            NATIVE_SOURCE,
+            build_source,
+            ignore=shutil.ignore_patterns(
+                "*.o", "*.d", "qwen_tts", "libingot.a", ".build_state",
+                "qwen_build_id.h", "qwen_build_id.h.tmp",
+            ),
+        )
+        (build_source / ".source_fingerprint").write_text(fingerprint + "\n", encoding="utf-8")
+        subprocess.run(
+            [
+                "make",
+                "-j" + str(max(1, min(os.cpu_count() or 1, 8))),
+                "blas",
+                "CC=cc",
+                # The Makefile's default auto mode detects ISA features exposed to this
+                # host. Do not pass SIMD=auto on the command line: GNU make would prevent
+                # the Makefile from resolving it to the detected profile.
+            ],
+            cwd=build_source,
+            check=True,
+        )
+        binary = build_source / "qwen_tts"
+        if not binary.is_file():
+            raise RuntimeError("The Linux Qwen3-TTS build completed without producing qwen_tts.")
+
+        result = subprocess.run(
+            [str(binary), "--self-test"],
+            cwd=build_source,
+            check=True,
+            capture_output=True,
+            text=True,
+            errors="replace",
+        )
+        if "SELF-TEST PASSED" not in result.stdout:
+            raise RuntimeError("The Linux Qwen3-TTS runtime did not pass --self-test.")
+
+        packaged_binary = destination / "qwen_tts"
+        shutil.copy2(binary, packaged_binary)
+        packaged_binary.chmod(packaged_binary.stat().st_mode | 0o111)
+
+    license_dir = destination / "licenses"
+    license_dir.mkdir(exist_ok=True)
+    shutil.copy2(NATIVE_SOURCE / "LICENSE", license_dir / "qwen3-tts-LICENSE")
+    return packaged_binary
+
+
+if __name__ == "__main__":
+    output = Path(os.environ.get("SMARTVOICE_QWEN_OUTPUT", ROOT / ".smartvoice-dev" / "qwen-linux-bin"))
+    print(build_linux_runtime(output))

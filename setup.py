@@ -21,10 +21,14 @@ def is_windows_x64() -> bool:
     return sys.platform == "win32" and platform.machine().lower() in {"amd64", "x86_64"}
 
 
+def is_linux_x64() -> bool:
+    return sys.platform.startswith("linux") and platform.machine().lower() in {"amd64", "x86_64"}
+
+
 class SmartVoiceDistribution(Distribution):
     def has_ext_modules(self):
         # These platform wheels contain a native Qwen inference executable.
-        return is_apple_silicon() or is_windows_x64()
+        return is_apple_silicon() or is_windows_x64() or is_linux_x64()
 
 
 class SmartVoiceBdistWheel(bdist_wheel):
@@ -33,6 +37,8 @@ class SmartVoiceBdistWheel(bdist_wheel):
             return "py3", "none", "macosx_11_0_arm64"
         if is_windows_x64():
             return "py3", "none", "win_amd64"
+        if is_linux_x64():
+            return "py3", "none", "linux_x86_64"
         return super().get_tag()
 
 
@@ -83,6 +89,11 @@ class BuildPyWithResources(build_py):
             from scripts.build_qwen3_tts_windows import build_windows_runtime
 
             build_windows_runtime(destination / "bin")
+        elif is_linux_x64():
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from scripts.build_qwen3_tts_linux import build_linux_runtime
+
+            build_linux_runtime(destination / "bin")
 
 
 setup(
