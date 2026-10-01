@@ -9,7 +9,7 @@ The release version is defined once in `src/smartvoice/_version.py`. Package met
 1. Merge the release changes into `main` after the required checks pass. Run `python scripts/test.py ci` and the distribution checks locally or through the manual Release workflow.
 2. Update `__version__` in `src/smartvoice/_version.py` to the release version.
 3. Add the matching `doc/releases/vX.Y.Z.md` release notes.
-4. Optionally run the Release workflow manually on `main`. It builds and checks the source archive and platform wheels, but does not create a GitHub Release or publish to PyPI.
+4. Optionally run the Release workflow manually on `main` to build and check the source archive and platform wheels. Manually running it on a version tag also creates the GitHub Release and publishes to PyPI when `ENABLE_PYPI_PUBLISH` is `true`.
 5. Create and push the matching tag, including the `v` prefix. For example, for `0.1.0`:
 
    ```bash

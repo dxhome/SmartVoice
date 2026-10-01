@@ -24,7 +24,7 @@ jobs:
       - name: Install project and development dependencies
         run: python -m pip install -e '.[dev]'
       - name: Verify tag matches package version
-        if: github.event_name == 'push'
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
           expected="${GITHUB_REF_NAME#v}"
@@ -81,7 +81,7 @@ jobs:
             make
             mingw-w64-ucrt-x86_64-openblas
       - name: Verify tag matches package version
-        if: github.event_name == 'push'
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
           expected="${GITHUB_REF_NAME#v}"
@@ -136,7 +136,7 @@ jobs:
           if-no-files-found: error
 
   github-release:
-    if: github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [test-and-sdist, platform-wheels]
     runs-on: ubuntu-latest
     permissions:
@@ -154,7 +154,7 @@ jobs:
         run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file "doc/releases/$GITHUB_REF_NAME.md"
 
   publish-pypi:
-    if: github.event_name == 'push' && vars.ENABLE_PYPI_PUBLISH == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && vars.ENABLE_PYPI_PUBLISH == 'true'
     needs: [test-and-sdist, platform-wheels]
     runs-on: ubuntu-latest
     environment:
