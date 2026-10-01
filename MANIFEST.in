@@ -5,4 +5,5 @@ include scripts/build_qwen3_tts_linux.py
 include scripts/build_qwen3_tts_windows.py
 include native/qwen3-tts/LICENSE
 include native/qwen3-tts/UPSTREAM.md
+include native/qwen3-tts/tools/source_fingerprint.sh
 recursive-include native/qwen3-tts *.c *.h *.S *.inc Makefile LICENSE NOTICE.md
