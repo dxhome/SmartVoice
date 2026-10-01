@@ -63,6 +63,7 @@ jobs:
           python-version: "3.11"
       - name: Set up MSYS2 toolchain
         if: runner.os == 'Windows'
+        id: msys2
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
@@ -86,6 +87,7 @@ jobs:
         shell: bash
         env:
           SMARTVOICE_RELEASE_TARGET: ${{ matrix.target }}
+          SMARTVOICE_MSYS2_ROOT: ${{ steps.msys2.outputs.msys2-location }}
         run: |
           python -m pip install build twine
           python -m build --wheel
