@@ -144,7 +144,8 @@ jobs:
                   dependencies = subprocess.run(["ldd", executable], capture_output=True, text=True)
                   if dependencies.returncode or "not found" in dependencies.stdout:
                       raise SystemExit(
-                          f"Repaired Linux runtime has unresolved shared libraries: {dependencies.stdout}"
+                          f"Repaired Linux runtime dependency check failed (exit {dependencies.returncode}); "
+                          f"stdout={dependencies.stdout!r}; stderr={dependencies.stderr!r}"
                       )
                   result = subprocess.run([executable, "--caps"], cwd=temporary, capture_output=True, text=True)
                   if result.returncode:
