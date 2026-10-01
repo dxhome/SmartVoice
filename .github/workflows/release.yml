@@ -100,15 +100,18 @@ jobs:
           python -m build --wheel
           if [[ "$SMARTVOICE_RELEASE_TARGET" == "linux-x64" ]]; then
             python -m pip install auditwheel
-            auditwheel repair --plat manylinux_2_39_x86_64 --wheel-dir dist/repaired dist/*.whl
+            auditwheel repair --plat manylinux_2_38_x86_64 --wheel-dir dist/repaired dist/*.whl
             rm dist/*.whl
             mv dist/repaired/*.whl dist/
+            rmdir dist/repaired
             auditwheel show dist/*.whl
           fi
-          python -m twine check dist/*
+          python -m twine check dist/*.whl
           python - <<'PY'
           import os
           from pathlib import Path
+          import subprocess
+          import tempfile
           from zipfile import ZipFile
 
           wheel = next(Path("dist").glob("*.whl"))
@@ -130,8 +133,16 @@ jobs:
                   raise SystemExit(f"Unexpected Windows wheel tag: {wheel.name}")
           elif target == "linux-x64":
               required.add("smartvoice/resources/bin/qwen_tts")
-              if "manylinux_2_39_x86_64" not in wheel.name:
+              required.add("smartvoice/resources/bin/licenses/linux-runtime-dependencies.txt")
+              if "manylinux_2_38_x86_64" not in wheel.name:
                   raise SystemExit(f"Unexpected Linux wheel tag: {wheel.name}")
+              with tempfile.TemporaryDirectory() as temporary:
+                  with ZipFile(wheel) as archive:
+                      archive.extract("smartvoice/resources/bin/qwen_tts", temporary)
+                  executable = Path(temporary) / "smartvoice/resources/bin/qwen_tts"
+                  result = subprocess.run([executable, "--self-test"], capture_output=True, text=True)
+                  if result.returncode or "SELF-TEST PASSED" not in result.stdout:
+                      raise SystemExit(f"Repaired Linux runtime self-test failed: {result.stderr}")
           missing = required - names
           if missing:
               raise SystemExit(f"{target} wheel is missing files: {sorted(missing)}")

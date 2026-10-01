@@ -93,7 +93,7 @@ Choose an installation method below. The PyPI option is recommended for normal u
 <details>
 <summary>From PyPI</summary>
 
-Install the package for your platform. The macOS Apple Silicon, Windows x64, and Linux x86_64 wheels include the native Qwen3-TTS runtime. The Linux wheel is tagged `manylinux_2_39_x86_64`, bundles OpenBLAS and its required runtime libraries, and requires glibc 2.39 or newer. Linux x86_64 clean installation and model inference are validated on Ubuntu 26.04. CPUs without the native runtime's required instructions and Linux ARM64 are not supported by this wheel.
+Install the package for your platform. The macOS Apple Silicon, Windows x64, and Linux x86_64 wheels include the native Qwen3-TTS runtime. The Linux wheel is tagged `manylinux_2_38_x86_64`, bundles OpenBLAS and its required runtime libraries, and requires glibc 2.38 or newer. Linux x86_64 clean installation and model inference are validated on Ubuntu 26.04. CPUs without the native runtime's required instructions and Linux ARM64 are not supported by this wheel.
 
 macOS Apple Silicon:
 
