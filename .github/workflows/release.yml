@@ -98,6 +98,13 @@ jobs:
         run: |
           python -m pip install build twine
           python -m build --wheel
+          if [[ "$SMARTVOICE_RELEASE_TARGET" == "linux-x64" ]]; then
+            python -m pip install auditwheel
+            auditwheel repair --plat manylinux_2_39_x86_64 --wheel-dir dist/repaired dist/*.whl
+            rm dist/*.whl
+            mv dist/repaired/*.whl dist/
+            auditwheel show dist/*.whl
+          fi
           python -m twine check dist/*
           python - <<'PY'
           import os
@@ -123,7 +130,7 @@ jobs:
                   raise SystemExit(f"Unexpected Windows wheel tag: {wheel.name}")
           elif target == "linux-x64":
               required.add("smartvoice/resources/bin/qwen_tts")
-              if "linux_x86_64" not in wheel.name:
+              if "manylinux_2_39_x86_64" not in wheel.name:
                   raise SystemExit(f"Unexpected Linux wheel tag: {wheel.name}")
           missing = required - names
           if missing:
@@ -151,7 +158,12 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file "doc/releases/$GITHUB_REF_NAME.md"
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file "doc/releases/$GITHUB_REF_NAME.md"
+          fi
 
   publish-pypi:
     if: startsWith(github.ref, 'refs/tags/v') && vars.ENABLE_PYPI_PUBLISH == 'true'

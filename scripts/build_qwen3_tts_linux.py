@@ -106,6 +106,17 @@ def build_linux_runtime(destination: Path) -> Path:
     license_dir = destination / "licenses"
     license_dir.mkdir(exist_ok=True)
     shutil.copy2(NATIVE_SOURCE / "LICENSE", license_dir / "qwen3-tts-LICENSE")
+    runtime_notices = []
+    for package in ("libopenblas0-pthread", "libopenblas0-serial", "libgfortran5", "libgomp1", "libquadmath0"):
+        notice = Path("/usr/share/doc") / package / "copyright"
+        if notice.is_file():
+            runtime_notices.append(f"===== {package} =====\n{notice.read_text(encoding='utf-8', errors='replace').strip()}")
+    if not any("openblas" in notice.lower() for notice in runtime_notices):
+        raise RuntimeError("The Linux Qwen wheel requires the OpenBLAS copyright notice from the build image.")
+    (license_dir / "linux-runtime-dependencies.txt").write_text(
+        "\n\n".join(runtime_notices) + "\n",
+        encoding="utf-8",
+    )
     return packaged_binary
 
 

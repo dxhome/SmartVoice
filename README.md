@@ -93,7 +93,7 @@ Choose an installation method below. The PyPI option is recommended for normal u
 <details>
 <summary>From PyPI</summary>
 
-Install the package for your platform. The macOS Apple Silicon, Windows x64, and Linux x86_64 wheels include the native Qwen3-TTS runtime. The Linux wheel is built on Ubuntu 24.04 x86_64, dynamically links to system OpenBLAS, and compiles the native runtime for the CPU instructions exposed to its build host. Other Linux distributions, older glibc versions, and CPUs without compatible instructions are not verified. On Ubuntu, install OpenBLAS first:
+Install the package for your platform. The macOS Apple Silicon, Windows x64, and Linux x86_64 wheels include the native Qwen3-TTS runtime. The Linux wheel is tagged `manylinux_2_39_x86_64`, bundles OpenBLAS and its required runtime libraries, and requires glibc 2.39 or newer. Linux x86_64 clean installation and model inference are validated on Ubuntu 26.04. CPUs without the native runtime's required instructions and Linux ARM64 are not supported by this wheel.
 
 macOS Apple Silicon:
 
@@ -103,11 +103,9 @@ source .venv/bin/activate
 python -m pip install smartvoice
 ```
 
-Ubuntu 24.04, x86_64:
+Linux x86_64 (Ubuntu 24.04 or newer):
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y libopenblas0
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install smartvoice
@@ -169,7 +167,7 @@ SMARTVOICE_QWEN_OUTPUT="$PWD/src/smartvoice/resources/bin" \
   python scripts/build_qwen3_tts_linux.py
 ```
 
-The builder stages `qwen_tts` and its license notice in the package resources. The executable links to the system OpenBLAS library, so keep the OpenBLAS runtime package installed. Linux Qwen wheels built locally require the same system library on the target host.
+The builder stages `qwen_tts` and the runtime dependency license notices in the package resources. Source builds link to system OpenBLAS, so keep the OpenBLAS runtime package installed. The published Linux wheel bundles OpenBLAS and its required runtime libraries.
 
 #### Build the Qwen3-TTS runtime on Windows
 
