@@ -102,7 +102,7 @@ jobs:
           if [[ "$SMARTVOICE_RELEASE_TARGET" == "linux-x64" ]]; then
             python -m pip install auditwheel
             auditwheel show dist/*.whl | tee /tmp/auditwheel-report.txt
-            rg -q 'following platform tag:[[:space:]]*"manylinux_2_38_x86_64"' /tmp/auditwheel-report.txt
+            grep -Eq 'following platform tag:[[:space:]]*"manylinux_2_38_x86_64"' /tmp/auditwheel-report.txt
           fi
           python -m twine check dist/*.whl
           python - <<'PY'
