@@ -138,7 +138,7 @@ jobs:
                   raise SystemExit(f"Unexpected Linux wheel tag: {wheel.name}")
               with tempfile.TemporaryDirectory() as temporary:
                   with ZipFile(wheel) as archive:
-                      archive.extract("smartvoice/resources/bin/qwen_tts", temporary)
+                      archive.extractall(temporary)
                   executable = Path(temporary) / "smartvoice/resources/bin/qwen_tts"
                   executable.chmod(executable.stat().st_mode | 0o111)
                   result = subprocess.run([executable, "--self-test"], capture_output=True, text=True)
