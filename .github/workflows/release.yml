@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  test-and-sdist:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,6 +24,7 @@ jobs:
       - name: Install project and development dependencies
         run: python -m pip install -e '.[dev]'
       - name: Verify tag matches package version
+        if: github.event_name == 'push'
         shell: bash
         run: |
           expected="${GITHUB_REF_NAME#v}"
@@ -33,18 +35,68 @@ jobs:
           fi
       - name: Run unit and API tests
         run: python scripts/test.py ci
-      - name: Build and validate distributions
+      - name: Build and validate source distribution
         run: |
           python -m pip install build twine
-          python -m build
+          python -m build --sdist
           python -m twine check dist/*
-      - name: Verify bundled default resources
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smartvoice-dist-source
+          path: dist/*
+          if-no-files-found: error
+
+  platform-wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: macos-arm64
+          - runner: windows-2022
+            target: windows-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Set up MSYS2 toolchain
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            diffutils
+            make
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-openblas
+      - name: Verify tag matches package version
+        if: github.event_name == 'push'
+        shell: bash
         run: |
+          expected="${GITHUB_REF_NAME#v}"
+          actual="$(python -c 'from smartvoice._version import __version__; print(__version__)')"
+          if [[ "$GITHUB_REF_NAME" != v* || "$expected" != "$actual" ]]; then
+            echo "Tag $GITHUB_REF_NAME must match package version $actual (v$actual)." >&2
+            exit 1
+          fi
+      - name: Build and validate platform wheel
+        shell: bash
+        env:
+          SMARTVOICE_RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          python -m pip install build twine
+          python -m build --wheel
+          python -m twine check dist/*
           python - <<'PY'
+          import os
           from pathlib import Path
           from zipfile import ZipFile
 
           wheel = next(Path("dist").glob("*.whl"))
+          target = os.environ["SMARTVOICE_RELEASE_TARGET"]
           with ZipFile(wheel) as archive:
               names = set(archive.namelist())
           required = {
@@ -52,34 +104,45 @@ jobs:
               "smartvoice/resources/models.json",
               "smartvoice/resources/router.json",
           }
+          if target == "macos-arm64":
+              required.add("smartvoice/resources/bin/qwen_tts")
+              if "macosx_11_0_arm64" not in wheel.name:
+                  raise SystemExit(f"Unexpected macOS wheel tag: {wheel.name}")
+          elif target == "windows-x64":
+              required.add("smartvoice/resources/bin/qwen_tts.exe")
+              if "win_amd64" not in wheel.name:
+                  raise SystemExit(f"Unexpected Windows wheel tag: {wheel.name}")
           missing = required - names
           if missing:
-              raise SystemExit(f"Wheel is missing package resources: {sorted(missing)}")
+              raise SystemExit(f"{target} wheel is missing files: {sorted(missing)}")
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: python-distributions
-          path: dist/
+          name: smartvoice-dist-${{ matrix.target }}
+          path: dist/*
           if-no-files-found: error
 
   github-release:
-    needs: build
+    if: github.event_name == 'push'
+    needs: [test-and-sdist, platform-wheels]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: python-distributions
-          path: dist/
+          pattern: smartvoice-dist-*
+          path: dist
+          merge-multiple: true
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file "doc/releases/$GITHUB_REF_NAME.md"
 
   publish-pypi:
-    if: vars.ENABLE_PYPI_PUBLISH == 'true'
-    needs: build
+    if: github.event_name == 'push' && vars.ENABLE_PYPI_PUBLISH == 'true'
+    needs: [test-and-sdist, platform-wheels]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -89,7 +152,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: python-distributions
-          path: dist/
+          pattern: smartvoice-dist-*
+          path: dist
+          merge-multiple: true
       - name: Publish to PyPI with Trusted Publishing
         uses: pypa/gh-action-pypi-publish@release/v1

@@ -6,16 +6,18 @@ The release version is defined once in `src/smartvoice/_version.py`. Package met
 
 ## Create a GitHub release
 
-1. Merge the release changes into `main` after the required checks pass. While the CI workflow is paused in repository settings, run `python scripts/test.py ci` and the distribution build/check locally; re-enable CI if you want GitHub to enforce those checks on the release branch.
+1. Merge the release changes into `main` after the required checks pass. Run `python scripts/test.py ci` and the distribution checks locally or through the manual Release workflow.
 2. Update `__version__` in `src/smartvoice/_version.py` to the release version.
-3. Create and push the matching tag, including the `v` prefix. For example, for `0.1.0`:
+3. Add the matching `doc/releases/vX.Y.Z.md` release notes.
+4. Optionally run the Release workflow manually on `main`. It builds and checks the source archive and platform wheels, but does not create a GitHub Release or publish to PyPI.
+5. Create and push the matching tag, including the `v` prefix. For example, for `0.1.0`:
 
    ```bash
    git tag v0.1.0
    git push origin v0.1.0
    ```
 
-4. The release workflow checks that the tag matches the package version, runs tests, builds and checks the wheel and source archive, and verifies that default resources are in the wheel. It then creates a GitHub Release with generated notes and attaches both distributions.
+6. The pushed tag runs the same checks, then creates the GitHub Release using the matching notes file and publishes the distributions to PyPI when `ENABLE_PYPI_PUBLISH` is `true`.
 
 The tag is the release record. Do not move or reuse a published version tag. Fix a bad release with a new patch version.
 
