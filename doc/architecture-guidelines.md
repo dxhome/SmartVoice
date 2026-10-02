@@ -150,142 +150,181 @@ These criteria are goals, not a claim that every change can remain fully local. 
 
 **Implementation snapshot last reviewed:** 2026-10-02
 
-### Layered Module Architecture
+### Functional Layered Architecture
+
+The architecture is organized into layers by responsibility. Components shown
+on the same row belong to the same functional layer. External agents and
+applications sit above the SmartVoice boundary; the product layers separate
+access, application capabilities, runtime management, and model inference.
 
 ```mermaid
-classDiagram
-direction TB
+flowchart TB
+    subgraph consumers["External consumers"]
+        direction LR
+        agents["Agents"]
+        applications["Applications"]
+        api_clients["API clients"]
+        agents ~~~ applications ~~~ api_clients
+    end
 
-namespace Presentation {
-  class api_v1_routes
-  class cli_main
-  class web_test_ui
-}
+    subgraph smartvoice["SmartVoice"]
+        direction TB
 
-namespace Composition_Root {
-  class app_composition_root
-  class inference_factory
-}
+        subgraph access["Access layer"]
+            direction LR
+            rest["REST API<br/>Versioned endpoints · validation · responses"]
+            web["Web test UI<br/>Audio input · playback · model selection"]
+            cli["CLI<br/>Service startup · inference · model commands"]
+            rest ~~~ web ~~~ cli
+        end
 
-namespace Application {
-  class speech_service
-  class transcription_service
-  class inference_queue
-  class model_router
-  class model_management
-}
+        subgraph application["Application layer"]
+            direction LR
+            speech["Speech synthesis<br/>Text · language · voice options"]
+            transcription["Transcription<br/>Audio processing · language resolution"]
+            routing["Smart routing<br/>Virtual models · editable priorities · availability matching"]
+            management["Model management<br/>Install · remove · import / export · jobs"]
+            speech ~~~ transcription ~~~ routing ~~~ management
+        end
 
-namespace Domain_and_Ports {
-  class domain_contracts
-  class domain_errors
-  class inference_provider
-  class managed_admission
-  class model_repository_port
-}
+        subgraph runtime["Runtime management layer"]
+            direction LR
+            dispatch["Backend dispatch<br/>Catalog backend · provider selection"]
+            admission["Admission and queues<br/>Capacity limits · FIFO waiting · deadlines"]
+            pools["Elastic instance pools<br/>Per-model capacity · lazy growth · leases"]
+            lifecycle["Runtime lifecycle<br/>Initialization · idle reclamation · shutdown"]
+            dispatch ~~~ admission ~~~ pools ~~~ lifecycle
+        end
 
-namespace Adapter_Composition_and_Runtime_Control {
-  class composite_inference_provider
-  class pooled_sherpa_provider
-  class pooled_inference_provider
-  class elastic_runtime_pool
-}
+        subgraph inference["Model inference layer"]
+            direction LR
+            sherpa_stt["Sherpa-ONNX STT<br/>Recognition models · language identification"]
+            sherpa_tts["Sherpa-ONNX TTS<br/>Synthesis models · voice generation"]
+            qwen_tts["Native Qwen3-TTS<br/>C INT8 engine · child-process runtime"]
+            sherpa_stt ~~~ sherpa_tts ~~~ qwen_tts
+        end
 
-namespace Runtime_and_Storage_Adapters {
-  class sherpa_onnx_provider
-  class qwen_tts_provider
-  class qwen_native_runtime
-  class catalog_model_repository
-  class host_metrics
-}
+        subgraph foundation["Shared infrastructure"]
+            direction LR
+            config["Configuration<br/>Service settings · routing tables"]
+            catalog["Model catalog<br/>Capabilities · backend metadata · manifests"]
+            storage["Local storage<br/>Model files · downloads · integrity checks"]
+            diagnostics["Diagnostics and metrics<br/>Platform checks · runtime status · pool metrics"]
+            config ~~~ catalog ~~~ storage ~~~ diagnostics
+        end
 
-namespace External_Runtime_and_Local_Data {
-  class sherpa_onnx_runtime
-  class qwen_native_child_process
-  class local_model_files
-}
+        access ~~~ application ~~~ runtime ~~~ inference ~~~ foundation
+    end
 
-namespace Configuration_and_Resources {
-  class service_settings
-  class model_catalog
-  class router_config
-}
+    consumers ~~~ smartvoice
 
-app_composition_root ..> inference_factory : builds provider set
-app_composition_root ..> service_settings : loads
-inference_factory ..> service_settings : configures adapters and pools
-app_composition_root ..> inference_queue : constructs transport guard
-app_composition_root ..> speech_service : constructs use case
-app_composition_root ..> transcription_service : constructs use case
-model_router ..> router_config : loads routing policy
-api_v1_routes ..> inference_queue : submits bounded operation
-cli_main ..> app_composition_root : uses same composition
-inference_queue ..> speech_service : executes
-inference_queue ..> transcription_service : executes
-speech_service ..> inference_provider : uses port
-transcription_service ..> inference_provider : uses port
-speech_service ..> model_router : resolves model
-transcription_service ..> model_router : resolves model
-composite_inference_provider ..|> inference_provider : implements
-composite_inference_provider ..|> managed_admission : advertises capacity
-composite_inference_provider ..> pooled_sherpa_provider : dispatches Sherpa models
-composite_inference_provider ..> pooled_inference_provider : dispatches Qwen backend
-pooled_sherpa_provider ..|> inference_provider : facade
-pooled_sherpa_provider --|> pooled_inference_provider : adds language identification
-pooled_sherpa_provider *-- elastic_runtime_pool : owns per-model groups
-pooled_inference_provider *-- elastic_runtime_pool : owns bounded groups
-elastic_runtime_pool o-- sherpa_onnx_provider : lazy independent instances
-pooled_inference_provider ..> qwen_tts_provider : one shared runtime
-sherpa_onnx_provider ..> sherpa_onnx_runtime : adapter boundary
-qwen_tts_provider --> qwen_native_runtime : manages
-qwen_native_runtime --> qwen_native_child_process : loopback runtime
-catalog_model_repository ..|> model_repository_port : implements
-catalog_model_repository --> local_model_files : manages
-catalog_model_repository --> model_catalog : reads
+    classDef external fill:#f3f4f6,stroke:#6b7280,color:#111827
+    classDef layer fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a
+    classDef shared fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    class agents,applications,api_clients external
+    class rest,web,cli,speech,transcription,routing,management,dispatch,admission,pools,lifecycle,sherpa_stt,sherpa_tts,qwen_tts layer
+    class config,catalog,storage,diagnostics shared
 ```
 
-The diagram groups the code by its established modules and responsibilities.
-Dependency connectors describe module contracts and ownership; they are not a
-request sequence. Dependencies point from presentation/application code toward
-stable domain ports, while runtime and storage adapters implement those ports.
-The groups map to `api/` and `web/`; `app.py` and `adapters/inference/factory.py`;
-`services/`; `domain/` and `ports/`; `adapters/inference/runtime/`;
-`adapters/inference/{sherpa_onnx,qwen_tts}/` plus `adapters/{storage,platform}/`;
-external runtimes/local files; and `config/` plus packaged `resources/`.
-`app.create_app()` and `adapters/inference/factory.py` compose the concrete
-implementations at startup.
+The vertical arrangement expresses architectural layers. Shared infrastructure
+supports all product layers. Smart routing belongs to the application layer,
+while admission, instance pools, and runtime lifecycle belong to runtime
+management. Backend-specific native execution belongs to model inference.
+The Sherpa STT and TTS boxes group capabilities of the same backend adapter;
+they do not represent separate public backends. The diagram uses invisible
+layout links to align boxes and has no request-flow arrows.
 
-#### Concurrency responsibilities by layer
+`app.create_app()` composes the API, services, settings, model repository, and
+inference providers. The CLI shares the application services and provider
+factory. Smart routing selects a model from the editable routing table using
+task, language, and installed-model availability. Backend adapters keep native
+runtime details behind provider interfaces. Configuration and catalog files
+are local to the SmartVoice data directory; model weights are installed
+separately from the Python package.
 
-- **Presentation and application:** API routes validate finite HTTP requests
-  and wrap speech/transcription operations in `InferenceQueue`. Services own
-  model/language resolution; they do not know about pool instances. With the
-  default `max_concurrent_inference=1`, app assembly uses the aggregate capacity
-  advertised through `ManagedAdmission` to size the bounded transport guard, so
-  it no longer serializes all model calls behind one global slot. Setting the
-  switch to `0`, or using a provider without managed admission, selects the
-  conservative single-slot queue path.
-- **Adapter composition and runtime control:** `CompositeInferenceProvider`
-  selects a provider from the catalog backend. For Sherpa, the pooled facade
-  passes the model ID to `ElasticRuntimePool`, which keeps an independent FIFO
-  group per model. The pool leases an idle adapter or lazily constructs one up
-  to `max_instances`; up to `max_queued_inference` requests may wait per model.
-  Saturated groups reject excess work. Pool initialization, native execution,
-  and disposal happen outside the coordination lock.
-- **Runtime adapters:** Each Sherpa pool member is the existing
-  `SherpaOnnxProvider` with its existing per-runtime safety locks. One native
-  object remains serialized; separate instances can execute concurrently. A
-  lease stays active until native execution ends, even if the HTTP caller has
-  already timed out. Qwen uses the provider facade with one shared backend
-  runtime; this design does not enable native batching or process parallelism.
-- **Lifecycle and observability:** Extra instances are reclaimed after the
-  configured idle interval while the minimum warm floor remains. Pool wait is
-  included in runtime-wait measurements. `/v1/runtime` reports per-pool
-  instance, active, waiting, warm-up, and capacity data. Application shutdown
-  waits for active leases and closes owned runtimes.
+#### Inference concurrency, lifecycle, and limits
 
-This pool is generic across the Sherpa models wired through the factory; adding
-another supported Sherpa model does not require a model-specific scheduler.
-Each model still has an independent pool group and a per-model capacity limit.
+SmartVoice manages request admission and runtime instance lifecycle around the
+existing inference adapters. Sherpa native code, model constructors, internal
+safety locks, generation parameters, and output formats remain unchanged. Each
+supported Sherpa model has an independent lazy pool of adapter instances. Qwen
+uses one shared backend runtime and does not gain native batching or multiple
+runtime processes from this pool design.
+
+| Setting | Default | Effect |
+|---|---:|---|
+| `min_instances` | 1 | Keep at least this many already-created instances warm per used model; models are not loaded at startup. |
+| `max_instances` | 2 | Maximum independent adapter instances per Sherpa model. |
+| `instance_idle_seconds` | 300 | Reclaim idle extra instances after this interval. |
+| `num_threads` | 2 (bounded by available CPU count) | Native constructor thread count for each instance; fixed for the app lifetime. |
+| `max_queued_inference` | 4 | Maximum requests waiting per model for an adapter instance. |
+| `max_concurrent_inference` | 1 | `1` enables managed parallel inference; `0` forces one global inference slot. Only 0 and 1 are accepted. |
+
+These settings can be supplied in `smartvoice.json` or with the matching
+`SMARTVOICE_MIN_INSTANCES`, `SMARTVOICE_MAX_INSTANCES`,
+`SMARTVOICE_INSTANCE_IDLE_SECONDS`, `SMARTVOICE_NUM_THREADS`,
+`SMARTVOICE_MAX_QUEUED_INFERENCE`, and
+`SMARTVOICE_MAX_CONCURRENT_INFERENCE` environment variables. Environment
+values override JSON. Existing settings files are not rewritten. Queue wait
+and execution deadlines are configured separately with
+`inference_queue_timeout_seconds` and
+`inference_execution_timeout_seconds`.
+
+The first request lazily creates and warms an instance. Further demand may
+create instances up to the per-model maximum; waiters are served FIFO. The
+minimum is a retention floor for instances demand has created, not a preload
+count. There is no batch accumulation. TTS language, voice, speed, and text do
+not create separate pools. ASR language-specific native sessions remain cached
+inside each adapter and can add memory beyond the number of adapter instances.
+The optional language detector has its own pool. Limits apply per application
+process, so multiple server processes each have independent capacity.
+
+When `max_concurrent_inference=1` and the selected provider advertises managed
+admission, the outer HTTP queue is bounded to the aggregate provider capacity
+(model slots plus bounded waiting), and an independent thread limiter avoids
+serializing admitted work behind the shared AnyIO thread limit. With the
+setting at `0`, or for providers without managed admission, the outer queue
+uses a single execution slot. In Sherpa pools, excess work beyond
+`max_queued_inference` is rejected with HTTP 503. A full waiting limit can
+absorb a short burst but does not increase sustainable throughput.
+
+A queued request that disconnects or reaches its deadline is removed before
+leasing a runtime. Once native inference starts, the native computation cannot
+be interrupted: the caller may receive HTTP 504 while the instance remains
+leased until the computation finishes. Shutdown rejects new and queued work,
+waits for active leases, then closes owned runtimes. A retiring instance
+continues to count toward capacity until disposal completes. Pool coordination
+does not hold its lock while initializing, running, or disposing native
+objects.
+
+The pooled facade is generic for Sherpa models registered through the backend
+factory; adding another supported model does not require a scheduler branch.
+Instances own independent native objects and locks. A source adapter may share
+validated file fingerprints through its cache lock, but this does not clone or
+share native sessions. OS file caching can make later initialization faster,
+and RSS does not necessarily scale in direct proportion to instance count.
+
+Services may reuse a model-availability snapshot for up to one second when
+routing requests; execution validates model assets again. Thus an install or
+removal can take up to one second to affect routing, while model-list and
+management reads use current state. `/v1/runtime` reports pool limits, instance
+and ready counts, active and waiting work, peak activity, completions, and the
+last 32 initialization durations per model. Initialization duration includes
+construction and the instance's first full inference. Metrics do not retain
+request text or audio, and runtime wait includes time spent waiting for a pool
+instance.
+
+#### Concurrency verification
+
+See the [benchmark overview](../benchmarks/README.md) and [production harness
+instructions](../benchmarks/elastic-pool/README.md) for the fixed-arrival HTTP
+protocol, response validation, startup and expansion measurements, and CPU/RSS
+methodology. Reviewed reports include [SenseVoice](../benchmarks/result/macos-arm64-stt-sensevoice-small-int8-fleurs-standard-2026-09-29.json),
+[Matcha](../benchmarks/result/macos-arm64-tts-matcha-zh-baker-fleurs-standard-2026-09-29.json),
+and [Supertonic](../benchmarks/result/macos-arm64-tts-supertonic-v3-multilingual-int8-fleurs-standard-2026-09-29.json).
+They record results from one macOS machine, not universal throughput or
+latency guarantees. Supertonic's 1,000-request confirmation is below the
+benchmark's 3,000-request formal reliability sample.
 
 #### Boundary assessment
 
@@ -334,8 +373,6 @@ Only CPU inference is supported by the current SmartVoice integration. “Other 
 - The Linux Qwen builder uses the CPU flags visible on its build host. Virtual machines can mask instructions that the physical CPU supports; `SIMD=auto` selects a safe scalar path when AVX2 is not exposed. Rebuild the runtime when moving it to a host with a weaker exposed ISA.
 - Linux x86_64 is validated on Ubuntu 26.04, including clean installation and model-backed inference with the supported CPU runtimes. This validation does not establish compatibility with other Linux distributions, older glibc releases, Linux arm64, or CPUs lacking the instructions used by a native runtime.
 - Model weights are installed separately from backend runtimes. Building or installing a runtime does not install model weights; installing model weights does not build or install the runtime.
-
-See [inference concurrency](inference-concurrency.md) for elastic instance lifecycle, fixed constructor threads, timeout ownership, bounded admission and configuration migration. The native Sherpa provider remains unchanged.
 
 ### Model Installation Versus Current Inference Availability
 
