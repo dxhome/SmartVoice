@@ -8,9 +8,10 @@ import time
 from collections.abc import Callable
 from typing import TypeVar
 
-from fastapi.concurrency import run_in_threadpool
+import anyio
 
 from smartvoice.domain.errors import InferenceOverloadedError, InferenceTimeoutError
+from smartvoice.ports.inference_context import request_cancelled
 
 T = TypeVar("T")
 
@@ -23,6 +24,8 @@ class InferenceQueue:
         self._capacity = max_concurrent + max_queued
         self._reserved = 0
         self._lock = threading.Lock()
+        self._thread_limiter = None
+        self._max_concurrent = max_concurrent
 
     async def run(
         self,
@@ -48,10 +51,16 @@ class InferenceQueue:
             acquired = False  # The execution task owns permit and reservation cleanup.
             reserved = False
 
+            cancelled = threading.Event()
+
             async def execute() -> T:
+                context_token = request_cancelled.set(cancelled)
                 try:
-                    return await run_in_threadpool(operation)
+                    if self._thread_limiter is None:
+                        self._thread_limiter = anyio.CapacityLimiter(self._max_concurrent)
+                    return await anyio.to_thread.run_sync(operation, limiter=self._thread_limiter)
                 finally:
+                    request_cancelled.reset(context_token)
                     self._semaphore.release()
                     with self._lock:
                         self._reserved -= 1
@@ -59,11 +68,13 @@ class InferenceQueue:
             task = asyncio.create_task(execute())
             done, _ = await asyncio.wait({task}, timeout=execution_timeout_seconds)
             if not done:
+                cancelled.set()
                 task.add_done_callback(self._consume_task_result)
                 raise InferenceTimeoutError("Inference exceeded the configured execution time limit.")
             return task.result(), queue_wait
         except asyncio.CancelledError:
             if "task" in locals() and not task.done():
+                cancelled.set()
                 task.add_done_callback(self._consume_task_result)
             raise
         finally:

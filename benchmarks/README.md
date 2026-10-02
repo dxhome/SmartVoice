@@ -1,6 +1,9 @@
 # Model Comparison Benchmark
 
-The first benchmark layer compares models on one fixed platform. Results are reported in three independent categories: `quality`, `performance`, and `concurrency`. Do not combine them into one score or compare values from different datasets/languages as if they were equivalent.
+The model comparison reports `quality` and serial `performance`; same-model
+capacity and request experience use the fixed-arrival concurrency protocol below.
+Keep these results as independent dimensions. Do not combine them into one score
+or compare values from different datasets/languages as if they were equivalent.
 
 ## Scope
 
@@ -26,12 +29,50 @@ FLEURS is a public multilingual speech corpus; its Hugging Face dataset card dec
 - For adapters that run inference in a child process, request latency and inference time cover the operation, while the existing CPU/RSS response headers measure only the SmartVoice API process; reports identify this resource-measurement limit explicitly.
 - Warm-up count, measurement count, and performance sample count are configured by profile.
 
-### Concurrency
+### Concurrency and request experience
 
-- Closed-loop concurrent clients run at configured worker levels and report requests/second, p50/p95/p99 request latency, admission queue wait, provider runtime-instance wait, inference and CPU time, successes/failures, and observed RSS peak. Admission wait and runtime-instance wait are separate measurements.
-- Mixed-model scenarios send requests for multiple models through one server process. They report the same per-request and resource summaries, including per-model latency and wait, to reveal cross-model blocking.
-- A sustained phase runs a fixed number of workers for a configured duration and reports latency, admission/runtime wait, CPU/RTF summaries, RSS range, and estimated RSS growth per minute.
-- These are observations, not SLA thresholds. Compare only runs with matching model, language, platform, profile, service settings, and dataset/config fingerprints.
+This category measures **one model instance pool under load**. It answers how much
+same-model traffic the configured service can sustain while returning valid
+responses promptly. Do not use the old closed-loop worker count as the concurrency
+capacity: a closed-loop client slows its request generation as the service slows,
+which can hide overload and queue growth.
+
+- Generate requests at a fixed, open-loop arrival rate. Record the offered rate,
+  delivered rate, request count, successful valid responses, failures by HTTP
+  status, and success rate. Use identical model, language, input fixtures and
+  request mix at each rate.
+- Establish a low-load, fully-warm P90 end-to-end latency baseline, then increase
+  the offered rate in steps. A rate passes when valid-response success is at least
+  99.9%, full-response P90 is no more than 1.2 times the baseline, and per-window
+  latency/queue wait show no accumulating backlog. Report the highest tested
+  passing rate; also report the first failing rate. A success-only rate or an
+  unbounded queue is not evidence of sustainable capacity.
+- Validate response content as well as HTTP status. For STT, compare concurrent
+  output with a serial result for the same fixture and report mismatches. For TTS,
+  require a decodable, non-empty, non-silent audio response with the expected
+  format. Keep model quality metrics in the `quality` category; concurrency
+  validation detects output failures or changes caused by concurrent execution.
+- Report user-facing full-response P50/P90/P95, plus HTTP admission wait and
+  adapter-instance wait separately. Include inference time and client scheduling
+  lag so a slow load generator cannot make a run appear healthy.
+- Measure resource use for the complete server process tree: average and P90 CPU
+  cores, settled and peak RSS. Report single-instance warm operation, expansion
+  from one to two instances, and fully-warm two-instance operation separately.
+  Across repeated fresh-process trials, report P90 first-instance warm request,
+  expansion request, second-instance initialization plus first inference, and
+  fully-warm response latency. State whether OS file cache was cold; do not call a
+  process-cold run a cold-disk run.
+- Record all settings that affect capacity, including parallel-inference switch,
+  min/max instances, threads per instance, waiting-queue limit, queue/execution
+  timeouts, and server process count. Include OS/CPU/RAM, runtime versions, model
+  and input fingerprints, load-generator concurrency, offered-rate schedule,
+  duration and window size. Model capacity is per model and per service process;
+  do not add independent model results together.
+
+The acceptance threshold above is the current comparison rule, not a universal
+latency SLA. Compare only matching inputs, language, platform, service settings,
+and model/runtime fingerprints. Resource results are reported alongside capacity
+and latency so a higher rate is not presented without its memory/CPU cost.
 
 ## Git and local data policy
 
@@ -53,13 +94,17 @@ The adapter downloads the pinned FLEURS test Parquet shards as data, without exe
 
 ## Run
 
-The `smoke` profile is for quick validation only, not formal model evaluation. It runs quality and performance only: 8 quality samples per language, then one cold request, one warm-up request, and two measured requests per model/language case. It does not run concurrent-load, mixed-model concurrency, or soak tests. Its report stays in the local user data directory and cannot be written to `benchmarks/result/`:
+The `smoke` profile is for quick validation only, not formal model evaluation. It
+runs quality and serial performance only: 8 quality samples per language, then
+one cold request, one warm-up request, and two measured requests per model/language
+case. It does not run the concurrency-capacity protocol. Its report stays in the
+local user data directory and cannot be written to `benchmarks/result/`:
 
 ```bash
 python -m benchmarks.runner --profile smoke --model stt-sensevoice-small-int8 --model tts-kokoro-multilingual-v1-1-zh-en
 ```
 
-Standard comparison (100 quality samples/language, 20 warm performance iterations, up to 4 concurrent workers, 60-second soak):
+Standard quality/performance comparison (100 quality samples/language and 20 warm performance iterations):
 
 ```bash
 python -m benchmarks.runner --profile standard \
@@ -69,21 +114,19 @@ python -m benchmarks.runner --profile standard \
 
 For formal tracked comparisons, use `standard` or `full`, review the report, and save one model per JSON file under `result/`. Never use `smoke` results as formal evaluation evidence.
 
-Full comparison uses all available FLEURS test samples, 50 warm iterations, concurrency up to 8 workers, and a 5-minute soak. The `cpu_bounded` profile uses five quality samples per language, two warm performance iterations, and shorter concurrency phases for CPU models whose synthesis speed makes the standard profile impractical; its quality scores are exploratory and should not be treated as directly comparable to standard-profile reports. Use `--model <id>` one or more times to select a subset. Edit the tracked config to add languages, data sources, model-language combinations, or profiles; keep dataset audio outside Git.
+Full quality/performance comparison uses all available FLEURS test samples and 50 warm iterations. The `cpu_bounded` profile uses five quality samples per language and two warm performance iterations; its quality scores are exploratory and should not be treated as directly comparable to standard-profile reports. Use `--model <id>` one or more times to select a subset. Edit the tracked config to add languages, data sources, model-language combinations, or profiles; keep dataset audio outside Git.
 
-Run selected categories with `--category <name>`; the supported values are `quality`, `performance`, and `concurrency`. Explicit category flags replace the profile defaults. For example, `--profile smoke --category concurrency` runs only concurrency tests, while repeating all three flags runs the complete smoke profile plus concurrent load. Without `--category`, smoke runs quality and performance; standard and full run all three categories.
+Run selected model-comparison categories with `--category <name>`; these are
+`quality` and `performance`. Same-model concurrency uses the dedicated fixed-rate
+HTTP harness in [`elastic-pool/`](elastic-pool/README.md). Add a scenario there
+for each model/language/input fixture so results share the same open-loop load,
+correctness checks, latency thresholds, and resource measurements. This separates
+same-model capacity from the retired closed-loop worker-count test.
 
-The runner starts and stops an isolated local SmartVoice server per model/language case and a shared server for each configured mixed-model scenario. It requires selected models and the configured TTS judge model to be installed. It honors the current SmartVoice settings for inference threads and queue limits, which are recorded in the report. Set `SMARTVOICE_MAX_CONCURRENT_INFERENCE` and `SMARTVOICE_NUM_THREADS` in the environment to run controlled concurrency comparisons; these are recorded in the report.
-
-Example mixed workload for two STT models and an STT/TTS pair (concurrency is explicitly selected because smoke skips it by default):
-
-```bash
-SMARTVOICE_MAX_CONCURRENT_INFERENCE=2 SMARTVOICE_NUM_THREADS=1 \
-  python -m benchmarks.runner --profile smoke --category concurrency \
-  --model stt-whisper-base-multilingual-int8 \
-  --model stt-sensevoice-small-int8 \
-  --model tts-kokoro-multilingual-v1-1-zh-en
-```
+The model-comparison runner starts and stops an isolated local SmartVoice server
+per model/language case. It requires selected models and the configured TTS judge
+model to be installed and records serial performance and service settings.
+Tracked model reports keep one evaluated model per platform and JSON file. Legacy closed-loop worker-count data has been removed from the formal concurrency category; use only the fixed-arrival results embedded in each report.
 
 For a controlled code comparison, `--server-source <checkout>` selects the source tree used by server subprocesses while the benchmark runner and report remain in the current checkout. Use the same model files, settings, and workloads for each source tree.
 

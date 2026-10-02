@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 
 from smartvoice.domain.errors import InvalidRequestError, UnsupportedFeatureError
-from smartvoice.ports.inference import InferenceProvider
+from smartvoice.ports.inference import InferenceAvailability, InferenceProvider
 from smartvoice.services.language_detection import detect_text_language, prepare_text_for_language_detection, script_language
 from smartvoice.ports.model_repository import ModelRepository
 from smartvoice.services.model_registry import supported_language_codes
@@ -69,7 +69,11 @@ class SpeechService:
             spec = self.model_repository.get_spec(requested_model)
             if spec.task != "speech":
                 raise UnsupportedFeatureError(f"Model {requested_model!r} does not support the speech task.")
-            installed = {str(item.get("id")) for item in self.provider.installed_models() if item.get("task") == "speech"}
+            available = (
+                self.provider.inference_models() if isinstance(self.provider, InferenceAvailability)
+                else self.provider.installed_models()
+            )
+            installed = {str(item.get("id")) for item in available if item.get("task") == "speech"}
             if spec.id not in installed:
                 from smartvoice.domain.errors import ModelUnavailableError
 
@@ -93,7 +97,11 @@ class SpeechService:
 
         if routed:
             assert router_config is not None
-            model_id, states = self.model_router.choose("speech", resolved, self.provider.installed_models(), config=router_config)
+            available = (
+                self.provider.inference_models() if isinstance(self.provider, InferenceAvailability)
+                else self.provider.installed_models()
+            )
+            model_id, states = self.model_router.choose("speech", resolved, available, config=router_config)
             candidates = tuple(states)
         synthesized = self.provider.synthesize(text, voice, speed, model_id, resolved)
         return SpeechOutcome(

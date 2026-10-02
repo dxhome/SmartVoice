@@ -224,7 +224,7 @@ python -m smartvoice --host 0.0.0.0 --port 8000
 
 External binding is plain HTTP without API authentication. Use it only on a trusted network and configure the machine firewall as needed. HTTPS is not currently supported.
 
-Open the [test page](http://127.0.0.1:8000/test) to verify basic STT and TTS functionality with your installed models. Open [API docs](http://127.0.0.1:8000/docs) for endpoint details. Service settings are stored in `<data_dir>/smartvoice.json`; routing priorities are stored separately in `<data_dir>/router.json` and can be reloaded with `python -m smartvoice router reload`.
+Open the [test page](http://127.0.0.1:8000/test) to verify basic STT and TTS functionality with your installed models. Open [API docs](http://127.0.0.1:8000/docs) for endpoint details. Sherpa models use a lazy per-model instance pool: parallel inference is enabled by default, one instance is retained, and demand can expand the pool to two independent instances with two native threads each. The per-model waiting limit defaults to four. These settings do not promise a fixed request rate for every model or input. See [concurrency configuration](doc/inference-concurrency.md) and the [fixed-arrival benchmark protocol](benchmarks/README.md#concurrency-and-request-experience). Service settings are stored in `<data_dir>/smartvoice.json`; routing priorities are stored separately in `<data_dir>/router.json` and can be reloaded with `python -m smartvoice router reload`.
 
 ### 4. Connect an agent or application
 
@@ -309,7 +309,7 @@ python -m pip install -e ".[dev]"
 python scripts/test.py ci
 ```
 
-Run `python scripts/test.py regression` to execute the full functional suite including real STT/TTS inference. It directly smoke-tests each catalog model installed and available on the current runtime, using one representative language per model; unavailable models are skipped individually. The existing route integration scenarios also run when their optional models and language-ID assets are installed. See [`doc/testing.md`](doc/testing.md) for details and [`benchmarks/README.md`](benchmarks/README.md) for model quality, latency, and concurrency comparisons.
+Run `python scripts/test.py regression` to execute the full functional suite including real STT/TTS inference. It directly smoke-tests each catalog model installed and available on the current runtime, using one representative language per model; unavailable models are skipped individually. The existing route integration scenarios also run when their optional models and language-ID assets are installed. See [`doc/testing.md`](doc/testing.md) for details and [`benchmarks/README.md`](benchmarks/README.md) for the model quality, serial latency, and same-model concurrency methodology. The current fixed-arrival macOS results are recorded in the [SenseVoice](benchmarks/result/macos-arm64-stt-sensevoice-small-int8-fleurs-standard-2026-09-29.json), [Matcha](benchmarks/result/macos-arm64-tts-matcha-zh-baker-fleurs-standard-2026-09-29.json), and [Supertonic](benchmarks/result/macos-arm64-tts-supertonic-v3-multilingual-int8-fleurs-standard-2026-09-29.json) reports.
 See [`doc/releasing.md`](doc/releasing.md) for versioning, GitHub Releases, and optional PyPI publishing.
 
 ## Repository layout

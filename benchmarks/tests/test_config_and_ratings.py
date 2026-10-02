@@ -15,9 +15,24 @@ class BenchmarkConfigTests(unittest.TestCase):
         path = Path(__file__).parents[1] / "config" / "model-comparison.json"
         config = _read_config(path)
         self.assertTrue({"en", "zh"}.issubset(config["languages"]))
-        self.assertEqual(set(config["profiles"]), {"smoke", "standard", "full"})
+        self.assertEqual(set(config["profiles"]), {"smoke", "standard", "full", "cpu_bounded"})
+        self.assertTrue(all("concurrency" not in profile for profile in config["profiles"].values()))
         self.assertTrue(all("normalization" in language for language in config["languages"].values()))
         self.assertTrue(config["tts_quality_judge_model_id"])
+
+    def test_fixed_arrival_concurrency_scenarios_are_complete_and_reproducible(self):
+        path = Path(__file__).parents[1] / "elastic-pool" / "scenarios.json"
+        config = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(config["success_rate_required"], 0.999)
+        self.assertEqual(config["p90_ratio_limit"], 1.2)
+        for scenario in config["scenarios"].values():
+            self.assertTrue(scenario["model_id"])
+            self.assertIn(scenario["task"], {"asr", "tts"})
+            if scenario["task"] == "asr":
+                self.assertTrue(scenario["audio_files"])
+                self.assertTrue(all(Path(item).is_file() for item in scenario["audio_files"]))
+            else:
+                self.assertTrue(scenario["texts"])
 
     def test_tts_ratings_are_aggregated_by_model_and_language_without_raw_rows(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -54,3 +54,17 @@ class RuntimeLifecycle(Protocol):
     """Optional provider capability for releasing resources owned by its runtime."""
 
     def close(self) -> None: ...
+
+
+@runtime_checkable
+class ManagedAdmission(Protocol):
+    """Optional bounded adapter admission; reports transport reservation capacity."""
+
+    def request_capacity(self) -> int | None: ...
+
+
+@runtime_checkable
+class InferenceAvailability(Protocol):
+    """Optional inexpensive routing snapshot; execution still verifies assets."""
+
+    def inference_models(self) -> Sequence[InstalledModel]: ...

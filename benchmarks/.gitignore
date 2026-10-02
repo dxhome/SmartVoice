@@ -10,3 +10,10 @@ tts-audio/
 *ratings-template.csv
 blind-mapping.json
 tts-listening.html
+
+# Local benchmark execution artifacts; reviewed reports live in result/
+__pycache__/
+.pytest_cache/
+.DS_Store
+/elastic-pool/measurements.json
+/elastic-pool/RESULTS.md

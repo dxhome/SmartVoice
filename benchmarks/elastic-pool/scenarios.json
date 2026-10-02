@@ -1,0 +1,55 @@
+{
+  "success_rate_required": 0.999,
+  "p90_ratio_limit": 1.2,
+  "window_seconds": 10,
+  "screening_seconds": 30,
+  "confirmation_requests": 3000,
+  "baseline_requests": 40,
+  "client_workers": 64,
+  "scenarios": {
+    "asr": {
+      "model_id": "stt-sensevoice-small-int8",
+      "task": "asr",
+      "language": "zh",
+      "audio_files": [
+        "samples/multilingual-stt/zh_01.wav",
+        "samples/multilingual-stt/zh_02.wav",
+        "samples/multilingual-stt/zh_03.wav"
+      ],
+      "baseline_rps": 2,
+      "instances": 2,
+      "threads_per_instance": 2,
+      "max_waiting": 4
+    },
+    "tts": {
+      "model_id": "tts-matcha-zh-baker",
+      "task": "tts",
+      "language": "zh",
+      "texts": [
+        "你好，欢迎使用本地语音服务。",
+        "今天的天气很好，我们一起出去走走吧。",
+        "语音识别和语音合成可以在本地完成。",
+        "这是一次并发性能测试，请稍等片刻。"
+      ],
+      "baseline_rps": 2,
+      "instances": 2,
+      "threads_per_instance": 2,
+      "max_waiting": 4
+    },
+    "supertonic": {
+      "model_id": "tts-supertonic-v3-multilingual-int8",
+      "task": "tts",
+      "language": "en",
+      "baseline_rps": 0.5,
+      "instances": 2,
+      "threads_per_instance": 2,
+      "max_waiting": 4,
+      "texts": [
+        "Hello, welcome to the local voice service.",
+        "The weather is nice today. Let us go for a walk.",
+        "Speech recognition and synthesis can run locally.",
+        "This is a concurrent speech test. Please wait a moment."
+      ]
+    }
+  }
+}

@@ -148,36 +148,155 @@ These criteria are goals, not a claim that every change can remain fully local. 
 
 ## Part II — Current Architecture and Platform Compatibility
 
-**Implementation snapshot last reviewed:** 2026-10-01
+**Implementation snapshot last reviewed:** 2026-10-02
 
-### End-to-End Architecture
+### Layered Module Architecture
 
 ```mermaid
-flowchart LR
-    Client[REST client / CLI] --> Entry[API routes / CLI entry]
-    Entry --> UseCases[Application services]
-    UseCases --> Router[ModelRouter]
-    UseCases --> Queue[InferenceQueue]
-    UseCases --> InferencePort[InferenceProvider]
-    InferencePort --> Composite[CompositeInferenceProvider]
-    Composite --> Sherpa[Sherpa ONNX adapter]
-    Composite --> Qwen[Qwen3-TTS adapter]
-    Qwen --> Native[Qwen native runtime process]
-    UseCases --> RepositoryPort[ModelRepository]
-    RepositoryPort --> Repository[CatalogModelRepository]
-    Repository --> Storage[Model storage / download implementation]
+classDiagram
+direction TB
+
+namespace Presentation {
+  class api_v1_routes
+  class cli_main
+  class web_test_ui
+}
+
+namespace Composition_Root {
+  class app_composition_root
+  class inference_factory
+}
+
+namespace Application {
+  class speech_service
+  class transcription_service
+  class inference_queue
+  class model_router
+  class model_management
+}
+
+namespace Domain_and_Ports {
+  class domain_contracts
+  class domain_errors
+  class inference_provider
+  class managed_admission
+  class model_repository_port
+}
+
+namespace Adapter_Composition_and_Runtime_Control {
+  class composite_inference_provider
+  class pooled_sherpa_provider
+  class pooled_inference_provider
+  class elastic_runtime_pool
+}
+
+namespace Runtime_and_Storage_Adapters {
+  class sherpa_onnx_provider
+  class qwen_tts_provider
+  class qwen_native_runtime
+  class catalog_model_repository
+  class host_metrics
+}
+
+namespace External_Runtime_and_Local_Data {
+  class sherpa_onnx_runtime
+  class qwen_native_child_process
+  class local_model_files
+}
+
+namespace Configuration_and_Resources {
+  class service_settings
+  class model_catalog
+  class router_config
+}
+
+app_composition_root ..> inference_factory : builds provider set
+app_composition_root ..> service_settings : loads
+inference_factory ..> service_settings : configures adapters and pools
+app_composition_root ..> inference_queue : constructs transport guard
+app_composition_root ..> speech_service : constructs use case
+app_composition_root ..> transcription_service : constructs use case
+model_router ..> router_config : loads routing policy
+api_v1_routes ..> inference_queue : submits bounded operation
+cli_main ..> app_composition_root : uses same composition
+inference_queue ..> speech_service : executes
+inference_queue ..> transcription_service : executes
+speech_service ..> inference_provider : uses port
+transcription_service ..> inference_provider : uses port
+speech_service ..> model_router : resolves model
+transcription_service ..> model_router : resolves model
+composite_inference_provider ..|> inference_provider : implements
+composite_inference_provider ..|> managed_admission : advertises capacity
+composite_inference_provider ..> pooled_sherpa_provider : dispatches Sherpa models
+composite_inference_provider ..> pooled_inference_provider : dispatches Qwen backend
+pooled_sherpa_provider ..|> inference_provider : facade
+pooled_sherpa_provider --|> pooled_inference_provider : adds language identification
+pooled_sherpa_provider *-- elastic_runtime_pool : owns per-model groups
+pooled_inference_provider *-- elastic_runtime_pool : owns bounded groups
+elastic_runtime_pool o-- sherpa_onnx_provider : lazy independent instances
+pooled_inference_provider ..> qwen_tts_provider : one shared runtime
+sherpa_onnx_provider ..> sherpa_onnx_runtime : adapter boundary
+qwen_tts_provider --> qwen_native_runtime : manages
+qwen_native_runtime --> qwen_native_child_process : loopback runtime
+catalog_model_repository ..|> model_repository_port : implements
+catalog_model_repository --> local_model_files : manages
+catalog_model_repository --> model_catalog : reads
 ```
+
+The diagram groups the code by its established modules and responsibilities.
+Dependency connectors describe module contracts and ownership; they are not a
+request sequence. Dependencies point from presentation/application code toward
+stable domain ports, while runtime and storage adapters implement those ports.
+The groups map to `api/` and `web/`; `app.py` and `adapters/inference/factory.py`;
+`services/`; `domain/` and `ports/`; `adapters/inference/runtime/`;
+`adapters/inference/{sherpa_onnx,qwen_tts}/` plus `adapters/{storage,platform}/`;
+external runtimes/local files; and `config/` plus packaged `resources/`.
+`app.create_app()` and `adapters/inference/factory.py` compose the concrete
+implementations at startup.
+
+#### Concurrency responsibilities by layer
+
+- **Presentation and application:** API routes validate finite HTTP requests
+  and wrap speech/transcription operations in `InferenceQueue`. Services own
+  model/language resolution; they do not know about pool instances. With the
+  default `max_concurrent_inference=1`, app assembly uses the aggregate capacity
+  advertised through `ManagedAdmission` to size the bounded transport guard, so
+  it no longer serializes all model calls behind one global slot. Setting the
+  switch to `0`, or using a provider without managed admission, selects the
+  conservative single-slot queue path.
+- **Adapter composition and runtime control:** `CompositeInferenceProvider`
+  selects a provider from the catalog backend. For Sherpa, the pooled facade
+  passes the model ID to `ElasticRuntimePool`, which keeps an independent FIFO
+  group per model. The pool leases an idle adapter or lazily constructs one up
+  to `max_instances`; up to `max_queued_inference` requests may wait per model.
+  Saturated groups reject excess work. Pool initialization, native execution,
+  and disposal happen outside the coordination lock.
+- **Runtime adapters:** Each Sherpa pool member is the existing
+  `SherpaOnnxProvider` with its existing per-runtime safety locks. One native
+  object remains serialized; separate instances can execute concurrently. A
+  lease stays active until native execution ends, even if the HTTP caller has
+  already timed out. Qwen uses the provider facade with one shared backend
+  runtime; this design does not enable native batching or process parallelism.
+- **Lifecycle and observability:** Extra instances are reclaimed after the
+  configured idle interval while the minimum warm floor remains. Pool wait is
+  included in runtime-wait measurements. `/v1/runtime` reports per-pool
+  instance, active, waiting, warm-up, and capacity data. Application shutdown
+  waits for active leases and closes owned runtimes.
+
+This pool is generic across the Sherpa models wired through the factory; adding
+another supported Sherpa model does not require a model-specific scheduler.
+Each model still has an independent pool group and a per-model capacity limit.
 
 #### Boundary assessment
 
 | Layer | Current responsibility and interface | Assessment |
 |---|---|---|
 | REST and CLI entry points | Parse requests/arguments, apply transport validation, call application services, and map results to HTTP/CLI output. | The boundary is recognizable. REST routes use `request.app.state` as a service locator, so dependencies are dynamically typed rather than declared as a request-services interface. |
-| Application assembly | `app.create_app()` wires settings, repositories, services, queues, and the inference provider. `create_inference_provider()` centralizes the standard backend set for app and CLI use. | Good composition-root boundary; concrete runtime imports stay at the adapter edge. |
-| Application services | `SpeechService` and `TranscriptionService` coordinate language resolution, routing, and inference. `ModelManagementService` coordinates model operations. `InferenceQueue` bounds request admission and execution. | Main speech flow is clear. Smart routing is kept outside inference adapters. |
+| Application assembly | `app.create_app()` wires settings, repositories, services, the transport queue, and the inference provider. `create_inference_provider()` centralizes the standard backend set for app and CLI use. It detects `ManagedAdmission` and sizes the transport guard from provider capacity when parallel inference is enabled. | Good composition-root boundary; concrete runtime imports stay at the adapter edge. The global queue bounds HTTP work but does not choose a model instance. |
+| Application services | `SpeechService` and `TranscriptionService` coordinate language resolution, routing, and inference. `ModelManagementService` coordinates model operations. Routes execute finite inference operations through `InferenceQueue`, which applies the transport reservation and execution deadline. | Main speech flow is clear. Smart routing is kept outside inference adapters. |
 | Domain and contracts | Provider-neutral errors and request/result contracts are shared across the application. `ModelSpec` supplies model metadata. | Most public inference results are neutral. `ModelSpec` also includes backend IDs, runtime model types, source URLs, hashes, and filenames, so it currently acts as a catalog/install definition as well as a domain model. |
 | Ports | `InferenceProvider`, `ModelRepository`, and optional capability/lifecycle protocols define replaceable seams. | Useful seams exist. `InferenceProvider` combines STT, TTS, runtime status, and capabilities; task-specific providers may implement an unsupported operation. Runtime/capability payloads are open dictionaries rather than strict typed contracts. |
-| Inference adapters | `CompositeInferenceProvider` resolves the catalog model backend and delegates to Sherpa or Qwen. Each adapter maps SmartVoice operations to its runtime and normalizes results/errors. | Backend replacement is localized and the public API does not depend on runtime objects. Sherpa remains a single adapter for multiple model families by design. |
+| Inference adapters and admission | `CompositeInferenceProvider` resolves the catalog model backend and delegates to `PooledSherpaProvider` or the Qwen facade. `ElasticRuntimePool` provides generic per-model FIFO admission, lazy instance growth, leases, idle reclamation, and pool metrics. It wraps the unchanged Sherpa adapter; each adapter instance still owns its original runtime locks and native objects. | Backend replacement is localized and the public API does not depend on runtime objects. Sherpa remains one adapter implementation for multiple model families; a shared pool handles same-model parallelism without Sherpa code changes. |
 | Native Qwen runtime | `QwenNativeRuntime` discovers and manages the child process, loopback HTTP service, diagnostics, and shutdown. | Process/runtime details are isolated from application routing and public API behavior. |
 | Storage adapter and model lifecycle | `CatalogModelRepository` implements model lookup, installation, integrity validation, import/export, and removal using the local catalog. | The interface is useful, but the actual filesystem/download implementation lives in modules under `services`. The async `ModelJobManager` calls the download implementation and registry directly, bypassing `ModelRepository`; this is the clearest remaining layer coupling. |
 
@@ -215,6 +334,8 @@ Only CPU inference is supported by the current SmartVoice integration. “Other 
 - The Linux Qwen builder uses the CPU flags visible on its build host. Virtual machines can mask instructions that the physical CPU supports; `SIMD=auto` selects a safe scalar path when AVX2 is not exposed. Rebuild the runtime when moving it to a host with a weaker exposed ISA.
 - Linux x86_64 is validated on Ubuntu 26.04, including clean installation and model-backed inference with the supported CPU runtimes. This validation does not establish compatibility with other Linux distributions, older glibc releases, Linux arm64, or CPUs lacking the instructions used by a native runtime.
 - Model weights are installed separately from backend runtimes. Building or installing a runtime does not install model weights; installing model weights does not build or install the runtime.
+
+See [inference concurrency](inference-concurrency.md) for elastic instance lifecycle, fixed constructor threads, timeout ownership, bounded admission and configuration migration. The native Sherpa provider remains unchanged.
 
 ### Model Installation Versus Current Inference Availability
 

@@ -81,17 +81,13 @@
   "generated_at": null,
   "selected_categories": [
     "quality",
-    "performance",
-    "concurrency"
+    "performance"
   ],
   "category_run_ids": {
     "quality": [
       "20260928T114120Z-5624c4"
     ],
     "performance": [
-      "20260928T114120Z-5624c4"
-    ],
-    "concurrency": [
       "20260928T114120Z-5624c4"
     ]
   },
@@ -198,108 +194,6 @@
           "peak_rss_bytes": null
         },
         "service_startup_seconds": 1.262635
-      }
-    ],
-    "concurrency": [
-      {
-        "case": {
-          "task": "speech",
-          "model_id": "tts-melo-zh-en",
-          "language": "en"
-        },
-        "workload_model": "closed_loop_fixed_concurrency",
-        "levels": [
-          {
-            "workers": 1,
-            "request_count": 10,
-            "success_count": 10,
-            "failure_count": 0,
-            "failure_rate": 0.0,
-            "requests_per_second": 1.13,
-            "errors_by_status": {}
-          },
-          {
-            "workers": 2,
-            "request_count": 20,
-            "success_count": 20,
-            "failure_count": 0,
-            "failure_rate": 0.0,
-            "requests_per_second": 1.26,
-            "errors_by_status": {}
-          },
-          {
-            "workers": 4,
-            "request_count": 40,
-            "success_count": 7,
-            "failure_count": 33,
-            "failure_rate": 0.825,
-            "requests_per_second": 1.11,
-            "errors_by_status": {
-              "503": 33
-            }
-          }
-        ],
-        "soak": {
-          "workers": 4,
-          "target_seconds": 60,
-          "success_count": 70,
-          "failure_count": 544,
-          "failure_rate": 0.884352,
-          "success_requests_per_second": 1.14,
-          "errors_by_status": {
-            "503": 544
-          }
-        }
-      },
-      {
-        "case": {
-          "task": "speech",
-          "model_id": "tts-melo-zh-en",
-          "language": "zh"
-        },
-        "workload_model": "closed_loop_fixed_concurrency",
-        "levels": [
-          {
-            "workers": 1,
-            "request_count": 10,
-            "success_count": 10,
-            "failure_count": 0,
-            "failure_rate": 0.0,
-            "requests_per_second": 1.16,
-            "errors_by_status": {}
-          },
-          {
-            "workers": 2,
-            "request_count": 20,
-            "success_count": 20,
-            "failure_count": 0,
-            "failure_rate": 0.0,
-            "requests_per_second": 1.27,
-            "errors_by_status": {}
-          },
-          {
-            "workers": 4,
-            "request_count": 40,
-            "success_count": 10,
-            "failure_count": 30,
-            "failure_rate": 0.75,
-            "requests_per_second": 1.26,
-            "errors_by_status": {
-              "503": 30
-            }
-          }
-        ],
-        "soak": {
-          "workers": 4,
-          "target_seconds": 60,
-          "success_count": 77,
-          "failure_count": 525,
-          "failure_rate": 0.8703,
-          "success_requests_per_second": 1.24,
-          "errors_by_status": {
-            "503": 525
-          }
-        }
       }
     ]
   },

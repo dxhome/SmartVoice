@@ -25,7 +25,7 @@ from smartvoice.services.model_jobs import ModelJobManager
 from smartvoice.services.model_router import ModelRouter
 from smartvoice.services.transcription import TranscriptionService
 from smartvoice.services.speech import SpeechService
-from smartvoice.ports.inference import LanguageIdentifier, LanguageIdentifierStatus, ModelLifecycle, RuntimeLifecycle
+from smartvoice.ports.inference import ManagedAdmission, LanguageIdentifier, LanguageIdentifierStatus, ModelLifecycle, RuntimeLifecycle
 from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
 from smartvoice.adapters.inference.factory import create_inference_provider
 from smartvoice.services.model_management import ModelManagementService
@@ -203,8 +203,15 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     app.state.settings = settings
     app.state.provider = provider
     app.state.model_repository = model_repository
+    parallel_enabled = settings.max_concurrent_inference == 1
+    capacity = (provider.request_capacity()
+                if parallel_enabled and isinstance(provider, ManagedAdmission) else None)
+    managed = parallel_enabled and capacity is not None
+    # Adapter queues own execution capacity. This remains a bounded transport
+    # guard, sized to accommodate their combined capacity rather than serialize.
     app.state.inference_queue = InferenceQueue(
-        settings.max_concurrent_inference, settings.max_queued_inference
+        capacity if managed else 1,
+        0 if managed else settings.max_queued_inference,
     )
     app.state.model_jobs = ModelJobManager(settings)
     app.state.model_router = ModelRouter(settings)

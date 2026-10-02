@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import json
+import math
 import sys
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -43,12 +44,23 @@ class Settings:
     max_tts_characters: int = 4000
     max_tts_audio_seconds: float = 180
     max_tts_output_bytes: int = 32 * 1024 * 1024
-    num_threads: int = max(1, min(4, os.cpu_count() or 1))
+    num_threads: int = max(1, min(2, os.cpu_count() or 1))
     provider: str = "cpu"
     max_concurrent_inference: int = 1
-    max_queued_inference: int = 2
+    max_queued_inference: int = 4
+    min_instances: int = 1
+    max_instances: int = 2
+    instance_idle_seconds: float = 300.0
     inference_queue_timeout_seconds: float = 60.0
     inference_execution_timeout_seconds: float = 600.0
+
+    def __post_init__(self):
+        if not 1 <= self.min_instances <= self.max_instances:
+            raise ValueError("Require 1 <= min_instances <= max_instances")
+        if not math.isfinite(self.instance_idle_seconds) or self.instance_idle_seconds <= 0:
+            raise ValueError("instance_idle_seconds must be finite and positive")
+        if self.max_concurrent_inference not in (0, 1):
+            raise ValueError("max_concurrent_inference must be 0 (serial) or 1 (parallel enabled)")
 
     @property
     def models_dir(self) -> Path:
@@ -99,10 +111,13 @@ class Settings:
             max_tts_characters=setting("max_tts_characters", "SMARTVOICE_MAX_TTS_CHARACTERS", 4000, int),
             max_tts_audio_seconds=setting("max_tts_audio_seconds", "SMARTVOICE_MAX_TTS_AUDIO_SECONDS", 180, float),
             max_tts_output_bytes=setting("max_tts_output_bytes", "SMARTVOICE_MAX_TTS_OUTPUT_BYTES", 32 * 1024 * 1024, int),
-            num_threads=max(1, setting("num_threads", "SMARTVOICE_NUM_THREADS", max(1, min(4, os.cpu_count() or 1)), int)),
+            num_threads=max(1, setting("num_threads", "SMARTVOICE_NUM_THREADS", max(1, min(2, os.cpu_count() or 1)), int)),
+            min_instances=setting("min_instances", "SMARTVOICE_MIN_INSTANCES", 1, int),
+            max_instances=setting("max_instances", "SMARTVOICE_MAX_INSTANCES", 2, int),
+            instance_idle_seconds=setting("instance_idle_seconds", "SMARTVOICE_INSTANCE_IDLE_SECONDS", 300.0, float),
             provider=setting("provider", "SMARTVOICE_DEVICE", "cpu", str),
-            max_concurrent_inference=max(1, setting("max_concurrent_inference", "SMARTVOICE_MAX_CONCURRENT_INFERENCE", 1, int)),
-            max_queued_inference=max(0, setting("max_queued_inference", "SMARTVOICE_MAX_QUEUED_INFERENCE", 2, int)),
+            max_concurrent_inference=setting("max_concurrent_inference", "SMARTVOICE_MAX_CONCURRENT_INFERENCE", 1, int),
+            max_queued_inference=max(0, setting("max_queued_inference", "SMARTVOICE_MAX_QUEUED_INFERENCE", 4, int)),
             inference_queue_timeout_seconds=max(0.1, setting("inference_queue_timeout_seconds", "SMARTVOICE_INFERENCE_QUEUE_TIMEOUT", 60, float)),
             inference_execution_timeout_seconds=max(0.1, setting("inference_execution_timeout_seconds", "SMARTVOICE_INFERENCE_EXECUTION_TIMEOUT", 600, float)),
         )

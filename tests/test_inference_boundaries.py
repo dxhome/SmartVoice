@@ -76,6 +76,14 @@ class InferenceBoundaryTests(unittest.TestCase):
         with self.assertRaises(UnsupportedFeatureError):
             composite.transcribe(b"audio", model_id="missing")
 
+    def test_composite_without_managed_adapters_retains_global_waiting_capacity(self):
+        composite = self.make_composite({"backend-a": StubInferenceProvider("backend-a")})
+        self.assertIsNone(composite.request_capacity())
+        with tempfile.TemporaryDirectory() as directory:
+            settings = Settings(data_dir=Path(directory))
+            app = create_app(settings, provider=composite)
+            self.assertEqual(app.state.inference_queue._capacity, 1 + settings.max_queued_inference)
+
     def test_runtime_and_capabilities_report_unavailable_backend_reason(self):
         unavailable = StubInferenceProvider(
             "backend-a", status="dependency_missing", reason="Sherpa runtime dependency is missing."

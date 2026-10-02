@@ -2,7 +2,7 @@
   "server_host": "127.0.0.1",
   "server_port": 8000,
   "log_level": "INFO",
-  "num_threads": 4,
+  "num_threads": 2,
   "provider": "cpu",
   "max_upload_bytes": 26214400,
   "max_audio_seconds": 600,
@@ -10,7 +10,10 @@
   "max_tts_audio_seconds": 180,
   "max_tts_output_bytes": 33554432,
   "max_concurrent_inference": 1,
-  "max_queued_inference": 2,
+  "max_queued_inference": 4,
   "inference_queue_timeout_seconds": 60,
-  "inference_execution_timeout_seconds": 600
+  "inference_execution_timeout_seconds": 600,
+  "min_instances": 1,
+  "max_instances": 2,
+  "instance_idle_seconds": 300
 }

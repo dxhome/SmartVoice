@@ -12,6 +12,8 @@ from smartvoice.ports.inference import (
     LanguageIdentifier,
     LanguageIdentifierStatus,
     ModelLifecycle,
+    ManagedAdmission,
+    InferenceAvailability,
     RuntimeLifecycle,
 )
 from smartvoice.ports.model_repository import ModelRepository
@@ -29,8 +31,19 @@ class CompositeInferenceProvider:
         self.providers = dict(providers)
         self.model_repository = model_repository
 
+    def request_capacity(self) -> int | None:
+        if not self.providers or not all(isinstance(provider, ManagedAdmission) for provider in self.providers.values()):
+            return None
+        capacities = [provider.request_capacity() for provider in self.providers.values()]
+        return sum(capacities) if all(capacity is not None for capacity in capacities) else None
+
     def installed_models(self) -> Sequence[InstalledModel]:
         return [model for provider in self.providers.values() for model in provider.installed_models()]
+
+    def inference_models(self) -> Sequence[InstalledModel]:
+        return [model for provider in self.providers.values()
+                for model in (provider.inference_models() if isinstance(provider, InferenceAvailability)
+                              else provider.installed_models())]
 
     def runtime(self) -> dict[str, object]:
         runtimes = {backend: provider.runtime() for backend, provider in self.providers.items()}
@@ -40,7 +53,7 @@ class CompositeInferenceProvider:
             for key, value in primary.items()
             if key not in {
                 "backend", "backends", "installed_model_count", "actual_device",
-                "provider_status", "requested_device", "reason",
+                "provider_status", "requested_device", "reason", "instance_pools", "pool_limits",
             }
         }
         available = [

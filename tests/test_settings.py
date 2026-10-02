@@ -76,6 +76,27 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.data_dir, directory.resolve())
         self.assertTrue((directory / "smartvoice.json").is_file())
 
+    def test_elastic_pool_settings_validate_and_honor_environment(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(json.dumps({"min_instances": 1, "max_instances": 2,
+                                       "instance_idle_seconds": 300, "max_concurrent_inference": 1}))
+            with patch.dict("os.environ", {"SMARTVOICE_MAX_INSTANCES": "3"}, clear=True):
+                settings = Settings.from_env(path)
+            self.assertEqual(settings.max_instances, 3)
+            self.assertEqual(settings.num_threads, 2)
+            self.assertEqual(settings.max_concurrent_inference, 1)
+        for kwargs in ({"min_instances": 2, "max_instances": 1},
+                       {"instance_idle_seconds": float("nan")},
+                       {"max_concurrent_inference": -1},
+                       {"max_concurrent_inference": 2}):
+            with self.assertRaises(ValueError):
+                Settings(data_dir=Path("/tmp/smartvoice"), **kwargs)
+
+    def test_parallel_inference_is_the_default(self):
+        self.assertEqual(Settings(data_dir=Path("/tmp/smartvoice")).max_concurrent_inference, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

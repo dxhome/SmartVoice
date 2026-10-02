@@ -156,25 +156,12 @@
       "20260928T112659Z-a95afa"
     ],
     "concurrency": [
-      "20260928T112659Z-a95afa"
+      "confirmation-1.9"
     ]
   },
   "models": [
     {
       "id": "tts-supertonic-v3-multilingual-int8"
-    },
-    {
-      "id": "stt-qwen3-asr-600m-int8",
-      "archive_sha256": null,
-      "file_sha256": {
-        "conv_frontend.onnx": "d22dc4423e0940e49884e903d2ea2f7e5567c14fc1aed97e4e26d6b8f208ef9e",
-        "encoder.int8.onnx": "60748d3e6744a57c9c91e1b17424a6c2990567e8adceb0783940c03ed98fa9d9",
-        "decoder.int8.onnx": "4f6885be5959ae26af3089d38ee7972c5fafbeeb1cf8d5e76eab6d8b61ca5771",
-        "tokenizer/merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
-        "tokenizer/tokenizer_config.json": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c",
-        "tokenizer/vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
-      },
-      "installed_model_files_bytes": 987015347
     }
   ],
   "categories": {
@@ -378,58 +365,174 @@
         "service_startup_seconds": 1.237768
       }
     ],
-    "concurrency": [
-      {
-        "case": {
-          "task": "speech",
-          "model_id": "tts-supertonic-v3-multilingual-int8",
-          "language": "en"
+    "concurrency": {
+      "schema_version": "1.0",
+      "benchmark_suite": "smartvoice-concurrency-capacity-v1",
+      "profile": "fixed-arrival-confirmation",
+      "category": "concurrency",
+      "evidence_status": "formal_retrospective",
+      "method": {
+        "arrival_model": "open_loop_fixed_rate",
+        "client_workers": 64,
+        "automatic_retries": false,
+        "latency_definition": "scheduled arrival to full HTTP response body read",
+        "p90_estimator": "nearest_rank",
+        "success_definition": "HTTP 200 and task-specific response validation; ASR output compared with serial result where applicable",
+        "acceptance": {
+          "minimum_valid_success_rate": 0.999,
+          "maximum_p90_to_baseline_ratio": 1.2,
+          "latency_and_wait_trend": "final 10-second window must not materially exceed first window",
+          "pool_must_drain": true,
+          "formal_minimum_confirmation_requests": 3000
         },
-        "workload_model": "closed_loop_fixed_concurrency",
-        "levels": [
-          {
-            "workers": 1,
-            "request_count": 10,
-            "success_count": 10,
-            "failure_count": 0,
-            "failure_rate": 0.0,
-            "requests_per_second": 0.834,
-            "errors_by_status": {}
-          },
-          {
-            "workers": 2,
-            "request_count": 20,
-            "success_count": 20,
-            "failure_count": 0,
-            "failure_rate": 0.0,
-            "requests_per_second": 0.913,
-            "errors_by_status": {}
-          },
-          {
-            "workers": 4,
-            "request_count": 40,
-            "success_count": 30,
-            "failure_count": 10,
-            "failure_rate": 0.25,
-            "requests_per_second": 0.8996,
-            "errors_by_status": {
-              "503": 10
-            }
-          }
-        ],
-        "soak": {
-          "workers": 4,
-          "target_seconds": 60,
-          "success_count": 54,
-          "failure_count": 562,
-          "failure_rate": 0.91107,
-          "success_requests_per_second": 0.8568,
-          "errors_by_status": {
-            "503": 562
-          }
+        "baseline": "40 low-rate requests; 2 req/s for SenseVoice and Matcha, 0.5 req/s for Supertonic",
+        "resource_scope": "server process and accessible child processes; client excluded; RSS may double-count shared pages"
+      },
+      "environment": {
+        "platform": "macOS-27.0-arm64-arm-64bit",
+        "logical_cpu_count": 10,
+        "memory_bytes": 17179869184,
+        "python": "3.11.9 (v3.11.9:de54cf5be3, Apr  2 2024, 07:12:50) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "sherpa_onnx": "1.13.8",
+        "smartvoice_base_revision": "3a7c02a2b7c78b0da1e13bc419af09f09020239e",
+        "pool_settings": {
+          "min_instances": 1,
+          "max_instances": 2,
+          "num_threads": 2,
+          "max_queued_inference": 4,
+          "max_concurrent_inference": 1,
+          "instance_idle_seconds": 300
+        },
+        "model_artifact_fingerprint": "not captured in source run",
+        "input_fixture_fingerprint": "not captured in source run"
+      },
+      "test_configuration": {
+        "min_instances": 1,
+        "max_instances": 2,
+        "threads_per_instance": 2,
+        "max_waiting_per_model": 4,
+        "parallel_inference_enabled": true,
+        "fixtures": {
+          "text_fixture_count": 4,
+          "fixture_ids": [
+            "en_text_1",
+            "en_text_2",
+            "en_text_3",
+            "en_text_4"
+          ],
+          "validation": "HTTP 200 with valid, nonempty, nonsilent PCM WAV"
         }
+      },
+      "result": {
+        "status": "insufficient_evidence",
+        "status_note": "Observed metrics pass at this offered rate, but the run is below the 3,000-request minimum for a formal reliability confirmation.",
+        "highest_tested_passing_offered_rps": 1.9,
+        "passing_run": {
+          "offered_rps": 1.9,
+          "delivered_rps": 1.8978572863710756,
+          "requests_planned": 1000,
+          "requests_completed": 1000,
+          "valid_responses": 1000,
+          "failed_responses": 0,
+          "observed_success_rate": 1.0,
+          "elapsed_seconds": 526.9100090829888,
+          "end_to_end_p90_seconds": 1.1334870592108928,
+          "low_rate_baseline_p90_seconds": 1.1720354580320418,
+          "p90_to_baseline_ratio": 0.9671098697936362,
+          "adapter_wait_p90_seconds": 0.0585,
+          "client_schedule_lag_p90_seconds": 0.005107276258058846,
+          "first_10s_window": {
+            "requests": 19,
+            "p90_seconds": 1.116728490917012,
+            "wait_p90_seconds": 0.0475
+          },
+          "last_10s_window": {
+            "requests": 12,
+            "p90_seconds": 1.1301025040447712,
+            "wait_p90_seconds": 0.0688
+          },
+          "window_count": 53,
+          "peak_active_instances": 2,
+          "pool_after_drain": {
+            "instances": 2,
+            "ready": 2,
+            "active": 0,
+            "waiting": 0,
+            "warming": false
+          },
+          "resources": {
+            "cpu_mean_cores": 3.6409104433726323,
+            "cpu_p90_cores": 4.123044701879202,
+            "rss_mean_mib": 468.24591052424125,
+            "rss_peak_mib": 502.875
+          }
+        },
+        "first_tested_nonpassing_rate": {
+          "offered_rps": 2.0,
+          "requests_planned": 1000,
+          "requests_completed": 1000,
+          "valid_responses": 1000,
+          "failed_responses": 0,
+          "observed_success_rate": 1.0,
+          "end_to_end_p90_seconds": 1.4538417080184445,
+          "low_rate_baseline_p90_seconds": 1.1319385000388138,
+          "p90_to_baseline_ratio": 1.2843822415869703,
+          "adapter_wait_p90_seconds": 0.4,
+          "pool_after_abort_or_drain": {
+            "active": 0,
+            "waiting": 0,
+            "warming": false
+          },
+          "failure_reason": "P90 latency ratio above 1.2",
+          "note": "This is the first tested rate above the passing point; it does not prove the exact capacity boundary."
+        },
+        "acceptance_checks": {
+          "valid_success_rate": true,
+          "p90_latency_ratio": true,
+          "window_trend": true,
+          "pool_drained": true,
+          "formal_request_count": false
+        }
+      },
+      "warmup": {
+        "fresh_process_trials": 10,
+        "first_instance_first_request_p90_seconds": 3.1826566249947064,
+        "second_instance_expansion_request_p90_seconds": 1.565885916003026,
+        "second_instance_initialization_plus_first_inference_p90_seconds": 1.4311652499600314,
+        "fully_warm_request_p90_seconds": 1.1275548750418238,
+        "rss_mib_median": {
+          "baseline": 53.0859375,
+          "one_instance": 341.84375,
+          "two_instances": 637.9453125
+        },
+        "rss_peak_mib": {
+          "first_instance_warmup": 349.125,
+          "second_instance_expansion": 622.625,
+          "two_fully_warm": 664.234375
+        },
+        "cpu_mean_cores_median": {
+          "first_instance_warmup": 1.2671272218454863,
+          "second_instance_expansion": 3.0395794527039177,
+          "one_instance_warm": 1.9381568284769464,
+          "two_instances_warm": 3.770100141939853
+        }
+      },
+      "limitations": [
+        "Retrospective report from the prior sandbox run; model/input hashes were not recorded at run time.",
+        "Capacity is the highest tested passing rate, not a proven maximum or an SLA for arbitrary inputs.",
+        "TTS checks validate successful audio transport/PCM only; this concurrency run does not establish semantic quality or MOS.",
+        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability."
+      ],
+      "provenance": {
+        "aggregate_source": "benchmarks/elastic-pool/measurements.json",
+        "protocol_source": "benchmarks/elastic-pool/README.md",
+        "original_run_date": "2026-10-02",
+        "raw_local_source_retained": true,
+        "raw_source_file_policy": "original per-request records remain in ignored local sandbox output; this report contains reviewed aggregates only",
+        "source_confirmation_record": "supertonic-confirmation-1.9.json",
+        "first_nonpassing_confirmation_record": "supertonic-confirmation-2.json"
       }
-    ]
+    }
   },
   "quality_completeness": {
     "languages_measured": [
@@ -472,5 +575,23 @@
       "pt",
       "ru"
     ]
-  }
+  },
+  "category_generated_at": {
+    "concurrency": "2026-10-02"
+  },
+  "evaluation_dependencies": [
+    {
+      "id": "stt-qwen3-asr-600m-int8",
+      "archive_sha256": null,
+      "file_sha256": {
+        "conv_frontend.onnx": "d22dc4423e0940e49884e903d2ea2f7e5567c14fc1aed97e4e26d6b8f208ef9e",
+        "encoder.int8.onnx": "60748d3e6744a57c9c91e1b17424a6c2990567e8adceb0783940c03ed98fa9d9",
+        "decoder.int8.onnx": "4f6885be5959ae26af3089d38ee7972c5fafbeeb1cf8d5e76eab6d8b61ca5771",
+        "tokenizer/merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "tokenizer/tokenizer_config.json": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c",
+        "tokenizer/vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "installed_model_files_bytes": 987015347
+    }
+  ]
 }

@@ -17,10 +17,24 @@ def create_inference_provider(
     from smartvoice.adapters.inference.qwen_tts.provider import QwenTTSProvider
     from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 
+    from smartvoice.adapters.inference.runtime.pooled_provider import PooledInferenceProvider, PooledSherpaProvider
+
+    metadata = SherpaOnnxProvider(settings, repository)
+
+    def create_sherpa(seed):
+        runtime = SherpaOnnxProvider(settings, repository)
+        source = seed or metadata
+        # Copy only validated file fingerprints, never native objects or locks.
+        # The unchanged provider rechecks size/mtime and manifest digest on use.
+        with source._cache_lock:
+            runtime._verified_files.update(source._verified_files)
+        return runtime
+
+    qwen = QwenTTSProvider(settings, repository)
     return CompositeInferenceProvider(
         {
-            "sherpa-onnx": SherpaOnnxProvider(settings, repository),
-            "qwen-tts": QwenTTSProvider(settings, repository),
+            "sherpa-onnx": PooledSherpaProvider(metadata, create_sherpa, settings),
+            "qwen-tts": PooledInferenceProvider(qwen, lambda seed: qwen, settings, shared_backend=True),
         },
         repository,
     )

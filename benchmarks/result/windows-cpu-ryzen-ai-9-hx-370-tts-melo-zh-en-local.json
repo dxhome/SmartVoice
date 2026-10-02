@@ -1,0 +1,173 @@
+{
+  "schema_version": "1.0",
+  "benchmark_type": "observed_benchmark_not_acceptance_threshold",
+  "generated_at": "2026-09-27T12:02:12.528953+00:00",
+  "software": {
+    "smartvoice": "0.1.0",
+    "python": "3.12.10"
+  },
+  "host": {
+    "os": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD Ryzen AI 9 HX 370 w/ Radeon 890M",
+    "logical_cpu_count": 24,
+    "total_physical_memory_bytes": 100521586688
+  },
+  "runtime": {
+    "backend": "sherpa-onnx",
+    "actual_device": "cpu",
+    "runtime_version": "1.13.8",
+    "provider_status": "available"
+  },
+  "config": {
+    "config_file": "benchmarks\\config\\windows-cpu.json",
+    "iterations": 5,
+    "warmup_iterations": 1,
+    "logical_cpu_count": 24,
+    "inference_threads": 4,
+    "max_concurrent_inference": 1,
+    "max_queued_inference": 2
+  },
+  "corpus_note": "STT uses the bundled SenseVoice demo clips. Results measure performance only and do not establish recognition accuracy.",
+  "measurement_note": "Each case runs in a fresh server process; process CPU and working set are sampled over the loopback API. Telemetry polling adds small overhead.",
+  "model": {
+    "id": "melo-tts-zh-en-local",
+    "archive_sha256": "e58351ed7149f290a54534538badd4077cdbe6fddc964b24d0bee870415d1514",
+    "installed_model_files_bytes": 177268929
+  },
+  "server_startup_seconds_by_case": {
+    "tts_zh": 0.6424,
+    "tts_en": 0.6708
+  },
+  "cases": [
+    {
+      "case_id": "tts_zh",
+      "task": "tts",
+      "language": "zh",
+      "cold_start": {
+        "wall_seconds": 2.7447,
+        "audio_seconds": 4.519,
+        "process_working_set_bytes": 450043904,
+        "process_peak_working_set_bytes": 454836224
+      },
+      "warm": {
+        "request_wall_seconds": {
+          "median": 0.9395,
+          "p95": 0.9892,
+          "min": 0.9181,
+          "max": 0.9892
+        },
+        "inference_seconds": {
+          "median": 0.9188,
+          "p95": 0.9686,
+          "min": 0.8972,
+          "max": 0.9686
+        },
+        "real_time_factor": {
+          "median": 0.2025,
+          "p95": 0.2139,
+          "min": 0.1981,
+          "max": 0.2139
+        },
+        "process_cpu_seconds": {
+          "median": 3.75,
+          "p95": 3.9375,
+          "min": 3.6562,
+          "max": 3.9375
+        },
+        "logical_cpu_utilization_percent": {
+          "median": 16.6098,
+          "p95": 16.8575,
+          "min": 16.5852,
+          "max": 16.8575
+        },
+        "working_set_bytes": {
+          "median": 458723328,
+          "peak_observed": 459845632
+        },
+        "process_peak_working_set_bytes": 462495744
+      },
+      "server_startup_seconds": 0.6424
+    },
+    {
+      "case_id": "tts_en",
+      "task": "tts",
+      "language": "en",
+      "cold_start": {
+        "wall_seconds": 2.8622,
+        "audio_seconds": 5.263,
+        "process_working_set_bytes": 457687040,
+        "process_peak_working_set_bytes": 462864384
+      },
+      "warm": {
+        "request_wall_seconds": {
+          "median": 1.1028,
+          "p95": 1.127,
+          "min": 1.0626,
+          "max": 1.127
+        },
+        "inference_seconds": {
+          "median": 1.0829,
+          "p95": 1.1063,
+          "min": 1.0471,
+          "max": 1.1063
+        },
+        "real_time_factor": {
+          "median": 0.2058,
+          "p95": 0.2102,
+          "min": 0.1988,
+          "max": 0.2102
+        },
+        "process_cpu_seconds": {
+          "median": 4.3906,
+          "p95": 4.5,
+          "min": 4.2812,
+          "max": 4.5
+        },
+        "logical_cpu_utilization_percent": {
+          "median": 16.5882,
+          "p95": 16.788,
+          "min": 16.4878,
+          "max": 16.788
+        },
+        "working_set_bytes": {
+          "median": 464646144,
+          "peak_observed": 465686528
+        },
+        "process_peak_working_set_bytes": 469819392
+      },
+      "server_startup_seconds": 0.6708
+    }
+  ],
+  "shared_service_context": {
+    "description": "Load and run both STT languages and both TTS language samples in one service process.",
+    "before_inference_working_set_bytes": 54071296,
+    "after_all_working_set_bytes": 1063129088,
+    "after_all_peak_working_set_bytes": 1069502464,
+    "steps": [
+      {
+        "case_id": "stt_zh",
+        "first_request_wall_seconds": 1.2011,
+        "working_set_bytes_after_request": 411377664,
+        "peak_working_set_bytes": 411377664
+      },
+      {
+        "case_id": "stt_en",
+        "first_request_wall_seconds": 0.9692,
+        "working_set_bytes_after_request": 710754304,
+        "peak_working_set_bytes": 710754304
+      },
+      {
+        "case_id": "tts_zh",
+        "first_request_wall_seconds": 2.5922,
+        "working_set_bytes_after_request": 1053011968,
+        "peak_working_set_bytes": 1057357824
+      },
+      {
+        "case_id": "tts_en",
+        "first_request_wall_seconds": 1.1198,
+        "working_set_bytes_after_request": 1063124992,
+        "peak_working_set_bytes": 1069502464
+      }
+    ]
+  }
+}

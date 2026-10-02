@@ -128,4 +128,4 @@ On first startup, SmartVoice creates `<data_dir>/smartvoice.json` with all defau
 | TTS output size | 32 MiB | `max_tts_output_bytes` / `SMARTVOICE_MAX_TTS_OUTPUT_BYTES` |
 | Model import package | 3 GiB | Fixed by the model catalog implementation |
 
-For inference overload and timeout behavior, see `max_concurrent_inference`, `max_queued_inference`, `inference_queue_timeout_seconds`, and `inference_execution_timeout_seconds` in the service configuration.
+For model instance limits, adapter admission, overload and timeout behavior, see [inference concurrency](inference-concurrency.md) and `max_concurrent_inference`, `max_queued_inference`, `inference_queue_timeout_seconds`, and `inference_execution_timeout_seconds` in the service configuration.

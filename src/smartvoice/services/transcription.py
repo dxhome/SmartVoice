@@ -8,7 +8,7 @@ from typing import Sequence
 
 from smartvoice.domain.contracts import InstalledModel, TranscriptionResult
 from smartvoice.domain.errors import InvalidAudioError, ModelUnavailableError, UnsupportedFeatureError
-from smartvoice.ports.inference import InferenceProvider, LanguageIdentifier
+from smartvoice.ports.inference import InferenceAvailability, InferenceProvider, LanguageIdentifier
 from smartvoice.ports.model_repository import ModelRepository
 from smartvoice.services.model_router import ModelRouter, RouterConfig
 
@@ -47,7 +47,10 @@ class TranscriptionService:
         router_config: RouterConfig | None = None,
     ) -> TranscriptionOutcome:
         routed = requested_model == "smartvoice-auto"
-        installed: Sequence[InstalledModel] = self.provider.installed_models()
+        installed: Sequence[InstalledModel] = (
+            self.provider.inference_models() if isinstance(self.provider, InferenceAvailability)
+            else self.provider.installed_models()
+        )
         candidates: tuple[dict[str, object], ...] = ()
         language_source = "request" if language != "auto" else "model_detection"
 
