@@ -96,7 +96,7 @@
     "ru",
     "de"
   ],
-  "generated_at": "2026-09-29T03:19:27.389032+00:00",
+  "generated_at": "2026-10-03",
   "selected_categories": [
     "quality",
     "performance",
@@ -110,9 +110,7 @@
     "performance": [
       "20260928T084702Z-ac880e"
     ],
-    "concurrency": [
-      "confirmation-14"
-    ]
+    "concurrency": "macos-arm64-sensevoice-concurrency-2026-10-03"
   },
   "models": [
     {
@@ -396,9 +394,9 @@
     "concurrency": {
       "schema_version": "1.0",
       "benchmark_suite": "smartvoice-concurrency-capacity-v1",
-      "profile": "fixed-arrival-confirmation",
+      "profile": "fixed-arrival-confirmation-500-to-2000",
       "category": "concurrency",
-      "evidence_status": "formal_retrospective",
+      "evidence_status": "formal_confirmation",
       "method": {
         "arrival_model": "open_loop_fixed_rate",
         "client_workers": 64,
@@ -411,28 +409,44 @@
           "maximum_p90_to_baseline_ratio": 1.2,
           "latency_and_wait_trend": "final 10-second window must not materially exceed first window",
           "pool_must_drain": true,
-          "formal_minimum_confirmation_requests": 3000
+          "formal_confirmation_request_range": [
+            500,
+            2000
+          ],
+          "confirmation_count_formula": "min(2000, floor(offered_rps * (1800 - 240)))",
+          "maximum_complete_round_seconds": 1800,
+          "overhead_reserve_seconds": 240,
+          "early_abort": "stop early when failures exceed the planned 0.1% budget or rolling 30-second P90 remains above 110% of acceptance P90 for 10 checks"
         },
-        "baseline": "40 low-rate requests; 2 req/s for SenseVoice and Matcha, 0.5 req/s for Supertonic",
-        "resource_scope": "server process and accessible child processes; client excluded; RSS may double-count shared pages"
+        "baseline": "40 low-rate requests; model-specific baseline offered rate.",
+        "resource_scope": "Server process and accessible child processes; client excluded; process-tree sampling was incomplete during this run, so reported RSS/CPU are partial.",
+        "resource_efficiency_metric": {
+          "name": "delivered_rps_per_cpu_core",
+          "formula": "successful responses per second / mean server CPU cores",
+          "interpretation": "higher values indicate more successful throughput per sampled CPU core under this model, fixture, and pool configuration",
+          "resource_measurement_scope": "server process and accessible child processes; process-tree sampling was incomplete for these runs"
+        }
       },
       "environment": {
         "platform": "macOS-27.0-arm64-arm-64bit",
         "logical_cpu_count": 10,
         "memory_bytes": 17179869184,
-        "python": "3.11.9 (v3.11.9:de54cf5be3, Apr  2 2024, 07:12:50) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "python": "3.11.9",
         "sherpa_onnx": "1.13.8",
-        "smartvoice_base_revision": "3a7c02a2b7c78b0da1e13bc419af09f09020239e",
+        "smartvoice_base_revision": "462d0d540c6b5ac8359e913d9c7a0458b7075aeb",
         "pool_settings": {
           "min_instances": 1,
           "max_instances": 2,
-          "num_threads": 2,
-          "max_queued_inference": 4,
-          "max_concurrent_inference": 1,
-          "instance_idle_seconds": 300
+          "threads_per_instance": 2,
+          "max_waiting_per_model": 4,
+          "parallel_inference_enabled": true
         },
-        "model_artifact_fingerprint": "not captured in source run",
-        "input_fixture_fingerprint": "not captured in source run"
+        "model_artifact_fingerprint": "2d01c756ab35dfcc6b7caae11e61a72a7ed3eaf510c758302d3592ef7c8c67b9",
+        "input_fixture_fingerprint": [
+          "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+          "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+          "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb"
+        ]
       },
       "test_configuration": {
         "min_instances": 1,
@@ -440,78 +454,101 @@
         "threads_per_instance": 2,
         "max_waiting_per_model": 4,
         "parallel_inference_enabled": true,
+        "confirmation_requests_planned": 2000,
+        "confirmation_request_range": [
+          500,
+          2000
+        ],
+        "maximum_round_seconds": 1800,
+        "overhead_reserve_seconds": 240,
         "fixtures": {
-          "audio_fixture_count": 3,
-          "fixture_ids": [
-            "zh_01.wav",
-            "zh_02.wav",
-            "zh_03.wav"
+          "fixture_count": 3,
+          "sha256": [
+            "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+            "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+            "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb"
           ],
-          "validation": "all 3000 successful transcripts matched their serial outputs"
+          "validation": "Chinese FLEURS audio fixtures; ASR outputs validated against the serial reference."
         }
       },
       "result": {
         "status": "pass",
-        "status_note": "Meets recorded acceptance criteria and 3,000-request formal confirmation count.",
+        "status_note": "Completed full confirmation and met all acceptance criteria.",
         "highest_tested_passing_offered_rps": 14.0,
         "passing_run": {
           "offered_rps": 14.0,
-          "delivered_rps": 13.996927834893793,
-          "requests_planned": 3000,
-          "requests_completed": 3000,
-          "valid_responses": 3000,
+          "delivered_rps": 13.994225101700291,
+          "requests_planned": 2000,
+          "requests_completed": 2000,
+          "valid_responses": 2000,
           "failed_responses": 0,
           "observed_success_rate": 1.0,
-          "elapsed_seconds": 214.3327475420083,
-          "end_to_end_p90_seconds": 0.23273001157213002,
-          "low_rate_baseline_p90_seconds": 0.2756778339971788,
-          "p90_to_baseline_ratio": 0.8442100991496897,
-          "adapter_wait_p90_seconds": 0.0786,
-          "client_schedule_lag_p90_seconds": 0.005101381277199835,
+          "elapsed_seconds": 142.9160947080236,
+          "end_to_end_p90_seconds": 0.1652264401782304,
+          "low_rate_baseline_p90_seconds": 0.1636445420444943,
+          "p90_to_baseline_ratio": 1.00966667212956,
+          "adapter_wait_p90_seconds": 0.0047,
+          "client_schedule_lag_p90_seconds": 0.005102178605739027,
           "first_10s_window": {
             "requests": 140,
-            "p90_seconds": 0.24750875623431057,
-            "wait_p90_seconds": 0.0865
+            "p90_seconds": 0.1575000116135925,
+            "wait_p90_seconds": 0.0012
           },
           "last_10s_window": {
-            "requests": 60,
-            "p90_seconds": 0.22749176155775785,
-            "wait_p90_seconds": 0.076
+            "requests": 40,
+            "p90_seconds": 0.13819038029760122,
+            "wait_p90_seconds": 0.0
           },
-          "window_count": 22,
+          "window_count": 15,
           "peak_active_instances": 2,
           "pool_after_drain": {
-            "instances": 2,
-            "ready": 2,
-            "active": 0,
-            "waiting": 0,
-            "warming": false
+            "stt-sensevoice-small-int8": {
+              "instances": 2,
+              "ready": 2,
+              "active": 0,
+              "waiting": 0,
+              "warming": false,
+              "retiring": 0,
+              "completed": 2059,
+              "peak_active": 2,
+              "warmups": [
+                {
+                  "instance_count": 1,
+                  "seconds": 0.9000738330068998,
+                  "success": true
+                },
+                {
+                  "instance_count": 2,
+                  "seconds": 0.875138999952469,
+                  "success": true
+                }
+              ]
+            }
           },
           "resources": {
-            "cpu_mean_cores": 3.4540467465264855,
-            "cpu_p90_cores": 3.9483816054868277,
-            "rss_mean_mib": 801.6998593976778,
-            "rss_peak_mib": 803.796875
-          }
+            "cpu_mean_cores": 3.356393574668304,
+            "cpu_p90_cores": 3.748619917836239,
+            "rss_mean_mib": 707.4890874818313,
+            "rss_peak_mib": 775.765625
+          },
+          "confirmation_complete": true,
+          "window_trend_ok": true,
+          "pool_drained": true,
+          "delivered_rps_per_cpu_core": 4.169423159226276
         },
         "first_tested_nonpassing_rate": {
           "offered_rps": 15.0,
-          "requests_planned": 3000,
-          "requests_completed": 2091,
-          "valid_responses": 2085,
-          "failed_responses": 6,
-          "observed_success_rate": 0.9971305595408895,
-          "end_to_end_p90_seconds": 0.27049324999097735,
-          "low_rate_baseline_p90_seconds": 0.28223045804770663,
-          "p90_to_baseline_ratio": 0.9584126811191112,
-          "adapter_wait_p90_seconds": 0.1168,
-          "pool_after_abort_or_drain": {
-            "active": 0,
-            "waiting": 0,
-            "warming": false
-          },
+          "requests_planned": 2000,
+          "requests_completed": 1871,
+          "valid_responses": 1867,
+          "failed_responses": 4,
+          "observed_success_rate": 0.9978621058257616,
+          "end_to_end_p90_seconds": 0.14291325001977384,
+          "low_rate_baseline_p90_seconds": 0.16944658296415582,
+          "p90_to_baseline_ratio": 0.8434118146248204,
+          "adapter_wait_p90_seconds": 0.0,
           "failure_reason": "success rate below 99.9%",
-          "note": "This is the first tested rate above the passing point; it does not prove the exact capacity boundary."
+          "note": "First tested rate above the accepted rate; not a precisely measured capacity boundary."
         },
         "acceptance_checks": {
           "valid_success_rate": true,
@@ -523,41 +560,39 @@
       },
       "warmup": {
         "fresh_process_trials": 10,
-        "first_instance_first_request_p90_seconds": 2.534136665984988,
-        "second_instance_expansion_request_p90_seconds": 0.9117075419635512,
-        "second_instance_initialization_plus_first_inference_p90_seconds": 0.9046677919686772,
-        "fully_warm_request_p90_seconds": 0.23955737496726215,
+        "first_instance_first_request_p90_seconds": 1.037950916972477,
+        "second_instance_expansion_request_p90_seconds": 0.8849604169954546,
+        "second_instance_initialization_plus_first_inference_p90_seconds": 0.8771804999560118,
+        "fully_warm_request_p90_seconds": 0.14702783396933228,
         "rss_mib_median": {
-          "baseline": 53.8046875,
-          "one_instance": 585.9609375,
-          "two_instances": 901.2109375
+          "baseline": 76.4140625,
+          "one_instance": 473.796875,
+          "two_instances": 796.703125
         },
         "rss_peak_mib": {
-          "first_instance_warmup": 686.421875,
-          "second_instance_expansion": 1081.890625,
-          "two_fully_warm": 1093.9375
+          "first_instance_warmup": 572.015625,
+          "second_instance_expansion": 878.0,
+          "two_fully_warm": 891.890625
         },
         "cpu_mean_cores_median": {
-          "first_instance_warmup": 1.0167668364359108,
-          "second_instance_expansion": 1.3614234620224361,
-          "one_instance_warm": 1.785092637299935,
-          "two_instances_warm": 3.2385440967660246
+          "first_instance_warmup": 1.0619776642788032,
+          "second_instance_expansion": 1.3553702982231923,
+          "one_instance_warm": 1.832282141613561,
+          "two_instances_warm": 3.5001639027545606
         }
       },
       "limitations": [
-        "Retrospective report from the prior sandbox run; model/input hashes were not recorded at run time.",
         "Capacity is the highest tested passing rate, not a proven maximum or an SLA for arbitrary inputs.",
-        "TTS checks validate successful audio transport/PCM only; this concurrency run does not establish semantic quality or MOS.",
-        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability."
+        "Confirmation samples are dynamically selected between 500 and 2,000 to fit the 30-minute round limit; smaller samples provide less confidence than the former 3,000-request method.",
+        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability.",
+        "Process-tree resource sampling was incomplete; CPU/RSS values may omit child processes."
       ],
       "provenance": {
-        "aggregate_source": "benchmarks/elastic-pool/measurements.json",
-        "protocol_source": "benchmarks/elastic-pool/README.md",
-        "original_run_date": "2026-10-02",
-        "raw_local_source_retained": true,
-        "raw_source_file_policy": "original per-request records remain in ignored local sandbox output; this report contains reviewed aggregates only",
-        "source_confirmation_record": "asr-confirmation-14.json",
-        "first_nonpassing_confirmation_record": "asr-confirmation-15.json"
+        "run_date": "2026-10-03",
+        "confirmation_raw_file": "asr-confirmation-budget-sensevoice-14.json",
+        "baseline_raw_file": "asr-baseline-confirmation-budget-sensevoice-14.json",
+        "first_nonpassing_raw_file": "asr-confirmation-budget-sensevoice-15.json",
+        "raw_measurements_are_local_and_gitignored": true
       }
     }
   },

@@ -81,7 +81,7 @@
     "de",
     "yue"
   ],
-  "generated_at": "2026-09-29T01:53:40.630879+00:00",
+  "generated_at": "2026-10-03",
   "selected_categories": [
     "quality",
     "performance",
@@ -94,9 +94,7 @@
     "performance": [
       "20260929T013851Z-881466"
     ],
-    "concurrency": [
-      "confirmation-8"
-    ]
+    "concurrency": "macos-arm64-matcha-concurrency-2026-10-03"
   },
   "models": [
     {
@@ -256,9 +254,9 @@
     "concurrency": {
       "schema_version": "1.0",
       "benchmark_suite": "smartvoice-concurrency-capacity-v1",
-      "profile": "fixed-arrival-confirmation",
+      "profile": "fixed-arrival-confirmation-500-to-2000",
       "category": "concurrency",
-      "evidence_status": "formal_retrospective",
+      "evidence_status": "formal_confirmation",
       "method": {
         "arrival_model": "open_loop_fixed_rate",
         "client_workers": 64,
@@ -271,28 +269,48 @@
           "maximum_p90_to_baseline_ratio": 1.2,
           "latency_and_wait_trend": "final 10-second window must not materially exceed first window",
           "pool_must_drain": true,
-          "formal_minimum_confirmation_requests": 3000
+          "formal_confirmation_request_range": [
+            500,
+            2000
+          ],
+          "confirmation_count_formula": "min(2000, floor(offered_rps * (1800 - 240)))",
+          "maximum_complete_round_seconds": 1800,
+          "overhead_reserve_seconds": 240,
+          "early_abort": "stop early when failures exceed the planned 0.1% budget or rolling 30-second P90 remains above 110% of acceptance P90 for 10 checks"
         },
-        "baseline": "40 low-rate requests; 2 req/s for SenseVoice and Matcha, 0.5 req/s for Supertonic",
-        "resource_scope": "server process and accessible child processes; client excluded; RSS may double-count shared pages"
+        "baseline": "40 low-rate requests; model-specific baseline offered rate.",
+        "resource_scope": "Server process and accessible child processes; client excluded; process-tree sampling was incomplete during this run, so reported RSS/CPU are partial.",
+        "resource_efficiency_metric": {
+          "name": "delivered_rps_per_cpu_core",
+          "formula": "successful responses per second / mean server CPU cores",
+          "interpretation": "higher values indicate more successful throughput per sampled CPU core under this model, fixture, and pool configuration",
+          "resource_measurement_scope": "server process and accessible child processes; process-tree sampling was incomplete for these runs"
+        }
       },
       "environment": {
         "platform": "macOS-27.0-arm64-arm-64bit",
         "logical_cpu_count": 10,
         "memory_bytes": 17179869184,
-        "python": "3.11.9 (v3.11.9:de54cf5be3, Apr  2 2024, 07:12:50) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "python": "3.11.9",
         "sherpa_onnx": "1.13.8",
-        "smartvoice_base_revision": "3a7c02a2b7c78b0da1e13bc419af09f09020239e",
+        "smartvoice_base_revision": "462d0d540c6b5ac8359e913d9c7a0458b7075aeb",
         "pool_settings": {
           "min_instances": 1,
           "max_instances": 2,
-          "num_threads": 2,
-          "max_queued_inference": 4,
-          "max_concurrent_inference": 1,
-          "instance_idle_seconds": 300
+          "threads_per_instance": 2,
+          "max_waiting_per_model": 4,
+          "parallel_inference_enabled": true
         },
-        "model_artifact_fingerprint": "not captured in source run",
-        "input_fixture_fingerprint": "not captured in source run"
+        "model_artifact_fingerprint": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "input_fixture_fingerprint": [
+          "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+          "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+          "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb",
+          "2c20c288bc757c1b0280123caae05bfb32b42379c2ea24ff1160f9a317af3c84",
+          "e6f5ac196ff1b2fcc6404d1ed24684bbeaa35bba375e9b6580d8b0998bfd6a7e",
+          "64e84c6ef7a3a8836773819c95157e01213a6758eb4b3eab1e4d9a5fad8c19c0",
+          "7bb588ccd765fe4ce27bd66147782e7d921c4d81136ddc1f7da15b904b57de70"
+        ]
       },
       "test_configuration": {
         "min_instances": 1,
@@ -300,79 +318,105 @@
         "threads_per_instance": 2,
         "max_waiting_per_model": 4,
         "parallel_inference_enabled": true,
+        "confirmation_requests_planned": 2000,
+        "confirmation_request_range": [
+          500,
+          2000
+        ],
+        "maximum_round_seconds": 1800,
+        "overhead_reserve_seconds": 240,
         "fixtures": {
-          "text_fixture_count": 4,
-          "fixture_ids": [
-            "zh_text_1",
-            "zh_text_2",
-            "zh_text_3",
-            "zh_text_4"
+          "fixture_count": 7,
+          "sha256": [
+            "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+            "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+            "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb",
+            "2c20c288bc757c1b0280123caae05bfb32b42379c2ea24ff1160f9a317af3c84",
+            "e6f5ac196ff1b2fcc6404d1ed24684bbeaa35bba375e9b6580d8b0998bfd6a7e",
+            "64e84c6ef7a3a8836773819c95157e01213a6758eb4b3eab1e4d9a5fad8c19c0",
+            "7bb588ccd765fe4ce27bd66147782e7d921c4d81136ddc1f7da15b904b57de70"
           ],
-          "validation": "HTTP 200 with valid, nonempty, nonsilent PCM WAV"
+          "validation": "Chinese text fixtures; TTS output validated as nonempty, nonsilent PCM WAV."
         }
       },
       "result": {
         "status": "pass",
-        "status_note": "Meets recorded acceptance criteria and 3,000-request formal confirmation count.",
+        "status_note": "Completed full confirmation and met all acceptance criteria.",
         "highest_tested_passing_offered_rps": 8.0,
         "passing_run": {
           "offered_rps": 8.0,
-          "delivered_rps": 7.992161556490601,
-          "requests_planned": 3000,
-          "requests_completed": 3000,
-          "valid_responses": 2998,
-          "failed_responses": 2,
-          "observed_success_rate": 0.9993333333333333,
-          "elapsed_seconds": 375.11754220799776,
-          "end_to_end_p90_seconds": 0.34106374997645617,
-          "low_rate_baseline_p90_seconds": 0.3825003750389442,
-          "p90_to_baseline_ratio": 0.891669060302832,
-          "adapter_wait_p90_seconds": 0.0565,
-          "client_schedule_lag_p90_seconds": 0.005111999984364957,
+          "delivered_rps": 7.996319705848993,
+          "requests_planned": 2000,
+          "requests_completed": 2000,
+          "valid_responses": 2000,
+          "failed_responses": 0,
+          "observed_success_rate": 1.0,
+          "elapsed_seconds": 250.11506212502718,
+          "end_to_end_p90_seconds": 0.23770441702799872,
+          "low_rate_baseline_p90_seconds": 0.26062166603514925,
+          "p90_to_baseline_ratio": 0.9120669844691279,
+          "adapter_wait_p90_seconds": 0.0,
+          "client_schedule_lag_p90_seconds": 0.005110417027026415,
           "first_10s_window": {
             "requests": 80,
-            "p90_seconds": 0.3475081249489449,
-            "wait_p90_seconds": 0.0657
+            "p90_seconds": 0.2438322090310976,
+            "wait_p90_seconds": 0.0
           },
           "last_10s_window": {
-            "requests": 40,
-            "p90_seconds": 0.3143175419536419,
-            "wait_p90_seconds": 0.0506
+            "requests": 80,
+            "p90_seconds": 0.24014524999074638,
+            "wait_p90_seconds": 0.0
           },
-          "window_count": 38,
+          "window_count": 25,
           "peak_active_instances": 2,
           "pool_after_drain": {
-            "instances": 2,
-            "ready": 2,
-            "active": 0,
-            "waiting": 0,
-            "warming": false
+            "tts-matcha-zh-baker": {
+              "instances": 2,
+              "ready": 2,
+              "active": 0,
+              "waiting": 0,
+              "warming": false,
+              "retiring": 0,
+              "completed": 2059,
+              "peak_active": 2,
+              "warmups": [
+                {
+                  "instance_count": 1,
+                  "seconds": 1.4497287909616716,
+                  "success": true
+                },
+                {
+                  "instance_count": 2,
+                  "seconds": 1.1870845420053229,
+                  "success": true
+                }
+              ]
+            }
           },
           "resources": {
-            "cpu_mean_cores": 3.5265308896034586,
-            "cpu_p90_cores": 4.268559953372915,
-            "rss_mean_mib": 381.81365131578946,
-            "rss_peak_mib": 413.921875
-          }
+            "cpu_mean_cores": 3.361303377597026,
+            "cpu_p90_cores": 3.9114262425085276,
+            "rss_mean_mib": 518.4549411062682,
+            "rss_peak_mib": 537.65625
+          },
+          "confirmation_complete": true,
+          "window_trend_ok": true,
+          "pool_drained": true,
+          "delivered_rps_per_cpu_core": 2.37893424293213
         },
         "first_tested_nonpassing_rate": {
           "offered_rps": 9.0,
-          "requests_planned": 3000,
-          "requests_completed": 2151,
-          "valid_responses": 2146,
-          "failed_responses": 5,
-          "observed_success_rate": 0.99767549976755,
-          "end_to_end_p90_seconds": 0.37983733328292146,
-          "low_rate_baseline_p90_seconds": 0.36105979100102564,
-          "p90_to_baseline_ratio": 1.0520067389111254,
-          "adapter_wait_p90_seconds": 0.1229,
-          "pool_after_abort_or_drain": {
-            "active": 0,
-            "waiting": 0,
-            "warming": false
-          },
-          "failure_reason": "success rate below 99.9%",
-          "note": "This is the first tested rate above the passing point; it does not prove the exact capacity boundary."
+          "requests_planned": 2000,
+          "requests_completed": 911,
+          "valid_responses": 911,
+          "failed_responses": 0,
+          "observed_success_rate": 1.0,
+          "end_to_end_p90_seconds": 0.3075504305306822,
+          "low_rate_baseline_p90_seconds": 0.2581189170014113,
+          "p90_to_baseline_ratio": 1.1915067446567684,
+          "adapter_wait_p90_seconds": 0.0646,
+          "failure_reason": "sustained_30_second_p90_exceeded_110_percent_of_limit",
+          "note": "First tested rate above the accepted rate; not a precisely measured capacity boundary."
         },
         "acceptance_checks": {
           "valid_success_rate": true,
@@ -384,41 +428,40 @@
       },
       "warmup": {
         "fresh_process_trials": 10,
-        "first_instance_first_request_p90_seconds": 2.582333375001326,
-        "second_instance_expansion_request_p90_seconds": 1.199148415995296,
-        "second_instance_initialization_plus_first_inference_p90_seconds": 1.19130787497852,
-        "fully_warm_request_p90_seconds": 0.34103008400416,
+        "first_instance_first_request_p90_seconds": 1.2181782090337947,
+        "second_instance_expansion_request_p90_seconds": 1.160101792018395,
+        "second_instance_initialization_plus_first_inference_p90_seconds": 1.1483530839905143,
+        "fully_warm_request_p90_seconds": 0.24180724995676428,
         "rss_mib_median": {
-          "baseline": 53.640625,
-          "one_instance": 412.390625,
-          "two_instances": 596.15625
+          "baseline": 84.1328125,
+          "one_instance": 394.421875,
+          "two_instances": 574.1328125
         },
         "rss_peak_mib": {
-          "first_instance_warmup": 423.96875,
-          "second_instance_expansion": 610.484375,
-          "two_fully_warm": 623.71875
+          "first_instance_warmup": 424.953125,
+          "second_instance_expansion": 600.15625,
+          "two_fully_warm": 612.546875
         },
         "cpu_mean_cores_median": {
-          "first_instance_warmup": 1.058177690275559,
-          "second_instance_expansion": 1.4987079229980265,
-          "one_instance_warm": 1.9414540663873736,
-          "two_instances_warm": 3.607686122317168
+          "first_instance_warmup": 1.1434223419915708,
+          "second_instance_expansion": 1.478784916834465,
+          "one_instance_warm": 2.0628116486851957,
+          "two_instances_warm": 3.9880202260529907
         }
       },
       "limitations": [
-        "Retrospective report from the prior sandbox run; model/input hashes were not recorded at run time.",
         "Capacity is the highest tested passing rate, not a proven maximum or an SLA for arbitrary inputs.",
-        "TTS checks validate successful audio transport/PCM only; this concurrency run does not establish semantic quality or MOS.",
-        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability."
+        "Confirmation samples are dynamically selected between 500 and 2,000 to fit the 30-minute round limit; smaller samples provide less confidence than the former 3,000-request method.",
+        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability.",
+        "Process-tree resource sampling was incomplete; CPU/RSS values may omit child processes.",
+        "TTS checks validate successful audio transport/PCM only; this concurrency run does not establish semantic quality or MOS."
       ],
       "provenance": {
-        "aggregate_source": "benchmarks/elastic-pool/measurements.json",
-        "protocol_source": "benchmarks/elastic-pool/README.md",
-        "original_run_date": "2026-10-02",
-        "raw_local_source_retained": true,
-        "raw_source_file_policy": "original per-request records remain in ignored local sandbox output; this report contains reviewed aggregates only",
-        "source_confirmation_record": "tts-confirmation-8.json",
-        "first_nonpassing_confirmation_record": "tts-confirmation-9.json"
+        "run_date": "2026-10-03",
+        "confirmation_raw_file": "tts-confirmation-budget-matcha-8.json",
+        "baseline_raw_file": "tts-baseline-confirmation-budget-matcha-8.json",
+        "first_nonpassing_raw_file": "tts-confirmation-budget-matcha-9.json",
+        "raw_measurements_are_local_and_gitignored": true
       }
     }
   },

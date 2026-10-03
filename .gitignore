@@ -226,6 +226,9 @@ __marimo__/
 # Local execution session state
 :memory:.ses
 
+# Local experiments and validation workspace
+/sandbox/
+
 # Vendored Qwen3-TTS native build artifacts
 native/qwen3-tts/qwen_tts
 native/qwen3-tts/.source_fingerprint

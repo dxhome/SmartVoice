@@ -141,7 +141,7 @@
   "unsupported_languages": [
     "yue"
   ],
-  "generated_at": "2026-09-29T06:14:18.284327+00:00",
+  "generated_at": "2026-10-03",
   "selected_categories": [
     "quality",
     "performance",
@@ -155,9 +155,7 @@
     "performance": [
       "20260928T112659Z-a95afa"
     ],
-    "concurrency": [
-      "confirmation-1.9"
-    ]
+    "concurrency": "macos-arm64-supertonic-concurrency-2026-10-03"
   },
   "models": [
     {
@@ -368,43 +366,59 @@
     "concurrency": {
       "schema_version": "1.0",
       "benchmark_suite": "smartvoice-concurrency-capacity-v1",
-      "profile": "fixed-arrival-confirmation",
+      "profile": "fixed-arrival-confirmation-500-to-2000",
       "category": "concurrency",
-      "evidence_status": "formal_retrospective",
+      "evidence_status": "formal_confirmation",
       "method": {
         "arrival_model": "open_loop_fixed_rate",
         "client_workers": 64,
         "automatic_retries": false,
         "latency_definition": "scheduled arrival to full HTTP response body read",
         "p90_estimator": "nearest_rank",
-        "success_definition": "HTTP 200 and task-specific response validation; ASR output compared with serial result where applicable",
+        "success_definition": "HTTP 200 and task-specific response validation; TTS audio must be nonempty, nonsilent PCM WAV",
         "acceptance": {
           "minimum_valid_success_rate": 0.999,
           "maximum_p90_to_baseline_ratio": 1.2,
           "latency_and_wait_trend": "final 10-second window must not materially exceed first window",
           "pool_must_drain": true,
-          "formal_minimum_confirmation_requests": 3000
+          "formal_confirmation_request_range": [
+            500,
+            2000
+          ],
+          "maximum_complete_round_seconds": 1800.0
         },
-        "baseline": "40 low-rate requests; 2 req/s for SenseVoice and Matcha, 0.5 req/s for Supertonic",
-        "resource_scope": "server process and accessible child processes; client excluded; RSS may double-count shared pages"
+        "baseline": "0.822606s P90 at 0.5 req/s.",
+        "resource_scope": "Server process and accessible child processes; process-tree sampling was incomplete during this run, so reported RSS/CPU are partial.",
+        "resource_efficiency_metric": {
+          "name": "delivered_rps_per_cpu_core",
+          "formula": "successful responses per second / mean server CPU cores",
+          "interpretation": "higher values indicate more successful throughput per sampled CPU core under this model, fixture, and pool configuration",
+          "resource_measurement_scope": "server process tree sampling was incomplete for this run"
+        }
       },
       "environment": {
         "platform": "macOS-27.0-arm64-arm-64bit",
         "logical_cpu_count": 10,
         "memory_bytes": 17179869184,
-        "python": "3.11.9 (v3.11.9:de54cf5be3, Apr  2 2024, 07:12:50) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "python": "3.11.9",
         "sherpa_onnx": "1.13.8",
-        "smartvoice_base_revision": "3a7c02a2b7c78b0da1e13bc419af09f09020239e",
         "pool_settings": {
           "min_instances": 1,
           "max_instances": 2,
-          "num_threads": 2,
-          "max_queued_inference": 4,
-          "max_concurrent_inference": 1,
-          "instance_idle_seconds": 300
+          "threads_per_instance": 2,
+          "max_waiting_per_model": 4,
+          "parallel_inference_enabled": true
         },
-        "model_artifact_fingerprint": "not captured in source run",
-        "input_fixture_fingerprint": "not captured in source run"
+        "model_artifact_fingerprint": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a",
+        "input_fixture_fingerprint": [
+          "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+          "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+          "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb",
+          "8d58a39a1010d24d035a5ad617dee13902fa1be46846ef38af88cd1ab0a9f004",
+          "792fe2ef72c4ab4a83bce1662af687a4416b34fba1b306293e366db344f9f11c",
+          "9dcf7805102bdf6739bb3de1981b5b339b7d7d8542f2aedb58fcf0a081853133",
+          "1d160cda84c5311699d8891c912426441072eff0ee5d54f8616e4d8e2164f971"
+        ]
       },
       "test_configuration": {
         "min_instances": 1,
@@ -412,125 +426,150 @@
         "threads_per_instance": 2,
         "max_waiting_per_model": 4,
         "parallel_inference_enabled": true,
+        "supertonic_generation_steps": 6,
+        "confirmation_requests_planned": 2000,
+        "confirmation_request_range": [
+          500,
+          2000
+        ],
+        "maximum_round_seconds": 1800.0,
         "fixtures": {
-          "text_fixture_count": 4,
-          "fixture_ids": [
-            "en_text_1",
-            "en_text_2",
-            "en_text_3",
-            "en_text_4"
+          "fixture_count": 7,
+          "sha256": [
+            "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+            "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+            "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb",
+            "8d58a39a1010d24d035a5ad617dee13902fa1be46846ef38af88cd1ab0a9f004",
+            "792fe2ef72c4ab4a83bce1662af687a4416b34fba1b306293e366db344f9f11c",
+            "9dcf7805102bdf6739bb3de1981b5b339b7d7d8542f2aedb58fcf0a081853133",
+            "1d160cda84c5311699d8891c912426441072eff0ee5d54f8616e4d8e2164f971"
           ],
-          "validation": "HTTP 200 with valid, nonempty, nonsilent PCM WAV"
+          "validation": "English text fixtures; TTS output validated as nonempty, nonsilent PCM WAV."
         }
       },
       "result": {
-        "status": "insufficient_evidence",
-        "status_note": "Observed metrics pass at this offered rate, but the run is below the 3,000-request minimum for a formal reliability confirmation.",
+        "status": "pass",
+        "status_note": "Completed full confirmation at the product default of 6 Supertonic generation steps and met all acceptance criteria.",
         "highest_tested_passing_offered_rps": 1.9,
         "passing_run": {
           "offered_rps": 1.9,
-          "delivered_rps": 1.8978572863710756,
-          "requests_planned": 1000,
-          "requests_completed": 1000,
-          "valid_responses": 1000,
+          "delivered_rps": 1.8995122930407942,
+          "requests_planned": 2000,
+          "requests_completed": 2000,
+          "valid_responses": 2000,
           "failed_responses": 0,
           "observed_success_rate": 1.0,
-          "elapsed_seconds": 526.9100090829888,
-          "end_to_end_p90_seconds": 1.1334870592108928,
-          "low_rate_baseline_p90_seconds": 1.1720354580320418,
-          "p90_to_baseline_ratio": 0.9671098697936362,
-          "adapter_wait_p90_seconds": 0.0585,
-          "client_schedule_lag_p90_seconds": 0.005107276258058846,
+          "elapsed_seconds": 1052.9018460829975,
+          "end_to_end_p90_seconds": 0.7965896224486642,
+          "low_rate_baseline_p90_seconds": 0.8226058749714866,
+          "p90_to_baseline_ratio": 0.9683733689311127,
+          "adapter_wait_p90_seconds": 0.0,
+          "client_schedule_lag_p90_seconds": 0.005165442242287099,
           "first_10s_window": {
             "requests": 19,
-            "p90_seconds": 1.116728490917012,
-            "wait_p90_seconds": 0.0475
+            "p90_seconds": 0.8321270106243901,
+            "wait_p90_seconds": 0.0
           },
           "last_10s_window": {
-            "requests": 12,
-            "p90_seconds": 1.1301025040447712,
-            "wait_p90_seconds": 0.0688
+            "requests": 5,
+            "p90_seconds": 0.927576337067876,
+            "wait_p90_seconds": 0.0
           },
-          "window_count": 53,
+          "window_count": 106,
           "peak_active_instances": 2,
           "pool_after_drain": {
-            "instances": 2,
-            "ready": 2,
-            "active": 0,
-            "waiting": 0,
-            "warming": false
+            "tts-supertonic-v3-multilingual-int8": {
+              "instances": 2,
+              "ready": 2,
+              "active": 0,
+              "waiting": 0,
+              "warming": false,
+              "retiring": 0,
+              "completed": 2059,
+              "peak_active": 2,
+              "warmups": [
+                {
+                  "instance_count": 1,
+                  "seconds": 1.2140416670008563,
+                  "success": true
+                },
+                {
+                  "instance_count": 2,
+                  "seconds": 1.1050584590411745,
+                  "success": true
+                }
+              ]
+            }
           },
           "resources": {
-            "cpu_mean_cores": 3.6409104433726323,
-            "cpu_p90_cores": 4.123044701879202,
-            "rss_mean_mib": 468.24591052424125,
-            "rss_peak_mib": 502.875
-          }
+            "cpu_mean_cores": 2.746392704139862,
+            "cpu_p90_cores": 4.057197865663081,
+            "rss_mean_mib": 487.0804626470879,
+            "rss_peak_mib": 518.28125
+          },
+          "confirmation_complete": true,
+          "window_trend_ok": true,
+          "pool_drained": true,
+          "delivered_rps_per_cpu_core": 0.6916389961921702
         },
         "first_tested_nonpassing_rate": {
           "offered_rps": 2.0,
-          "requests_planned": 1000,
-          "requests_completed": 1000,
-          "valid_responses": 1000,
-          "failed_responses": 0,
+          "requests_planned": 60,
+          "requests_completed": 60,
+          "valid_responses": 60,
           "observed_success_rate": 1.0,
-          "end_to_end_p90_seconds": 1.4538417080184445,
-          "low_rate_baseline_p90_seconds": 1.1319385000388138,
-          "p90_to_baseline_ratio": 1.2843822415869703,
-          "adapter_wait_p90_seconds": 0.4,
-          "pool_after_abort_or_drain": {
-            "active": 0,
-            "waiting": 0,
-            "warming": false
-          },
-          "failure_reason": "P90 latency ratio above 1.2",
-          "note": "This is the first tested rate above the passing point; it does not prove the exact capacity boundary."
+          "end_to_end_p90_seconds": 1.5611802500206977,
+          "low_rate_baseline_p90_seconds": 0.8861574580078013,
+          "p90_to_baseline_ratio": 1.7617413653894383,
+          "adapter_wait_p90_seconds": 0.446,
+          "failure_reason": "P90 latency and final-window trend did not meet screening acceptance.",
+          "note": "30-second screening only; not a formal capacity boundary."
         },
         "acceptance_checks": {
           "valid_success_rate": true,
           "p90_latency_ratio": true,
           "window_trend": true,
           "pool_drained": true,
-          "formal_request_count": false
+          "formal_request_count": true
         }
       },
       "warmup": {
         "fresh_process_trials": 10,
-        "first_instance_first_request_p90_seconds": 3.1826566249947064,
-        "second_instance_expansion_request_p90_seconds": 1.565885916003026,
-        "second_instance_initialization_plus_first_inference_p90_seconds": 1.4311652499600314,
-        "fully_warm_request_p90_seconds": 1.1275548750418238,
+        "first_instance_first_request_p90_seconds": 1.4000681249890476,
+        "second_instance_expansion_request_p90_seconds": 1.376202707993798,
+        "second_instance_initialization_plus_first_inference_p90_seconds": 1.3678736250149086,
+        "fully_warm_request_p90_seconds": 0.9909526660339907,
         "rss_mib_median": {
-          "baseline": 53.0859375,
-          "one_instance": 341.84375,
-          "two_instances": 637.9453125
+          "baseline": 83.6953125,
+          "one_instance": 409.671875,
+          "two_instances": 676.4609375
         },
         "rss_peak_mib": {
-          "first_instance_warmup": 349.125,
-          "second_instance_expansion": 622.625,
-          "two_fully_warm": 664.234375
+          "first_instance_warmup": 370.9375,
+          "second_instance_expansion": 683.203125,
+          "two_fully_warm": 725.671875
         },
         "cpu_mean_cores_median": {
-          "first_instance_warmup": 1.2671272218454863,
-          "second_instance_expansion": 3.0395794527039177,
-          "one_instance_warm": 1.9381568284769464,
-          "two_instances_warm": 3.770100141939853
+          "first_instance_warmup": 1.726115329702929,
+          "second_instance_expansion": 3.2786415772544957,
+          "one_instance_warm": 2.016850843396358,
+          "two_instances_warm": 3.991616463309536
         }
       },
       "limitations": [
-        "Retrospective report from the prior sandbox run; model/input hashes were not recorded at run time.",
-        "Capacity is the highest tested passing rate, not a proven maximum or an SLA for arbitrary inputs.",
-        "TTS checks validate successful audio transport/PCM only; this concurrency run does not establish semantic quality or MOS.",
-        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability."
+        "Capacity is the highest formally confirmed passing rate, not a proven maximum or an SLA for arbitrary inputs.",
+        "Confirmation used English text fixtures; this run does not establish concurrency performance for other languages or long-form text.",
+        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability.",
+        "Process-tree resource sampling was incomplete; CPU/RSS values may omit child processes.",
+        "TTS checks validate successful audio transport/PCM only; this concurrency run does not establish semantic quality or MOS."
       ],
       "provenance": {
-        "aggregate_source": "benchmarks/elastic-pool/measurements.json",
-        "protocol_source": "benchmarks/elastic-pool/README.md",
-        "original_run_date": "2026-10-02",
-        "raw_local_source_retained": true,
-        "raw_source_file_policy": "original per-request records remain in ignored local sandbox output; this report contains reviewed aggregates only",
-        "source_confirmation_record": "supertonic-confirmation-1.9.json",
-        "first_nonpassing_confirmation_record": "supertonic-confirmation-2.json"
+        "run_date": "2026-10-03",
+        "product_generation_steps": 6,
+        "confirmation_raw_file": "supertonic-confirmation-product-steps6-1.9-1.9.json",
+        "baseline_raw_file": "supertonic-baseline-confirmation-product-steps6-1.9-1.9.json",
+        "higher_rate_screen_raw_file": "supertonic-product-steps6-p90-screen-2.json",
+        "raw_measurements_are_local_and_gitignored": true
       }
     }
   },

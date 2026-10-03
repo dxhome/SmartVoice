@@ -28,6 +28,7 @@ from smartvoice.adapters.platform.host_metrics import host_info, process_metrics
 STT_MODEL_ID = "stt-sensevoice-small-int8"
 DEFAULT_TTS_MODEL_ID = "tts-kokoro-multilingual-v1-1-zh-en"
 TARGET_SAMPLE_RATE = 16000
+SUPERTONIC_GENERATION_STEPS = 6
 
 
 class SherpaOnnxProvider:
@@ -321,7 +322,7 @@ class SherpaOnnxProvider:
                     config = self._sherpa().GenerationConfig()
                     config.sid = sid
                     config.speed = speed
-                    config.num_steps = 8
+                    config.num_steps = SUPERTONIC_GENERATION_STEPS
                     config.extra["lang"] = "en" if language == "auto" else language
                     generated = tts.generate(text_chunk, config=config)
                 else:

@@ -4,10 +4,11 @@
   "run_id": "20260930T050056Z-32e080",
   "profile": "standard",
   "selected_categories": [
+    "concurrency",
     "performance",
     "quality"
   ],
-  "generated_at": "2026-09-30T09:12:33.751840+00:00",
+  "generated_at": "2026-10-03",
   "software": {
     "smartvoice": "0.2.0",
     "python": "3.11.9"
@@ -1757,7 +1758,136 @@
         },
         "resource_measurement_limit": "CPU time and RSS headers measure the SmartVoice API process only; the native Qwen3-TTS engine subprocess is excluded."
       }
-    ]
+    ],
+    "concurrency": {
+      "model_id": "tts-qwen3-0-6b-customvoice",
+      "task": "tts",
+      "language": "zh",
+      "method": "Elastic offered-load search; short high-to-low screens followed by a sustained confirmation run. A rate passes when success rate >= 99.9%, P90 latency <= 1.2x paired low-rate baseline, latency trend is stable, and the pool drains.",
+      "configuration": {
+        "backend": "qwen-tts",
+        "offered_rate_rps": 0.321,
+        "confirmation_requests": 500,
+        "confirmation_max_seconds": 1800.0,
+        "minimum_confirmation_requests": 500,
+        "service_pool": {
+          "min_instances": 1,
+          "max_instances": 1,
+          "max_waiting": 4,
+          "threads_per_instance": 4
+        },
+        "runtime_execution_limits": {
+          "native_engine_processes": 1,
+          "serialized_inference": true,
+          "native_threads": 4,
+          "max_waiting_inferences": 4
+        },
+        "client_workers": 64,
+        "success_rate_target": 0.999,
+        "p90_ratio_limit": 1.2,
+        "fixture_sha256": [
+          "4ae53831e6ba6f6ac2c466a8758d9a17b476f217c258233046846ce6cf5e8b22",
+          "a1601b6029ad1b41443665a924dbbccb551c782859cc43228633f9d49b60d4b8",
+          "7384143feea1f16a31ad6e99e4c96417646e25682ee3dc1aaa7ee1b9a029b636",
+          "e987bb613ac0be25955a976d068e076c384751def08b01e29623443e471f8722"
+        ]
+      },
+      "result": {
+        "passed": true,
+        "stable": true,
+        "requests": 500,
+        "successes": 500,
+        "errors": 0,
+        "success_rate": 1.0,
+        "status_counts": {
+          "200": 500
+        },
+        "elapsed_seconds": 1558.511255874997,
+        "delivered_rps": 0.3208189854999054,
+        "delivered_rps_per_cpu_core": null,
+        "latency_p90_seconds": 2.319816396047827,
+        "paired_baseline_p90_seconds": 3.8780362919787876,
+        "p90_ratio": 0.598193575662524,
+        "queue_wait_p90_seconds": 0.0,
+        "pool_drained": true,
+        "pool_after_run": {
+          "instances": 1,
+          "ready": 1,
+          "active": 0,
+          "waiting": 0,
+          "warming": false,
+          "retiring": 0,
+          "completed": 539,
+          "peak_active": 1,
+          "warmups": [
+            {
+              "instance_count": 1,
+              "seconds": 8.642923666979186,
+              "success": true
+            }
+          ]
+        },
+        "initial_engine_warmup_seconds": 8.642923666979186,
+        "resource_measurement": {
+          "process_tree_complete": false,
+          "cpu_mean_cores": null,
+          "cpu_p90_cores": null,
+          "rss_mean_mib": null,
+          "rss_peak_mib": null,
+          "delivered_rps_per_cpu_core": null,
+          "unavailable_reason": "The sampler could not include the native Qwen engine child process; the observed server-only CPU/RSS values understate inference resource use."
+        }
+      },
+      "rate_search": {
+        "0.5": {
+          "stage": "full_confirmation",
+          "passed": false,
+          "requests": 780,
+          "successes": 780,
+          "latency_p90_seconds": 4.05,
+          "paired_baseline_p90_seconds": 1.828,
+          "p90_ratio": 2.216,
+          "reason": "P90 latency exceeded 1.2x baseline."
+        },
+        "0.45": {
+          "stage": "full_confirmation_aborted",
+          "passed": false,
+          "requests": 81,
+          "successes": 77,
+          "errors": 4,
+          "reason": "Four HTTP 503 inference_overloaded responses; SmartVoice inference queue reached capacity."
+        },
+        "0.33": {
+          "stage": "screening",
+          "passed": false,
+          "requests": 60,
+          "successes": 60,
+          "latency_p90_seconds": 4.198,
+          "paired_baseline_p90_seconds": 2.847,
+          "p90_ratio": 1.474,
+          "reason": "Screen P90 latency exceeded target."
+        },
+        "0.321": {
+          "stage": "full_confirmation",
+          "passed": true,
+          "requests": 500,
+          "successes": 500,
+          "latency_p90_seconds": 2.319816396047827,
+          "paired_baseline_p90_seconds": 3.8780362919787876,
+          "p90_ratio": 0.598193575662524
+        }
+      },
+      "interpretation": "Highest confirmed passing offered rate observed was 0.321 req/s. This is a tested operating point, not a finely established maximum: higher-rate results were inconsistent across baseline runs and include latency failures and queue-overload errors. The runtime uses one native engine process and serializes synthesis, so increasing HTTP concurrency does not create parallel native inference.",
+      "limitations": [
+        "Paired baseline P90 varied materially across runs; the 0.321 confirmation baseline was 3.878 seconds, while earlier baseline observations were faster. Interpret the boundary conservatively.",
+        "Native engine child process was not included in process-tree sampling; CPU/RSS and delivered requests per CPU core are omitted.",
+        "The report represents Chinese short-text concurrency on this macOS arm64 host; it does not establish multilingual or other-hardware capacity."
+      ],
+      "artifacts": {
+        "confirmation_run": ".smartvoice-dev/benchmark-concurrency/qwen3-tts-zh-qwen3-tts-concurrency-confirmation-minimum-0.321.json",
+        "paired_baseline": ".smartvoice-dev/benchmark-concurrency/qwen3-tts-zh-baseline-qwen3-tts-concurrency-confirmation-minimum-0.321.json"
+      }
+    }
   },
   "local_artifacts": {
     "tts_listening_files_generated": true
@@ -1792,5 +1922,8 @@
       },
       "installed_model_files_bytes": 987015347
     }
-  ]
+  ],
+  "category_run_ids": {
+    "concurrency": "qwen3-tts-concurrency-confirmation-minimum-0.321"
+  }
 }

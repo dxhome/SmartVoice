@@ -82,10 +82,11 @@
     "de",
     "yue"
   ],
-  "generated_at": "2026-09-29T01:53:40.630879+00:00",
+  "generated_at": "2026-10-03",
   "selected_categories": [
     "quality",
-    "performance"
+    "performance",
+    "concurrency"
   ],
   "category_run_ids": {
     "quality": [
@@ -93,7 +94,8 @@
     ],
     "performance": [
       "20260929T013851Z-881466"
-    ]
+    ],
+    "concurrency": "macos-arm64-kokoro-concurrency-2026-10-03"
   },
   "models": [
     {
@@ -733,7 +735,220 @@
           }
         }
       }
-    ]
+    ],
+    "concurrency": {
+      "schema_version": "1.0",
+      "benchmark_suite": "smartvoice-concurrency-capacity-v1",
+      "profile": "fixed-arrival-confirmation-500-to-2000",
+      "category": "concurrency",
+      "evidence_status": "formal_confirmation",
+      "method": {
+        "arrival_model": "open_loop_fixed_rate",
+        "client_workers": 64,
+        "automatic_retries": false,
+        "latency_definition": "scheduled arrival to full HTTP response body read",
+        "p90_estimator": "nearest_rank",
+        "success_definition": "HTTP 200 and task-specific response validation; ASR output compared with serial result where applicable",
+        "acceptance": {
+          "minimum_valid_success_rate": 0.999,
+          "maximum_p90_to_baseline_ratio": 1.2,
+          "latency_and_wait_trend": "final 10-second window must not materially exceed first window",
+          "pool_must_drain": true,
+          "formal_confirmation_request_range": [
+            500,
+            2000
+          ],
+          "confirmation_count_formula": "min(2000, floor(offered_rps * (1800 - 240)))",
+          "maximum_complete_round_seconds": 1800,
+          "overhead_reserve_seconds": 240,
+          "early_abort": "stop early when failures exceed the planned 0.1% budget or rolling 30-second P90 remains above 110% of acceptance P90 for 10 checks"
+        },
+        "baseline": "40 low-rate requests; model-specific baseline offered rate.",
+        "resource_scope": "Server process and accessible child processes; client excluded; process-tree sampling was incomplete during this run, so reported RSS/CPU are partial.",
+        "resource_efficiency_metric": {
+          "name": "delivered_rps_per_cpu_core",
+          "formula": "successful responses per second / mean server CPU cores",
+          "interpretation": "higher values indicate more successful throughput per sampled CPU core under this model, fixture, and pool configuration",
+          "resource_measurement_scope": "server process and accessible child processes; process-tree sampling was incomplete for these runs"
+        }
+      },
+      "environment": {
+        "platform": "macOS-27.0-arm64-arm-64bit",
+        "logical_cpu_count": 10,
+        "memory_bytes": 17179869184,
+        "python": "3.11.9",
+        "sherpa_onnx": "1.13.8",
+        "smartvoice_base_revision": "462d0d540c6b5ac8359e913d9c7a0458b7075aeb",
+        "pool_settings": {
+          "min_instances": 1,
+          "max_instances": 2,
+          "threads_per_instance": 2,
+          "max_waiting_per_model": 4,
+          "parallel_inference_enabled": true
+        },
+        "model_artifact_fingerprint": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "input_fixture_fingerprint": [
+          "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+          "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+          "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb",
+          "8d58a39a1010d24d035a5ad617dee13902fa1be46846ef38af88cd1ab0a9f004",
+          "792fe2ef72c4ab4a83bce1662af687a4416b34fba1b306293e366db344f9f11c",
+          "9dcf7805102bdf6739bb3de1981b5b339b7d7d8542f2aedb58fcf0a081853133",
+          "1d160cda84c5311699d8891c912426441072eff0ee5d54f8616e4d8e2164f971"
+        ]
+      },
+      "test_configuration": {
+        "min_instances": 1,
+        "max_instances": 2,
+        "threads_per_instance": 2,
+        "max_waiting_per_model": 4,
+        "parallel_inference_enabled": true,
+        "confirmation_requests_planned": 514,
+        "confirmation_request_range": [
+          500,
+          2000
+        ],
+        "maximum_round_seconds": 1800,
+        "overhead_reserve_seconds": 240,
+        "fixtures": {
+          "fixture_count": 7,
+          "sha256": [
+            "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+            "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+            "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb",
+            "8d58a39a1010d24d035a5ad617dee13902fa1be46846ef38af88cd1ab0a9f004",
+            "792fe2ef72c4ab4a83bce1662af687a4416b34fba1b306293e366db344f9f11c",
+            "9dcf7805102bdf6739bb3de1981b5b339b7d7d8542f2aedb58fcf0a081853133",
+            "1d160cda84c5311699d8891c912426441072eff0ee5d54f8616e4d8e2164f971"
+          ],
+          "validation": "English text fixtures; TTS output validated as nonempty, nonsilent PCM WAV."
+        }
+      },
+      "result": {
+        "status": "pass",
+        "status_note": "Completed full confirmation and met all acceptance criteria.",
+        "highest_tested_passing_offered_rps": 0.33,
+        "passing_run": {
+          "offered_rps": 0.33,
+          "delivered_rps": 0.33025826844171163,
+          "requests_planned": 514,
+          "requests_completed": 514,
+          "valid_responses": 514,
+          "failed_responses": 0,
+          "observed_success_rate": 1.0,
+          "elapsed_seconds": 1556.3577027919819,
+          "end_to_end_p90_seconds": 1.8583499665255658,
+          "low_rate_baseline_p90_seconds": 1.831100667011924,
+          "p90_to_baseline_ratio": 1.014881377088955,
+          "adapter_wait_p90_seconds": 0.0,
+          "client_schedule_lag_p90_seconds": 0.00652309088036418,
+          "first_10s_window": {
+            "requests": 4,
+            "p90_seconds": 1.8142662841128185,
+            "wait_p90_seconds": 0.0
+          },
+          "last_10s_window": {
+            "requests": 2,
+            "p90_seconds": 1.810428621538449,
+            "wait_p90_seconds": 0.0
+          },
+          "window_count": 156,
+          "peak_active_instances": 2,
+          "pool_after_drain": {
+            "tts-kokoro-multilingual-v1-1-zh-en": {
+              "instances": 1,
+              "ready": 1,
+              "active": 0,
+              "waiting": 0,
+              "warming": false,
+              "retiring": 0,
+              "completed": 573,
+              "peak_active": 2,
+              "warmups": [
+                {
+                  "instance_count": 1,
+                  "seconds": 2.2768736670259386,
+                  "success": true
+                },
+                {
+                  "instance_count": 2,
+                  "seconds": 2.5140783329843543,
+                  "success": true
+                }
+              ]
+            }
+          },
+          "resources": {
+            "cpu_mean_cores": 1.0038530894968,
+            "cpu_p90_cores": 2.024440691866707,
+            "rss_mean_mib": 590.9091536684964,
+            "rss_peak_mib": 1081.734375
+          },
+          "confirmation_complete": true,
+          "window_trend_ok": true,
+          "pool_drained": true,
+          "delivered_rps_per_cpu_core": 0.32899063806962003
+        },
+        "first_tested_nonpassing_rate": {
+          "offered_rps": 0.5,
+          "requests_planned": 3000,
+          "requests_completed": 91,
+          "valid_responses": 63,
+          "failed_responses": 28,
+          "observed_success_rate": 0.6923076923076923,
+          "end_to_end_p90_seconds": 22.41106920799939,
+          "low_rate_baseline_p90_seconds": 1.8244980000308715,
+          "p90_to_baseline_ratio": 12.283416702906871,
+          "adapter_wait_p90_seconds": 5.9635,
+          "failure_reason": "success rate below 99.9%",
+          "note": "First tested rate above the accepted rate; not a precisely measured capacity boundary."
+        },
+        "acceptance_checks": {
+          "valid_success_rate": true,
+          "p90_latency_ratio": true,
+          "window_trend": true,
+          "pool_drained": true,
+          "formal_request_count": true
+        }
+      },
+      "warmup": {
+        "fresh_process_trials": 10,
+        "first_instance_first_request_p90_seconds": 2.8722341249813326,
+        "second_instance_expansion_request_p90_seconds": 2.9227252079872414,
+        "second_instance_initialization_plus_first_inference_p90_seconds": 2.913070625043474,
+        "fully_warm_request_p90_seconds": 2.060765000001993,
+        "rss_mib_median": {
+          "baseline": 83.75,
+          "one_instance": 679.0,
+          "two_instances": 1280.6875
+        },
+        "rss_peak_mib": {
+          "first_instance_warmup": 775.875,
+          "second_instance_expansion": 1391.65625,
+          "two_fully_warm": 1438.90625
+        },
+        "cpu_mean_cores_median": {
+          "first_instance_warmup": 1.5544597180762894,
+          "second_instance_expansion": 2.840300273317116,
+          "one_instance_warm": 1.9119831121994684,
+          "two_instances_warm": 3.5068373442483383
+        }
+      },
+      "limitations": [
+        "Capacity is the highest tested passing rate, not a proven maximum or an SLA for arbitrary inputs.",
+        "Confirmation samples are dynamically selected between 500 and 2,000 to fit the 30-minute round limit; smaller samples provide less confidence than the former 3,000-request method.",
+        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability.",
+        "Process-tree resource sampling was incomplete; CPU/RSS values may omit child processes.",
+        "TTS checks validate successful audio transport/PCM only; this concurrency run does not establish semantic quality or MOS."
+      ],
+      "provenance": {
+        "run_date": "2026-10-03",
+        "confirmation_raw_file": "kokoro-en-confirmation-budget-kokoro-0.33.json",
+        "baseline_raw_file": "kokoro-en-baseline-confirmation-budget-kokoro-0.33.json",
+        "first_nonpassing_raw_file": "kokoro-en-confirmation-descending-kokoro-0.5.json",
+        "raw_measurements_are_local_and_gitignored": true
+      }
+    }
   },
   "quality_completeness": {
     "languages_measured": [

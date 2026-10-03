@@ -54,7 +54,23 @@ The selected count and actual elapsed time are recorded in the result. A
 zero-failure run at this sample size has weaker statistical confidence than
 3,000 observations, so compare the observed success rate and count directly.
 
-Use `--abort-overload` to stop a confirmation early once failures exceed its full planned request budget (0.1%); the JSON records planned and actual counts.
+Each run also reports `delivered_rps_per_cpu_core`, calculated as successful
+responses per second divided by the mean server CPU cores sampled during that
+run. It reflects observed throughput per measured CPU capacity; it is not the
+offered rate divided by CPU, and it inherits the resource sampler's process-tree
+coverage limits.
+
+Use `--abort-overload` to stop a confirmation early when failures exceed the
+planned success-rate budget or when the rolling 30-second P90 stays above the
+baseline limit. The JSON records planned and actual counts and the console
+prints the early-stop reason.
+
+For isolated configuration experiments, `--num-steps`, `--threads-per-instance`
+and `--instances` override values only in the benchmark server process. The
+Supertonic step override is applied at the Sherpa call boundary; the product
+adapter default is unchanged. These overrides are recorded in run metadata, and
+`--warm-trials N --label <name>` writes distinct audio and trial files for A/B
+quality checks.
 
 Output is written to the ignored local directory
 `.smartvoice-dev/benchmark-concurrency/`. Reusing a scenario and label
@@ -79,16 +95,17 @@ a universal user-perceived latency SLA.
 
 CPU and RSS are sampled every 100 ms from the server process and accessible child
 processes. Sherpa inference uses threads in the server process, so its model
-memory/compute is included; the client process is excluded. The report marks
-whether the full process tree was accessible. Shared pages can be counted in
-multiple processes' RSS; these scenarios do not start a Qwen child engine.
+memory/compute is included; the client process is excluded. Qwen3-TTS runs in a
+separate native child process, and its measurements are valid only when the
+report says the complete process tree was accessible. Shared pages can be counted
+in multiple processes' RSS.
 CPU is CPU-seconds / wall-seconds; 1 equivalent core = 100% process CPU. Memory is
 MiB (2^20 bytes), not model-weight size or private/shared memory accounting.
 Sampling may miss very brief memory peaks. Results depend on the host workload,
 thermal conditions and fixture lengths. A zero-failure run does not establish
-99.9% reliability for arbitrary future requests; roughly 3,000 zero-failure
-independent requests are needed even for a one-sided 95% lower confidence bound
-of 99.9% under a stationary binomial model.
+99.9% reliability for arbitrary future requests; the shorter 500–2,000 request
+confirmation rounds are a capacity comparison within a time budget, not a
+one-sided 95% confidence demonstration of 99.9% reliability.
 
 The optional `--idle-trial` uses the same implementation with its idle timer shortened to 1 second, verifies real native instance reclamation 2 -> 1, records RSS before/after and checks the retained instance still serves without another initialization. It is a lifecycle check, separate from default-configuration performance results.
 
@@ -108,4 +125,4 @@ queue/instance wait P90, CPU and RSS by lifecycle phase, and the active/waiting
 pool snapshot. Preserve raw local JSON for auditability; publish only reviewed
 aggregate results.
 
-Aggregate local confirmation and warm-trial data with `python benchmarks/elastic-pool/summarize.py`. The reviewed fixed-arrival results are embedded in the matching model reports: [SenseVoice](../result/macos-arm64-stt-sensevoice-small-int8-fleurs-standard-2026-09-29.json), [Matcha](../result/macos-arm64-tts-matcha-zh-baker-fleurs-standard-2026-09-29.json), and [Supertonic](../result/macos-arm64-tts-supertonic-v3-multilingual-int8-fleurs-standard-2026-09-29.json). Local aggregate data is ignored by Git. See [inference concurrency, lifecycle, and limits](../../doc/architecture-guidelines.md#inference-concurrency-lifecycle-and-limits).
+Aggregate local confirmation and warm-trial data with `python benchmarks/elastic-pool/summarize.py`. Reviewed fixed-arrival results and the derived throughput-per-core metric are embedded in each model report: [SenseVoice](../result/macos-arm64-stt-sensevoice-small-int8-fleurs-standard-2026-09-29.json), [Whisper](../result/macos-arm64-stt-whisper-base-multilingual-int8-fleurs-standard-2026-09-29.json), [Qwen3 ASR](../result/macos-arm64-stt-qwen3-asr-600m-int8-fleurs-standard-2026-09-29.json), [Matcha](../result/macos-arm64-tts-matcha-zh-baker-fleurs-standard-2026-09-29.json), [Supertonic](../result/macos-arm64-tts-supertonic-v3-multilingual-int8-fleurs-standard-2026-09-29.json), and [Kokoro](../result/macos-arm64-tts-kokoro-multilingual-v1-1-zh-en-fleurs-standard-2026-09-29.json). Local aggregate data is ignored by Git. See [inference concurrency, lifecycle, and limits](../../doc/architecture-guidelines.md#inference-concurrency-lifecycle-and-limits).

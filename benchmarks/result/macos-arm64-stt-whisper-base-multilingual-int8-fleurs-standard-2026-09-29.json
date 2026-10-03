@@ -106,10 +106,11 @@
     "ru",
     "yue"
   ],
-  "generated_at": "2026-09-29T03:19:27.389032+00:00",
+  "generated_at": "2026-10-03",
   "selected_categories": [
     "quality",
-    "performance"
+    "performance",
+    "concurrency"
   ],
   "category_run_ids": {
     "quality": [
@@ -118,7 +119,8 @@
     ],
     "performance": [
       "20260928T092249Z-315c0e"
-    ]
+    ],
+    "concurrency": "macos-arm64-whisper-concurrency-2026-10-03"
   },
   "models": [
     {
@@ -411,7 +413,211 @@
           }
         }
       }
-    ]
+    ],
+    "concurrency": {
+      "schema_version": "1.0",
+      "benchmark_suite": "smartvoice-concurrency-capacity-v1",
+      "profile": "fixed-arrival-confirmation-500-to-2000",
+      "category": "concurrency",
+      "evidence_status": "formal_confirmation",
+      "method": {
+        "arrival_model": "open_loop_fixed_rate",
+        "client_workers": 64,
+        "automatic_retries": false,
+        "latency_definition": "scheduled arrival to full HTTP response body read",
+        "p90_estimator": "nearest_rank",
+        "success_definition": "HTTP 200 and task-specific response validation; ASR output compared with serial result where applicable",
+        "acceptance": {
+          "minimum_valid_success_rate": 0.999,
+          "maximum_p90_to_baseline_ratio": 1.2,
+          "latency_and_wait_trend": "final 10-second window must not materially exceed first window",
+          "pool_must_drain": true,
+          "formal_confirmation_request_range": [
+            500,
+            2000
+          ],
+          "confirmation_count_formula": "min(2000, floor(offered_rps * (1800 - 240)))",
+          "maximum_complete_round_seconds": 1800,
+          "overhead_reserve_seconds": 240,
+          "early_abort": "stop early when failures exceed the planned 0.1% budget or rolling 30-second P90 remains above 110% of acceptance P90 for 10 checks"
+        },
+        "baseline": "40 low-rate requests; model-specific baseline offered rate.",
+        "resource_scope": "Server process and accessible child processes; client excluded; process-tree sampling was incomplete during this run, so reported RSS/CPU are partial.",
+        "resource_efficiency_metric": {
+          "name": "delivered_rps_per_cpu_core",
+          "formula": "successful responses per second / mean server CPU cores",
+          "interpretation": "higher values indicate more successful throughput per sampled CPU core under this model, fixture, and pool configuration",
+          "resource_measurement_scope": "server process and accessible child processes; process-tree sampling was incomplete for these runs"
+        }
+      },
+      "environment": {
+        "platform": "macOS-27.0-arm64-arm-64bit",
+        "logical_cpu_count": 10,
+        "memory_bytes": 17179869184,
+        "python": "3.11.9",
+        "sherpa_onnx": "1.13.8",
+        "smartvoice_base_revision": "462d0d540c6b5ac8359e913d9c7a0458b7075aeb",
+        "pool_settings": {
+          "min_instances": 1,
+          "max_instances": 2,
+          "threads_per_instance": 2,
+          "max_waiting_per_model": 4,
+          "parallel_inference_enabled": true
+        },
+        "model_artifact_fingerprint": "5456437dd4b71a5cd0f3dd19baa4c80e6c78111aaf987cbcc2cf8d424dbb2344",
+        "input_fixture_fingerprint": [
+          "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+          "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+          "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb"
+        ]
+      },
+      "test_configuration": {
+        "min_instances": 1,
+        "max_instances": 2,
+        "threads_per_instance": 2,
+        "max_waiting_per_model": 4,
+        "parallel_inference_enabled": true,
+        "confirmation_requests_planned": 2000,
+        "confirmation_request_range": [
+          500,
+          2000
+        ],
+        "maximum_round_seconds": 1800,
+        "overhead_reserve_seconds": 240,
+        "fixtures": {
+          "fixture_count": 3,
+          "sha256": [
+            "e3e64fb5e2b36585c7266c0c1402bc1d9482a41092fc7725da71694b3074d439",
+            "c1c313f06802bb0aa1e52a06de64f701d020176f37c2490d1a5814ab3a0133c5",
+            "3104c0aee662312b215f2551a06957183fcb96557fe6815097db6e48a60d5bbb"
+          ],
+          "validation": "Chinese FLEURS audio fixtures; ASR outputs validated against the serial reference."
+        }
+      },
+      "result": {
+        "status": "pass",
+        "status_note": "Completed full confirmation and met all acceptance criteria.",
+        "highest_tested_passing_offered_rps": 2.0,
+        "passing_run": {
+          "offered_rps": 2.0,
+          "delivered_rps": 2.0001452520483074,
+          "requests_planned": 2000,
+          "requests_completed": 2000,
+          "valid_responses": 2000,
+          "failed_responses": 0,
+          "observed_success_rate": 1.0,
+          "elapsed_seconds": 999.9273792500026,
+          "end_to_end_p90_seconds": 0.4432458750088699,
+          "low_rate_baseline_p90_seconds": 0.463203291001264,
+          "p90_to_baseline_ratio": 0.9569143475875269,
+          "adapter_wait_p90_seconds": 0.0,
+          "client_schedule_lag_p90_seconds": 0.005119667039252818,
+          "first_10s_window": {
+            "requests": 20,
+            "p90_seconds": 0.4405242500361055,
+            "wait_p90_seconds": 0.0
+          },
+          "last_10s_window": {
+            "requests": 20,
+            "p90_seconds": 0.4364735840354115,
+            "wait_p90_seconds": 0.0
+          },
+          "window_count": 100,
+          "peak_active_instances": 2,
+          "pool_after_drain": {
+            "stt-whisper-base-multilingual-int8": {
+              "instances": 2,
+              "ready": 2,
+              "active": 0,
+              "waiting": 0,
+              "warming": false,
+              "retiring": 0,
+              "completed": 2059,
+              "peak_active": 2,
+              "warmups": [
+                {
+                  "instance_count": 1,
+                  "seconds": 0.9077917499816976,
+                  "success": true
+                },
+                {
+                  "instance_count": 2,
+                  "seconds": 0.9115021249745041,
+                  "success": true
+                }
+              ]
+            }
+          },
+          "resources": {
+            "cpu_mean_cores": 1.6169189085099107,
+            "cpu_p90_cores": 2.0921482162836633,
+            "rss_mean_mib": 641.1407774073882,
+            "rss_peak_mib": 1035.921875
+          },
+          "confirmation_complete": true,
+          "window_trend_ok": true,
+          "pool_drained": true,
+          "delivered_rps_per_cpu_core": 1.2370102430749377
+        },
+        "first_tested_nonpassing_rate": {
+          "offered_rps": 2.5,
+          "requests_planned": 75,
+          "requests_completed": 75,
+          "valid_responses": 75,
+          "failed_responses": 0,
+          "observed_success_rate": 1.0,
+          "end_to_end_p90_seconds": 0.9561395840137266,
+          "low_rate_baseline_p90_seconds": 0.5437590839574113,
+          "p90_to_baseline_ratio": 1.758388249912187,
+          "adapter_wait_p90_seconds": 0.098,
+          "failure_reason": "P90 ratio or window trend exceeded threshold",
+          "note": "First tested rate above the accepted rate; not a precisely measured capacity boundary."
+        },
+        "acceptance_checks": {
+          "valid_success_rate": true,
+          "p90_latency_ratio": true,
+          "window_trend": true,
+          "pool_drained": true,
+          "formal_request_count": true
+        }
+      },
+      "warmup": {
+        "fresh_process_trials": 10,
+        "first_instance_first_request_p90_seconds": 0.8613054999732412,
+        "second_instance_expansion_request_p90_seconds": 0.9136253329925239,
+        "second_instance_initialization_plus_first_inference_p90_seconds": 0.9033557919901796,
+        "fully_warm_request_p90_seconds": 0.4736949170473963,
+        "rss_mib_median": {
+          "baseline": 84.0859375,
+          "one_instance": 628.859375,
+          "two_instances": 1101.4609375
+        },
+        "rss_peak_mib": {
+          "first_instance_warmup": 573.65625,
+          "second_instance_expansion": 1064.21875,
+          "two_fully_warm": 1160.328125
+        },
+        "cpu_mean_cores_median": {
+          "first_instance_warmup": 1.5165819961957232,
+          "second_instance_expansion": 2.44658774174871,
+          "one_instance_warm": 1.9514523343000243,
+          "two_instances_warm": 3.8243868995525054
+        }
+      },
+      "limitations": [
+        "Capacity is the highest tested passing rate, not a proven maximum or an SLA for arbitrary inputs.",
+        "Confirmation samples are dynamically selected between 500 and 2,000 to fit the 30-minute round limit; smaller samples provide less confidence than the former 3,000-request method.",
+        "The 99.9% criterion is evaluated on observed sample success rate; finite samples do not guarantee future reliability.",
+        "Process-tree resource sampling was incomplete; CPU/RSS values may omit child processes."
+      ],
+      "provenance": {
+        "run_date": "2026-10-03",
+        "confirmation_raw_file": "whisper-zh-confirmation-budget-whisper-2.json",
+        "baseline_raw_file": "whisper-zh-baseline-confirmation-budget-whisper-2.json",
+        "first_nonpassing_raw_file": "whisper-zh-descending-screen-whisper-budget-2.5.json",
+        "raw_measurements_are_local_and_gitignored": true
+      }
+    }
   },
   "quality_completeness": {
     "languages_measured": [

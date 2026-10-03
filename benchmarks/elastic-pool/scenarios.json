@@ -96,6 +96,26 @@
       "instances": 2,
       "threads_per_instance": 2,
       "max_waiting": 4
+    },
+    "qwen3-tts-zh": {
+      "model_id": "tts-qwen3-0-6b-customvoice",
+      "backend": "qwen-tts",
+      "task": "tts",
+      "language": "zh",
+      "texts": [
+        "你好，欢迎使用。",
+        "今天阳光很好。",
+        "我们开始测试吧。",
+        "谢谢，请继续。"
+      ],
+      "baseline_rps": 0.2,
+      "baseline_requests": 20,
+      "instances": 1,
+      "threads_per_instance": 4,
+      "max_waiting": 4,
+      "client_timeout_seconds": 600,
+      "cpu_metric_requires_complete_tree": true,
+      "execution_model": "single_native_engine_serialized"
     }
   }
 }

@@ -21,18 +21,29 @@ P = lambda xs, q=0.9: sorted(xs)[min(len(xs) - 1, math.ceil(q * len(xs)) - 1)] i
 
 class Server:
 
-    def __init__(self, scenario, idle_seconds=300):
+    def __init__(self, scenario, idle_seconds=300, *, num_steps=None,
+                 threads_per_instance=None, instances=None, artifact_tag=None):
         self.spec = CONFIG[scenario]
         self.model = self.spec['model_id']
         self.scenario = scenario
+        self.artifact_tag = artifact_tag
+        self.backend = self.spec.get('backend', 'sherpa-onnx')
+        self._request_state_lock = threading.Lock()
+        self._successful_request_count = 0
         with socket.socket() as s:
             s.bind(('127.0.0.1', 0))
             port = s.getsockname()[1]
         self.log = (ROOT / (scenario + '-server.log')).open('a')
-        self.child = subprocess.Popen([sys.executable, str(SCRIPT_ROOT / 'server.py'), str(port), scenario, str(idle_seconds)], stdout=self.log, stderr=self.log)
+        server_args = [sys.executable, str(SCRIPT_ROOT / 'server.py'), str(port), scenario, str(idle_seconds)]
+        for flag, value in (('--num-steps', num_steps),
+                            ('--threads-per-instance', threads_per_instance),
+                            ('--instances', instances)):
+            if value is not None:
+                server_args.extend([flag, str(value)])
+        self.child = subprocess.Popen(server_args, stdout=self.log, stderr=self.log)
         self.process = psutil.Process(self.child.pid)
         self.url = f'http://127.0.0.1:{port}'
-        self.client = httpx.Client(base_url=self.url, timeout=120, limits=httpx.Limits(max_connections=64, max_keepalive_connections=64))
+        self.client = httpx.Client(base_url=self.url, timeout=float(self.spec.get('client_timeout_seconds', 120)), limits=httpx.Limits(max_connections=64, max_keepalive_connections=64))
         self.samples = []
         self.stop = threading.Event()
         self.sampler = threading.Thread(target=self.sample, daemon=True)
@@ -55,24 +66,51 @@ class Server:
             manifest_digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
         except OSError:
             manifest_digest = None
-        runtime_backend = (runtime.get('backends') or {}).get('sherpa-onnx', {})
+        runtime_backend = (runtime.get('backends') or {}).get(self.backend, {})
+        self.runtime_backend = runtime_backend
         self.metadata = {
             'model_id': self.model,
             'task': self.spec['task'],
             'language': self.spec['language'],
+            'backend': self.backend,
             'model_manifest_sha256': manifest_digest,
             'platform': {'system': platform.platform(), 'machine': platform.machine(),
                          'logical_cpu_count': psutil.cpu_count(),
                          'physical_memory_bytes': psutil.virtual_memory().total},
-            'service_pool_limits': runtime_backend.get('pool_limits'),
-            'resource_measurement_scope': 'server_process_tree_when_accessible; Sherpa inference runs in the server process',
+            'service_pool_limits': runtime_backend.get('pool_limits') or (
+                None if self.spec.get('execution_model') == 'single_native_engine_serialized' else {
+                    'min_instances': int(self.spec.get('min_instances', 1)),
+                    'max_instances': int(self.spec.get('instances', 1)),
+                    'max_waiting': int(self.spec.get('max_waiting', 0)),
+                    'threads_per_instance': int(self.spec.get('threads_per_instance', 1)),
+                }
+            ),
+            'execution_model': self.spec.get('execution_model', 'elastic_instance_pool'),
+            'runtime_execution_limits': ({
+                'native_engine_processes': 1,
+                'serialized_inference': True,
+                'native_threads': int(self.spec.get('threads_per_instance', 1)),
+                'max_waiting_inferences': int(self.spec.get('max_waiting', 0)),
+            } if self.spec.get('execution_model') == 'single_native_engine_serialized' else None),
+            'resource_measurement_scope': (
+                'server process plus native engine child when process-tree access permits; verify process_tree_complete'
+                if self.spec.get('execution_model') == 'single_native_engine_serialized'
+                else 'server process tree when accessible; model inference runs in the server process'
+            ),
             'benchmark_settings': {'success_rate_required': SUCCESS_RATE_REQUIRED,
                                    'p90_ratio_limit': P90_RATIO_LIMIT,
                                    'window_seconds': WINDOW_SECONDS,
                                    'screening_seconds': SCREENING_SECONDS,
                                    'confirmation_request_range': [CONFIRMATION_MIN_REQUESTS, CONFIRMATION_MAX_REQUESTS],
                                    'confirmation_max_round_seconds': CONFIRMATION_MAX_ROUND_SECONDS,
-                                   'client_workers': CLIENT_WORKERS},
+                                   'client_workers': CLIENT_WORKERS,
+                                   'experimental_overrides': {
+                                       key: value for key, value in {
+                                           'supertonic_num_steps': num_steps,
+                                           'threads_per_instance': threads_per_instance,
+                                           'max_instances': instances,
+                                       }.items() if value is not None
+                                   }},
         }
         self.idle_rss = self.process_tree_snapshot()['rss_bytes'] / 2 ** 20
         self.texts = self.spec.get('texts', CONFIG['tts'].get('texts') or ['你好，欢迎使用本地语音服务。', '今天的天气很好，我们一起出去走走吧。', '语音识别和语音合成可以在本地完成。', '这是一次并发性能测试，请稍等片刻。'])
@@ -112,7 +150,35 @@ class Server:
                 pass
 
     def snapshot(self):
-        return self.client.get('/v1/runtime').json()['backends']['sherpa-onnx']['instance_pools']
+        backend = self.client.get('/v1/runtime').json()['backends'][self.backend]
+        if 'instance_pools' in backend:
+            return backend['instance_pools']
+        if self.backend == 'qwen-tts':
+            children = []
+            try:
+                children = self.process.children(recursive=True)
+            except (psutil.Error, OSError):
+                pass
+            native_running = False
+            for child in children:
+                try:
+                    native_running = native_running or (
+                        child.is_running()
+                        and 'qwen_tts' in (child.name().lower() + ' ' + ' '.join(child.cmdline()).lower())
+                    )
+                except (psutil.Error, OSError):
+                    continue
+            with self._request_state_lock:
+                engine_started = self._successful_request_count > 0
+            engine_ready = native_running or engine_started
+            return {self.model: {
+                'instances': int(engine_ready), 'ready': int(engine_ready),
+                'active': 0, 'waiting': 0, 'peak_active': int(engine_ready),
+                'native_engine_process_observed': native_running, 'serialized_execution': True,
+                'warmups': [],
+            }}
+        return {self.model: {'instances': 0, 'ready': 0, 'active': 0, 'waiting': 0,
+                             'peak_active': 0, 'warmups': []}}
 
     def request(self, i, scheduled=None, save=False):
         start = time.monotonic()
@@ -139,8 +205,12 @@ class Server:
                         valid = frames > 0 and wav.getsampwidth() == 2 and wav.getnchannels() == 1 and len(pcm) == frames * 2 and any(pcm)
                         signature = [wav.getframerate(), wav.getnframes()]
                     wait = float(response.headers['x-runtime-wait-seconds'])
+                    if valid:
+                        with self._request_state_lock:
+                            self._successful_request_count += 1
                 if save:
-                    path = ROOT / f"{self.scenario}-sample-{i}.{('json' if self.spec['task'] == 'asr' else 'wav')}"
+                    tag = f'-{self.artifact_tag}' if self.artifact_tag else ''
+                    path = ROOT / f"{self.scenario}{tag}-sample-{i}.{('json' if self.spec['task'] == 'asr' else 'wav')}"
                     path.write_bytes(response.content)
             else:
                 signature = response.text[:300]
@@ -162,6 +232,8 @@ class Server:
     def run_rate(self, rate, count, label, abort_overload=False):
         start = time.monotonic()
         rows = []
+        early_stop_reason = None
+        latency_overload_streak = 0
         with concurrent.futures.ThreadPoolExecutor(CLIENT_WORKERS) as executor:
             futures = []
             for i in range(count):
@@ -177,12 +249,40 @@ class Server:
                 if abort_overload and i % 10 == 0:
                     failed = sum(f.done() and not (f.result()['status'] == 200 and f.result()['valid']) for f in futures)
                     if failed > math.floor(count * (1 - SUCCESS_RATE_REQUIRED) + 1e-9):
+                        early_stop_reason = 'invalid_responses_exceeded_success_budget'
+                        print('Early stop:', failed, 'invalid responses exceed the allowed count.', flush=True)
                         break
+                    scheduled_elapsed = i / rate
+                    baseline_p90 = getattr(self, 'baseline_p90', None)
+                    if baseline_p90 and scheduled_elapsed >= 30:
+                        recent = [f.result() for f in futures if f.done()
+                                  and f.result().get('latency') is not None
+                                  and f.result()['i'] / rate >= scheduled_elapsed - 30]
+                        if len(recent) >= max(10, math.ceil(rate * 20)):
+                            recent_p90 = P([row['latency'] for row in recent])
+                            if recent_p90 > baseline_p90 * P90_RATIO_LIMIT * 1.10:
+                                latency_overload_streak += 1
+                            else:
+                                latency_overload_streak = 0
+                            if latency_overload_streak >= 10:
+                                early_stop_reason = 'sustained_30_second_p90_exceeded_110_percent_of_limit'
+                                print('Early stop:', len(recent), 'recent responses repeatedly exceed the latency limit; latest 30-second P90',
+                                      round(recent_p90, 3), 'sustained for ten checks.', flush=True)
+                                break
             rows = [f.result() for f in futures]
         end = time.monotonic()
         ok = [r for r in rows if r['status'] == 200 and r['valid']]
         from collections import Counter
-        out = {'metadata': self.metadata, 'label': label, 'offered_rps': rate, 'requests': len(rows), 'planned_requests': count, 'success': len(ok), 'success_rate': len(ok) / len(rows), 'status_counts': dict(Counter((r['status'] for r in rows))), 'elapsed': end - start, 'delivered_rps': len(ok) / (end - start), 'p90': P([r['latency'] for r in ok]), 'p90_all': P([r['latency'] for r in rows]), 'wait_p90': P([r['wait'] for r in ok]), 'client_lag_p90': P([r.get('client_lag', 0) for r in rows]), 'resources': self.resources(start, end), 'pool': self.snapshot(), 'rows': rows}
+        delivered_rps = len(ok) / (end - start)
+        resources = self.resources(start, end)
+        mean_cpu_cores = resources.get('cpu_mean_cores')
+        cpu_sample_valid = bool(mean_cpu_cores) and (
+            resources.get('process_tree_complete', True)
+            or not self.spec.get('cpu_metric_requires_complete_tree', False)
+        )
+        out = {'metadata': self.metadata, 'label': label, 'offered_rps': rate, 'requests': len(rows), 'planned_requests': count, 'success': len(ok), 'success_rate': len(ok) / len(rows), 'status_counts': dict(Counter((r['status'] for r in rows))), 'elapsed': end - start, 'delivered_rps': delivered_rps, 'delivered_rps_per_cpu_core': delivered_rps / mean_cpu_cores if cpu_sample_valid else None, 'p90': P([r['latency'] for r in ok]), 'p90_all': P([r['latency'] for r in rows]), 'wait_p90': P([r['wait'] for r in ok]), 'client_lag_p90': P([r.get('client_lag', 0) for r in rows]), 'resources': resources, 'pool': self.snapshot(), 'rows': rows}
+        if early_stop_reason:
+            out['early_stop_reason'] = early_stop_reason
         out['windows'] = []
         for offset in range(0, math.ceil(count / rate / WINDOW_SECONDS) * int(WINDOW_SECONDS), int(WINDOW_SECONDS)):
             window = [r for r in rows if offset <= r['i'] / rate < offset + WINDOW_SECONDS]
@@ -223,10 +323,26 @@ def main():
     ap.add_argument('--confirmation', action='store_true',
                     help='Choose 500–2,000 requests from the offered rate and 30-minute round budget.')
     ap.add_argument('--warm-trials', type=int, default=0)
+    ap.add_argument('--num-steps', type=int,
+                    help='Benchmark-only override for Supertonic generation steps; product defaults are unchanged.')
+    ap.add_argument('--threads-per-instance', type=int,
+                    help='Benchmark-only override for runtime threads per instance.')
+    ap.add_argument('--instances', type=int,
+                    help='Benchmark-only override for the maximum runtime pool instances.')
     ap.add_argument('--label', default='screen')
     ap.add_argument('--abort-overload', action='store_true')
     ap.add_argument('--idle-trial', action='store_true')
     args = ap.parse_args()
+    if args.num_steps is not None and (args.scenario != 'supertonic' or args.num_steps < 1):
+        ap.error('--num-steps requires the supertonic scenario and a positive integer')
+    if args.threads_per_instance is not None and args.threads_per_instance < 1:
+        ap.error('--threads-per-instance must be positive')
+    if args.instances is not None and args.instances < 1:
+        ap.error('--instances must be positive')
+    overrides = {'num_steps': args.num_steps,
+                 'threads_per_instance': args.threads_per_instance,
+                 'instances': args.instances,
+                 'artifact_tag': args.label if args.warm_trials else None}
     if args.count is not None and args.count < 1:
         ap.error('--count must be positive')
     if args.confirmation and (args.count is not None or not args.rates or len(args.rates) != 1):
@@ -261,7 +377,7 @@ def main():
             ap.error(f'Rate {rate:g} req/s cannot fit the {CONFIRMATION_MIN_REQUESTS}-request minimum within the '
                      f'{CONFIRMATION_MAX_ROUND_SECONDS:g}s round budget; minimum eligible rate is {minimum_rate:.3f} req/s')
     if args.idle_trial:
-        server = Server(args.scenario, idle_seconds=1)
+        server = Server(args.scenario, idle_seconds=1, **overrides)
         try:
             server.request(0)
             with concurrent.futures.ThreadPoolExecutor(2) as ex:
@@ -288,7 +404,7 @@ def main():
     if args.warm_trials:
         trials = []
         for trial in range(args.warm_trials):
-            server = Server(args.scenario)
+            server = Server(args.scenario, **overrides)
             try:
                 start = time.monotonic()
                 first = server.request(trial, save=trial < 4)
@@ -306,8 +422,9 @@ def main():
                 expanded_end = time.monotonic()
                 snapshot = server.snapshot()
                 group = snapshot[server.model]
-                if group['instances'] != 2:
-                    raise RuntimeError('did not expand')
+                expected_instances = args.instances or int(server.spec.get('instances', 2))
+                if group['instances'] != expected_instances:
+                    raise RuntimeError(f'did not expand to {expected_instances} instances')
                 warm = []
                 with concurrent.futures.ThreadPoolExecutor(2) as ex:
                     for i in range(12):
@@ -319,11 +436,12 @@ def main():
                 trial_out = {'metadata': server.metadata, 'first_request': first, 'first_resources': server.resources(start, first_end), 'one_rss_mib': one_rss, 'baseline_rss_mib': server.idle_rss, 'expansion_requests': burst, 'two_rss_mib': server.process_tree_snapshot()['rss_bytes'] / 2 ** 20, 'expansion_resources': server.resources(expansion_start, expanded_end), 'one_warm_resources': server.resources(first_end, expansion_start), 'two_warm_resources': server.resources(fully_warm_start, time.monotonic()), 'warm_requests': warm, 'warmups': group['warmups']}
                 trials.append(trial_out)
                 print(args.scenario, 'warm trial', trial + 1, 'cold', round(first['latency'], 3), 'expansion', round(group['warmups'][-1]['seconds'], 3), flush=True)
-                (ROOT / f'{args.scenario}-warm-trials.json').write_text(json.dumps(trials, ensure_ascii=False, indent=2) + '\n')
+                warm_tag = f'-{args.label}' if args.label != 'screen' else ''
+                (ROOT / f'{args.scenario}{warm_tag}-warm-trials.json').write_text(json.dumps(trials, ensure_ascii=False, indent=2) + '\n')
             finally:
                 server.close()
         return
-    server = Server(args.scenario)
+    server = Server(args.scenario, **overrides)
     try:
         server.request(0)
         with concurrent.futures.ThreadPoolExecutor(2) as ex:
@@ -337,9 +455,10 @@ def main():
             'offered_rate_schedule': rates,
             'stop_on_first_pass': bool(args.stop_on_pass),
         }
-        baseline = server.run_rate(float(server.spec.get('baseline_rps', 0.5 if args.scenario == 'supertonic' else 2)), int(BENCHMARK_CONFIG.get('baseline_requests', 40)), baseline_label)
+        baseline = server.run_rate(float(server.spec.get('baseline_rps', 0.5 if args.scenario == 'supertonic' else 2)), int(server.spec.get('baseline_requests', BENCHMARK_CONFIG.get('baseline_requests', 40))), baseline_label)
         if server.spec['task'] == 'asr':
             server.reference_texts = {row['i'] % len(server.audios): row['signature'] for row in baseline['rows'] if row['valid']}
+        server.baseline_p90 = baseline['p90']
         for rate in rates:
             count = confirmation_count or args.count or max(60, math.ceil(rate * SCREENING_SECONDS))
             result = server.run_rate(rate, count, f'{args.label}-{rate:g}', args.abort_overload)
@@ -361,7 +480,10 @@ def main():
             result['stable'] = bool(
                 result['success_rate'] >= SUCCESS_RATE_REQUIRED and result['p90_ratio'] is not None
                 and result['p90_ratio'] <= P90_RATIO_LIMIT and result['window_trend_ok'] and result['pool_drained']
+                and (not args.confirmation or result['requests'] == result['planned_requests'])
             )
+            if args.confirmation:
+                result['confirmation_complete'] = result['requests'] == result['planned_requests']
             (ROOT / f'{args.scenario}-{args.label}-{rate:g}.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
             print('stable=', result['stable'], 'p90_ratio=', round(result['p90_ratio'], 3) if result['p90_ratio'] is not None else None, flush=True)
             if args.stop_on_pass and result['stable']:
