@@ -66,25 +66,23 @@ The first installed and verified candidate is selected. An inference failure doe
 
 ## Model catalog
 
-Models use the inference adapter identified in the catalog. Language availability describes catalog capability, not comparative quality; model and voice licenses may differ from SmartVoice's license. The recommended STT models are SenseVoice and Qwen3-ASR. TTS recommendations are reflected in the [Smart routing](#smart-routing) priorities. Supertonic 3 does not support Chinese. Benchmark coverage varies by language, and TTS listening quality has not been rated with MOS.
+Language availability describes catalog support, not comparative quality. Model and voice licenses may differ from SmartVoice's license.
 
-| Model ID | Task | Languages / voices | Estimated model files | Recommendation |
-|---|---|---|---|---|
-| `stt-whisper-base-multilingual-int8` | STT | Auto detection; English, Chinese, Japanese, Korean, French, German | ~0.16 GB | — |
-| `stt-sensevoice-small-int8` | STT | Chinese, English, Cantonese, Japanese, Korean | ~0.24 GB | Recommended |
-| `stt-qwen3-asr-600m-int8` | STT | 30 language codes including Cantonese; automatic detection | ~0.99 GB | Recommended |
-| `tts-kokoro-multilingual-v1-1-zh-en` | TTS | Chinese, English; 103 speakers | ~0.43 GB | Chinese / English fallback |
-| `tts-matcha-zh-baker` | TTS | Chinese; one voice | ~0.15 GB | Chinese fallback |
-| `tts-supertonic-v3-multilingual-int8` | TTS | 31 languages; no Chinese | ~0.15 GB | Recommended for its supported languages |
-| `tts-qwen3-0-6b-customvoice` | TTS | 10 languages; 9 preset voices | ~2.50 GB | Recommended for Chinese and measured multilingual routes |
+| Model ID | Task | Languages / voices | Estimated model files | Hot-request RTF | req/s per CPU core |
+|---|---|---|---:|---:|---:|
+| `stt-whisper-base-multilingual-int8` | STT | Auto detection; English, Chinese, Japanese, Korean, French, German | ~0.16 GB | 0.052 | 1.237 |
+| `stt-sensevoice-small-int8` | STT | Chinese, English, Cantonese, Japanese, Korean | ~0.24 GB | 0.017 | 4.169 |
+| `stt-qwen3-asr-600m-int8` | STT | 30 language codes including Cantonese; automatic detection | ~0.99 GB | 0.274 | 0.643 |
+| `tts-kokoro-multilingual-v1-1-zh-en` | TTS | Chinese, English; 103 speakers | ~0.43 GB | 0.324 | 0.329 |
+| `tts-matcha-zh-baker` | TTS | Chinese; one voice | ~0.15 GB | 0.030 | 2.379 |
+| `tts-supertonic-v3-multilingual-int8` | TTS | 31 languages; no Chinese | ~0.15 GB | 0.236 | 0.692 |
+| `tts-qwen3-0-6b-customvoice` | TTS | 10 languages; 9 preset voices | ~2.50 GB | 0.557 | Not measured* |
 
-Catalog model sizes are estimates of the unpacked model files, rounded to two decimal places in decimal GB; actual disk use can vary slightly. The web test page shows the recorded on-disk size when available and otherwise labels the catalog estimate. Installation may need additional temporary space. Qwen3-TTS 0.6B needs at least 6 GiB free disk space during installation. See [`catalog/models.json`](catalog/models.json) for the byte estimates, exact language codes, sources, and model details.
+RTF is the median for warm requests (Chinese where supported; English for Supertonic); lower is faster relative to audio duration. Throughput per CPU core is measured at the highest passing parallel request rate. Both use representative samples and are specific to the test platform: an Apple Silicon Mac running macOS 27.0, with 10 logical CPUs, 16 GiB RAM, Python 3.11.9, and sherpa-onnx 1.13.8. Sherpa tests used two instances, two threads per instance, and a four-request waiting limit; Qwen3-TTS uses one serialized native runtime. Qwen3-TTS's per-core rate is unavailable because its native engine process was not fully included in CPU sampling. See the [benchmark reports](benchmarks/README.md#concurrency-and-request-experience) for details.
 
-The native Qwen3-TTS runtime has CPU-specific requirements: its Windows x64 build requires AVX2 and FMA, while Linux builds use the instruction set exposed to the builder. See the [platform compatibility notes](doc/architecture-guidelines.md#build-and-hardware-qualifications) before choosing a platform wheel for older CPUs or Linux distributions.
+Model sizes are approximate unpacked sizes; see [`catalog/models.json`](catalog/models.json) for exact assets and sizes. Qwen3-TTS 0.6B needs at least 6 GiB free during installation. Its Windows runtime requires AVX2 and FMA; Linux builds use the builder's available instruction set. See the [platform compatibility notes](doc/architecture-guidelines.md#build-and-hardware-qualifications).
 
-Melo TTS has been removed from the supported catalog, and Supertonic 3 does not support Chinese. Existing model files are left on disk. If an older `<data_dir>/router.json` references the removed Melo model or routes Supertonic for Chinese, SmartVoice rejects that saved routing table, uses the built-in router, and reports a warning. Remove those stale entries and run `python -m smartvoice router reload` to clear the warning.
-
-For routed STT requests with `language=auto`, SmartVoice uses the Whisper Tiny spoken-language detector when it is installed, then routes to an STT model for the detected language. `python -m smartvoice models install all` installs this detector by default. Without it, SmartVoice falls back to an installed STT model that supports automatic language detection. The detector is not downloaded during service startup. Its availability is reported by `/v1/capabilities`.
+For STT requests with `language=auto`, SmartVoice uses the optional Whisper Tiny language detector, then routes by the detected language. `python -m smartvoice models install all` installs it; otherwise SmartVoice uses an installed model that supports automatic detection. Its availability appears in `/v1/capabilities`.
 
 ## Quick start
 
