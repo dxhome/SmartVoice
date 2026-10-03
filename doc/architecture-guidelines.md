@@ -255,6 +255,7 @@ runtime processes from this pool design.
 |---|---:|---|
 | `min_instances` | 1 | Keep at least this many already-created instances warm per used model; models are not loaded at startup. |
 | `max_instances` | 2 | Maximum independent adapter instances per Sherpa model. |
+| `model_availability_ttl_seconds` | 600 | Refresh the process-wide installed-model snapshot in the background after this many seconds. |
 | `instance_idle_seconds` | 300 | Reclaim idle extra instances after this interval. |
 | `num_threads` | 2 (bounded by available CPU count) | Native constructor thread count for each instance; fixed for the app lifetime. |
 | `max_queued_inference` | 4 | Maximum requests waiting per model for an adapter instance. |
@@ -264,7 +265,8 @@ These settings can be supplied in `smartvoice.json` or with the matching
 `SMARTVOICE_MIN_INSTANCES`, `SMARTVOICE_MAX_INSTANCES`,
 `SMARTVOICE_INSTANCE_IDLE_SECONDS`, `SMARTVOICE_NUM_THREADS`,
 `SMARTVOICE_MAX_QUEUED_INFERENCE`, and
-`SMARTVOICE_MAX_CONCURRENT_INFERENCE` environment variables. Environment
+`SMARTVOICE_MAX_CONCURRENT_INFERENCE` environment variables. The TTL setting
+also accepts `SMARTVOICE_MODEL_AVAILABILITY_TTL_SECONDS`. Environment
 values override JSON. Existing settings files are not rewritten. Queue wait
 and execution deadlines are configured separately with
 `inference_queue_timeout_seconds` and

@@ -184,6 +184,24 @@ def _smartvoice_is_running(host: str, port: int) -> bool:
         return False
 
 
+def _refresh_running_model_availability(settings: Settings) -> None:
+    host = settings.server_host if _is_loopback(settings.server_host) else "127.0.0.1"
+    if not _smartvoice_is_running(host, settings.server_port):
+        return
+    display_host = f"[{host}]" if ":" in host else host
+    address = f"http://{display_host}:{settings.server_port}/v1/models/refresh"
+    try:
+        request = urllib.request.Request(address, data=b"{}", headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(request, timeout=30):
+            print("Updated the running service's model availability snapshot.")
+    except (OSError, urllib.error.URLError) as exc:
+        print(
+            "Warning: model files changed, but the running service could not be refreshed. "
+            f"Run `python -m smartvoice models refresh` when it is reachable ({exc}).",
+            file=sys.stderr,
+        )
+
+
 def _serve(args: list[str]) -> None:
     parser = argparse.ArgumentParser(description="Run the SmartVoice local speech API")
     parser.add_argument("--config", type=Path, default=None, help="Optional JSON configuration file")
@@ -240,6 +258,9 @@ def _models(args: list[str]) -> None:
     subparsers = parser.add_subparsers(dest="action", required=True)
     list_parser = subparsers.add_parser("list", help="List catalog entries and installation state")
     list_parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
+    refresh_parser = subparsers.add_parser("refresh", help="Refresh the running service's model availability snapshot")
+    refresh_parser.add_argument("--host", default=None, help="Running SmartVoice service bind address")
+    refresh_parser.add_argument("--port", type=int, default=None, help="Running SmartVoice service port")
     install_parser = subparsers.add_parser("install", help="Download and install a catalog model")
     install_parser.add_argument("model_id", help="Catalog model ID, or 'all' to install every uninstalled catalog model")
     install_parser.add_argument("--source", help="Optional HTTPS base URL for a Hugging Face-compatible model mirror")
@@ -259,6 +280,29 @@ def _models(args: list[str]) -> None:
     model_management = ModelManagementService(
         ModelJobManager(settings), CatalogModelRepository(settings)
     )
+
+    if parsed.action == "refresh":
+        host = parsed.host or settings.server_host
+        port = parsed.port or settings.server_port
+        if not _is_loopback(host):
+            parser.error("Model availability refresh is restricted to a local SmartVoice service.")
+        display_host = f"[{host}]" if ":" in host else host
+        address = f"http://{display_host}:{port}/v1/models/refresh"
+        try:
+            request = urllib.request.Request(address, data=b"{}", headers={"Content-Type": "application/json"}, method="POST")
+            with urllib.request.urlopen(request, timeout=30) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            try:
+                payload = json.loads(exc.read().decode("utf-8"))
+                message = payload.get("error", {}).get("message", payload)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                message = exc.reason
+            parser.error(f"Model availability refresh failed: {message}")
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            parser.error(f"Could not refresh model availability from the running SmartVoice service at {address}: {exc}")
+        print(f"Model availability refreshed ({payload.get('count', 0)} available model(s)).")
+        return
     last_output = 0.0
 
     def progress(downloaded: int, total: int | None) -> None:
@@ -328,6 +372,7 @@ def _models(args: list[str]) -> None:
         except (OSError, ValueError, SmartVoiceError, json.JSONDecodeError) as exc:
             parser.error(str(exc))
         print(f"Imported model {result['id']}.")
+        _refresh_running_model_availability(settings)
         return
 
     if parsed.model_id == "all":
@@ -364,8 +409,11 @@ def _models(args: list[str]) -> None:
             print("Review the model license before redistribution.")
             destination = model_management.install(model_id, progress, source=parsed.source)
         except (OSError, ValueError, SmartVoiceError, ModelDownloadCancelled) as exc:
+            _refresh_running_model_availability(settings)
             parser.error(f"Failed to install {model_id}: {exc}")
         print(f"\nInstalled at: {destination}")
+
+    _refresh_running_model_availability(settings)
 
     if parsed.model_id == "all":
         from smartvoice.services.spoken_language_identifier import ensure_language_id_model

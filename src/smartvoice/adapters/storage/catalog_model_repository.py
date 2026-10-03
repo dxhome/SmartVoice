@@ -1,6 +1,8 @@
 """Filesystem model repository backed by the local SmartVoice catalog."""
 
 from pathlib import Path
+import copy
+import threading
 from typing import Sequence
 
 from smartvoice.config.settings import Settings
@@ -23,30 +25,57 @@ from smartvoice.services.model_storage import (
 class CatalogModelRepository(ModelRepository):
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        self._installed_models_lock = threading.RLock()
+        self._installed_models_snapshot: tuple[InstalledModel, ...] | None = None
+        self._installed_models_stale = False
 
     def get_spec(self, model_id: str) -> ModelSpec:
         return get_model_spec(model_id)
 
     def installed_models(self) -> Sequence[InstalledModel]:
-        return installed_models(self.settings)
+        with self._installed_models_lock:
+            if self._installed_models_snapshot is None:
+                self._installed_models_snapshot = tuple(installed_models(self.settings))
+                self._installed_models_stale = False
+            return copy.deepcopy(self._installed_models_snapshot)
+
+    def refresh_installed_models(self) -> Sequence[InstalledModel]:
+        """Rescan and replace the process-wide verified filesystem snapshot."""
+        with self._installed_models_lock:
+            models = tuple(installed_models(self.settings))
+            self._installed_models_snapshot = models
+            self._installed_models_stale = False
+            return copy.deepcopy(models)
+
+    def invalidate_installed_models(self) -> None:
+        with self._installed_models_lock:
+            # Keep the last known-good data available to readers while a
+            # full refresh is pending or running.
+            self._installed_models_stale = True
 
     def model_directory(self, model_id: str) -> Path:
         return model_directory(self.settings, model_id)
 
     def catalog_models(self) -> Sequence[dict[str, object]]:
-        return catalog_models(self.settings)
+        return catalog_models(self.settings, installed_snapshot=self.installed_models())
 
     def storage_summary(self) -> dict[str, int]:
-        return model_storage(self.settings)
+        return model_storage(self.settings, installed_snapshot=self.installed_models())
 
     def install_model(self, model_id: str, progress=None, *, source: str | None = None) -> Path:
-        return install_model(self.settings, model_id, progress=progress, source=source)
+        result = install_model(self.settings, model_id, progress=progress, source=source)
+        self.invalidate_installed_models()
+        return result
 
     def uninstall_model(self, model_id: str, *, loaded: bool = False) -> int:
-        return uninstall_model(self.settings, model_id, loaded=loaded)
+        result = uninstall_model(self.settings, model_id, loaded=loaded)
+        self.invalidate_installed_models()
+        return result
 
     def export_model(self, model_id: str, destination: Path) -> Path:
         return export_model(self.settings, model_id, destination)
 
     def import_model(self, archive_path: Path) -> Path:
-        return import_model(self.settings, archive_path)
+        result = import_model(self.settings, archive_path)
+        self.invalidate_installed_models()
+        return result

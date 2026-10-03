@@ -50,6 +50,7 @@ class Settings:
     max_queued_inference: int = 4
     min_instances: int = 1
     max_instances: int = 2
+    model_availability_ttl_seconds: float = 600.0
     instance_idle_seconds: float = 300.0
     inference_queue_timeout_seconds: float = 60.0
     inference_execution_timeout_seconds: float = 600.0
@@ -59,6 +60,8 @@ class Settings:
             raise ValueError("Require 1 <= min_instances <= max_instances")
         if not math.isfinite(self.instance_idle_seconds) or self.instance_idle_seconds <= 0:
             raise ValueError("instance_idle_seconds must be finite and positive")
+        if not math.isfinite(self.model_availability_ttl_seconds) or self.model_availability_ttl_seconds <= 0:
+            raise ValueError("model_availability_ttl_seconds must be finite and positive")
         if self.max_concurrent_inference not in (0, 1):
             raise ValueError("max_concurrent_inference must be 0 (serial) or 1 (parallel enabled)")
 
@@ -114,6 +117,9 @@ class Settings:
             num_threads=max(1, setting("num_threads", "SMARTVOICE_NUM_THREADS", max(1, min(2, os.cpu_count() or 1)), int)),
             min_instances=setting("min_instances", "SMARTVOICE_MIN_INSTANCES", 1, int),
             max_instances=setting("max_instances", "SMARTVOICE_MAX_INSTANCES", 2, int),
+            model_availability_ttl_seconds=setting(
+                "model_availability_ttl_seconds", "SMARTVOICE_MODEL_AVAILABILITY_TTL_SECONDS", 600.0, float,
+            ),
             instance_idle_seconds=setting("instance_idle_seconds", "SMARTVOICE_INSTANCE_IDLE_SECONDS", 300.0, float),
             provider=setting("provider", "SMARTVOICE_DEVICE", "cpu", str),
             max_concurrent_inference=setting("max_concurrent_inference", "SMARTVOICE_MAX_CONCURRENT_INFERENCE", 1, int),

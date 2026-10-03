@@ -212,6 +212,18 @@ async def download_model(request: Request, model_id: str) -> dict[str, object]:
     return request.app.state.model_management.start_download(model_id)
 
 
+@router.post("/models/refresh", tags=["models"])
+async def refresh_models(request: Request) -> dict[str, object]:
+    refresh = getattr(get_provider(request), "refresh_model_availability", None)
+    operation = refresh if callable(refresh) else get_provider(request).installed_models
+    models = await run_in_threadpool(operation)
+    return {
+        "status": "refreshed",
+        "count": len(models),
+        "models": [str(model.get("id")) for model in models],
+    }
+
+
 @router.get("/jobs/{job_id}", tags=["models"])
 async def model_job(request: Request, job_id: str) -> dict[str, object]:
     return request.app.state.model_management.get_job(job_id)

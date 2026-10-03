@@ -36,8 +36,20 @@ class PooledInferenceProvider:
     def capabilities(self):
         return self.metadata.capabilities()
 
+    def capabilities_for_models(self, models):
+        method = getattr(self.metadata, "capabilities_for_models", None)
+        return method(models) if callable(method) else self.metadata.capabilities()
+
     def runtime(self):
         return {**self.metadata.runtime(), "instance_pools": self.pool.snapshot(),
+                "pool_limits": {"min_instances": self.pool.minimum, "max_instances": self.pool.maximum,
+                                "max_waiting": self.pool.max_waiting,
+                                "threads_per_instance": self.settings.num_threads}}
+
+    def runtime_for_models(self, models):
+        method = getattr(self.metadata, "runtime_for_models", None)
+        runtime = method(models) if callable(method) else self.metadata.runtime()
+        return {**runtime, "instance_pools": self.pool.snapshot(),
                 "pool_limits": {"min_instances": self.pool.minimum, "max_instances": self.pool.maximum,
                                 "max_waiting": self.pool.max_waiting,
                                 "threads_per_instance": self.settings.num_threads}}

@@ -6,7 +6,7 @@ import hashlib
 import json
 import time
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 
@@ -86,6 +86,23 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(client.get("/health").status_code, 200)
             self.assertEqual(client.get("/health").json()["status"], "ok")
             self.assertEqual(client.get("/ready").json()["status"], "ready")
+
+    def test_model_refresh_endpoint_uses_the_provider_refresh_hook(self):
+        with self.make_client() as client:
+            provider = client.app.state.provider
+            provider.refresh_model_availability = Mock(return_value=provider.installed_models())
+            response = client.post("/v1/models/refresh", json={})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 4)
+        provider.refresh_model_availability.assert_called_once_with()
+
+    def test_service_startup_builds_the_shared_availability_snapshot(self):
+        provider = FakeProvider()
+        provider.refresh_model_availability = Mock(return_value=provider.installed_models())
+        with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)):
+            pass
+        provider.refresh_model_availability.assert_called_once_with()
 
     def test_http_debug_logs_request_and_response_and_errors_include_reason(self):
         import logging

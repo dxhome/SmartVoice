@@ -135,8 +135,10 @@ class SherpaOnnxProvider:
             self._verified_files.clear()
 
     def runtime(self) -> dict[str, object]:
+        return self.runtime_for_models(self.installed_models())
+
+    def runtime_for_models(self, models: Sequence[InstalledModel]) -> dict[str, object]:
         issue = self._runtime_issue()
-        models = self.installed_models()
         return {
             "backend": "sherpa-onnx",
             "requested_device": self.settings.device,
@@ -153,8 +155,11 @@ class SherpaOnnxProvider:
         }
 
     def capabilities(self) -> dict[str, object]:
+        return self.capabilities_for_models(self.installed_models())
+
+    def capabilities_for_models(self, models: Sequence[InstalledModel]) -> dict[str, object]:
         tasks = []
-        for model in self.installed_models():
+        for model in models:
             task = {"task": model["task"], "model": model["id"], "languages": model["languages"], "streaming": False}
             if model["task"] == "speech":
                 task["voices"] = ["default"]

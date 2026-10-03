@@ -97,6 +97,25 @@ class SettingsTests(unittest.TestCase):
     def test_parallel_inference_is_the_default(self):
         self.assertEqual(Settings(data_dir=Path("/tmp/smartvoice")).max_concurrent_inference, 1)
 
+    def test_model_availability_ttl_defaults_to_ten_minutes_and_supports_config_overrides(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "settings.json"
+            config.write_text('{"model_availability_ttl_seconds": 120}', encoding="utf-8")
+            with patch.dict(os.environ, {}, clear=True):
+                configured = Settings.from_env(config)
+            self.assertEqual(configured.model_availability_ttl_seconds, 120)
+
+            with patch.dict(os.environ, {"SMARTVOICE_MODEL_AVAILABILITY_TTL_SECONDS": "30"}, clear=True):
+                overridden = Settings.from_env(config)
+            self.assertEqual(overridden.model_availability_ttl_seconds, 30)
+
+        self.assertEqual(Settings(data_dir=Path("/tmp/smartvoice")).model_availability_ttl_seconds, 600)
+        for invalid in (0, -1, float("inf"), float("nan")):
+            with self.assertRaises(ValueError):
+                Settings(data_dir=Path("/tmp/smartvoice"), model_availability_ttl_seconds=invalid)
+
 
 if __name__ == "__main__":
     unittest.main()

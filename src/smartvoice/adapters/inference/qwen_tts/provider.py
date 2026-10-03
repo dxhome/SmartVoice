@@ -70,6 +70,9 @@ class QwenTTSProvider:
         ]
 
     def runtime(self) -> dict[str, object]:
+        return self.runtime_for_models(self.installed_models())
+
+    def runtime_for_models(self, models: list[InstalledModel]) -> dict[str, object]:
         if self.settings.device != "cpu":
             return {
                 "backend": self.backend,
@@ -88,14 +91,17 @@ class QwenTTSProvider:
             "actual_device": "cpu" if available else None,
             "provider_status": "available" if available else "dependency_missing",
             "runtime_version": f"native-c:{NATIVE_ENGINE_VERSION[:12]}" if available else None,
-            "installed_model_count": len(self.installed_models()),
+            "installed_model_count": len(models),
             "reason": None if available else "The native C INT8 Qwen3-TTS runtime is not installed for this platform.",
         }
 
     def capabilities(self) -> dict[str, object]:
+        return self.capabilities_for_models(self.installed_models())
+
+    def capabilities_for_models(self, models: list[InstalledModel]) -> dict[str, object]:
         tasks = []
-        runtime_available = bool(self.installed_models())
-        for model in self._catalogued_models():
+        runtime_available = bool(models)
+        for model in models:
             tasks.append({
                 "task": model["task"],
                 "model": model["id"],

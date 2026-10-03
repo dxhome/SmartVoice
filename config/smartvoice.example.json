@@ -15,5 +15,6 @@
   "inference_execution_timeout_seconds": 600,
   "min_instances": 1,
   "max_instances": 2,
+  "model_availability_ttl_seconds": 600,
   "instance_idle_seconds": 300
 }

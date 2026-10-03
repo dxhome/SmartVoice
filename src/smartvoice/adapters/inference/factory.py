@@ -37,4 +37,5 @@ def create_inference_provider(
             "qwen-tts": PooledInferenceProvider(qwen, lambda seed: qwen, settings, shared_backend=True),
         },
         repository,
+        model_availability_ttl_seconds=settings.model_availability_ttl_seconds,
     )

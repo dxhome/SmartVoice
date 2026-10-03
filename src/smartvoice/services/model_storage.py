@@ -186,10 +186,14 @@ def installed_models(settings: Settings) -> list[dict[str, object]]:
     return results
 
 
-def catalog_models(settings: Settings) -> list[dict[str, object]]:
+def catalog_models(
+    settings: Settings,
+    *,
+    installed_snapshot: list[dict[str, object]] | None = None,
+) -> list[dict[str, object]]:
     installed_by_id = {
         str(model["id"]): model
-        for model in installed_models(settings)
+        for model in (installed_snapshot if installed_snapshot is not None else installed_models(settings))
     }
     output = [{
         "id": spec.id, "name": spec.name, "task": spec.task,
@@ -214,12 +218,17 @@ def catalog_models(settings: Settings) -> list[dict[str, object]]:
     return output
 
 
-def model_storage(settings: Settings) -> dict[str, int]:
+def model_storage(
+    settings: Settings,
+    *,
+    installed_snapshot: list[dict[str, object]] | None = None,
+) -> dict[str, int]:
     probe = settings.models_dir
     while not probe.exists() and probe != probe.parent:
         probe = probe.parent
     disk = shutil.disk_usage(probe)
-    used = sum(int(model.get("installed_size_bytes", 0)) for model in installed_models(settings))
+    models = installed_snapshot if installed_snapshot is not None else installed_models(settings)
+    used = sum(int(model.get("installed_size_bytes", 0)) for model in models)
     return {
         "installed_model_bytes": used,
         "available_disk_bytes": disk.free,

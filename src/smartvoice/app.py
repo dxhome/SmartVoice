@@ -186,6 +186,9 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         try:
+            refresh_models = getattr(application.state.provider, "refresh_model_availability", None)
+            if callable(refresh_models):
+                refresh_models()
             yield
         finally:
             application.state.model_jobs.cancel_all()
@@ -213,7 +216,18 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
         capacity if managed else 1,
         0 if managed else settings.max_queued_inference,
     )
-    app.state.model_jobs = ModelJobManager(settings)
+
+    def refresh_model_availability():
+        refresh = getattr(provider, "refresh_model_availability", None)
+        if callable(refresh):
+            return refresh()
+        refresh_repository = getattr(model_repository, "refresh_installed_models", None)
+        if callable(refresh_repository):
+            refresh_repository()
+        return provider.installed_models()
+
+    app.state.refresh_model_availability = refresh_model_availability
+    app.state.model_jobs = ModelJobManager(settings, on_model_change=refresh_model_availability)
     app.state.model_router = ModelRouter(settings)
     language_identifier = provider if isinstance(provider, LanguageIdentifier) else None
     app.state.language_identifier_status = provider if isinstance(provider, LanguageIdentifierStatus) else None
@@ -221,7 +235,8 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     app.state.transcription_service = TranscriptionService(provider, app.state.model_router, model_repository, language_identifier)
     app.state.speech_service = SpeechService(provider, app.state.model_router, model_repository)
     app.state.model_management = ModelManagementService(
-        app.state.model_jobs, model_repository, model_lifecycle
+        app.state.model_jobs, model_repository, model_lifecycle,
+        on_model_change=refresh_model_availability,
     )
     app.include_router(v1_router)
 

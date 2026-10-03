@@ -26,7 +26,17 @@ This document describes the HTTP API implemented by the current source code. The
 | `GET /v1/capabilities` | Optional `task`: `transcription` or `speech` | Provider capability document with `api_version`, `capability_schema_version`, `backend`, `backends`, `tasks`, router status, and `language_identification`. The latter reports whether spoken-language detection is supported by the provider and whether optional assets are installed; it includes an install command when applicable. Each task entry includes task, model, backend, languages, `available`, and `streaming` (currently false); speech entries include `voices` and may report `speed_control`. |
 | `GET /v1/runtime` | None | Runtime document with top-level backend and per-adapter runtime status, installed model count, router status/candidates, runtime version, host, system memory and process metrics. Some metrics can be `null` or omitted on unsupported platforms. |
 | `GET /v1/models` | None | OpenAI-style `{ "object": "list", "data": [...] }` list of models available through the active inference adapters. Concrete models include `availability: "available"` and SmartVoice metadata such as `estimated_size_bytes` and `installed_size_bytes`. Unavailable models are omitted. `smartvoice-auto` is included first when at least one routed task is available, and its `tasks` list reflects those available tasks; concrete models follow grouped by task and sorted alphabetically by name. |
+| `POST /v1/models/refresh` | Empty JSON object | Rebuilds the process-wide verified model-availability snapshot after model files are changed outside the service. |
 | `GET /v1/models/{model_id}` | Path: available or virtual model ID | One OpenAI-style model object. Unknown, uninstalled, or currently unavailable concrete IDs return `404`. |
+
+The service builds one process-wide verified availability snapshot at startup.
+Model list, readiness, runtime, and capability queries share that snapshot.
+After the configured `model_availability_ttl_seconds` (default 600), the first
+query starts a background refresh and continues using the last successful
+snapshot. If the refresh fails, it retries after 5, 10, and 15 seconds. After
+three failed retries, automatic retries stop until a manual refresh or a
+model-management operation triggers another scan. The matching environment
+variable is `SMARTVOICE_MODEL_AVAILABILITY_TTL_SECONDS`.
 | `GET /v1/catalog` | Optional `task`: `transcription` or `speech` | `{ "data": [...], "storage": {...} }`. Catalog entries include model ID, task, languages, backend, install status, source/archive metadata, estimated and installed sizes, required files and license note. Storage reports installed, free and total bytes. |
 | `POST /v1/router/reload` | Empty JSON object | Reloads `router.json`; invalid configuration returns an error and leaves the active configuration unchanged. Intended for local CLI use. |
 
@@ -41,6 +51,8 @@ The router reads `<data_dir>/router.json`, initializing it from the built-in `ca
 The dedicated Whisper Tiny spoken-language detector is installed by `python -m smartvoice models install all` and by the Quick Start model installation steps. The service does not download it during startup. When it is unavailable, routed STT falls back to an installed model that supports automatic language detection, if one is available.
 
 ## Model management
+
+The running process initializes a shared, verified model-availability snapshot at startup. Successful model installation jobs, imports, and uninstallations refresh it automatically. If model files are changed outside the service, call `POST /v1/models/refresh` or run `python -m smartvoice models refresh` to rebuild the snapshot. Model listing and automatic routing use the same process-wide availability state.
 
 | Method and path | Request | Success response |
 |---|---|---|

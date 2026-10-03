@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import uuid
+import logging
 from typing import Any
 
 from smartvoice.config.settings import Settings
@@ -11,10 +12,13 @@ from smartvoice.domain.errors import InvalidRequestError, ResourceNotFoundError
 from smartvoice.services.model_registry import get_model_spec
 from smartvoice.services.model_download import install_model
 
+logger = logging.getLogger(__name__)
+
 
 class ModelJobManager:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, on_model_change=None):
         self.settings = settings
+        self.on_model_change = on_model_change
         self._lock = threading.RLock()
         self._jobs: dict[str, dict[str, Any]] = {}
 
@@ -56,6 +60,11 @@ class ModelJobManager:
                 progress=update,
                 cancel_event=job["cancel"],
             )
+            if self.on_model_change is not None:
+                try:
+                    self.on_model_change()
+                except Exception:
+                    logger.exception("Model download completed, but the in-process availability snapshot could not be refreshed.")
             with self._lock:
                 job["status"] = "completed"
                 job["result"] = {"model_id": job["model_id"], "path": str(path)}
