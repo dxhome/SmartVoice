@@ -10,9 +10,13 @@ SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It 
 
 ## Why SmartVoice?
 
-- **One local service for speech:** Transcribe audio and synthesize speech through the same API, without sending media to a cloud provider.
-- **Choose models by language automatically:** Use SmartVoice's virtual model IDs to route each request to an installed model configured for that language.
-- **Works offline after setup:** Install model files once, then run inference locally on CPU with no per-request API fee.
+- **Private, local processing:** Audio and text are processed by models on your machine, without sending inference requests to a third-party speech service. You control where your data, models, and service configuration live.
+- **One API for speech in both directions:** Transcribe audio and synthesize speech through a single OpenAI-style audio API, making it straightforward to connect compatible agents and applications.
+- **Language-aware model routing:** Send requests to `smartvoice-auto` and SmartVoice selects an installed model for the requested task and language, following your editable priority list.
+- **Freedom to manage and move models:** Install only the models you need, choose explicit model IDs when desired, and export/import model packages to transfer them to another machine.
+- **Run locally without per-request fees:** Supported CPU deployments work on Windows x64, macOS Apple Silicon, and Linux x86_64. After setup, inference can run offline without a cloud account or network connection.
+
+Model installation and updates may download files from their configured sources. SmartVoice binds to `127.0.0.1` by default. If you expose the API on your network, it currently has no authentication, so restrict access with your network configuration and firewall.
 
 ## Capabilities
 

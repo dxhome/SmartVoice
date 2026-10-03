@@ -3,7 +3,10 @@
   "p90_ratio_limit": 1.2,
   "window_seconds": 10,
   "screening_seconds": 30,
-  "confirmation_requests": 3000,
+  "confirmation_min_requests": 500,
+  "confirmation_max_requests": 2000,
+  "confirmation_max_round_seconds": 1800,
+  "confirmation_overhead_reserve_seconds": 240,
   "baseline_requests": 40,
   "client_workers": 64,
   "scenarios": {
@@ -50,6 +53,49 @@
         "Speech recognition and synthesis can run locally.",
         "This is a concurrent speech test. Please wait a moment."
       ]
+    },
+    "whisper-zh": {
+      "model_id": "stt-whisper-base-multilingual-int8",
+      "task": "asr",
+      "language": "zh",
+      "audio_files": [
+        "samples/multilingual-stt/zh_01.wav",
+        "samples/multilingual-stt/zh_02.wav",
+        "samples/multilingual-stt/zh_03.wav"
+      ],
+      "baseline_rps": 1,
+      "instances": 2,
+      "threads_per_instance": 2,
+      "max_waiting": 4
+    },
+    "qwen3-asr-zh": {
+      "model_id": "stt-qwen3-asr-600m-int8",
+      "task": "asr",
+      "language": "zh",
+      "audio_files": [
+        "samples/multilingual-stt/zh_01.wav",
+        "samples/multilingual-stt/zh_02.wav",
+        "samples/multilingual-stt/zh_03.wav"
+      ],
+      "baseline_rps": 0.5,
+      "instances": 2,
+      "threads_per_instance": 2,
+      "max_waiting": 4
+    },
+    "kokoro-en": {
+      "model_id": "tts-kokoro-multilingual-v1-1-zh-en",
+      "task": "tts",
+      "language": "en",
+      "texts": [
+        "Hello, welcome to the local voice service.",
+        "The weather is nice today. Let us go for a walk.",
+        "Speech recognition and synthesis can run locally.",
+        "This is a concurrent speech test. Please wait a moment."
+      ],
+      "baseline_rps": 0.5,
+      "instances": 2,
+      "threads_per_instance": 2,
+      "max_waiting": 4
     }
   }
 }

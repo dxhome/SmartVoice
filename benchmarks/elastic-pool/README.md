@@ -19,12 +19,40 @@ other model-backed regression tests.
 python benchmarks/elastic-pool/benchmark.py asr --rates 10 12 14 16
 python benchmarks/elastic-pool/benchmark.py tts --rates 5 6 7 8 9
 python benchmarks/elastic-pool/benchmark.py supertonic --rates 1.2 1.4 1.6 1.8 2
-python benchmarks/elastic-pool/benchmark.py asr --rates 14 --count 3000 --label confirmation
+python benchmarks/elastic-pool/benchmark.py asr --rates 14 --confirmation --label confirmation
 python benchmarks/elastic-pool/benchmark.py asr --warm-trials 10
 python benchmarks/elastic-pool/benchmark.py tts --warm-trials 10
 python benchmarks/elastic-pool/benchmark.py supertonic --warm-trials 10
 python benchmarks/elastic-pool/benchmark.py supertonic --idle-trial
 ```
+
+Screen capacity from a high offered rate downward and stop at the first stable
+passing rate. Choose a starting rate above the expected limit and a step that
+fits the desired precision; the first passing rate is the highest passing point
+on that schedule, with one-step resolution. The immediately higher screened
+rate is the failure boundary. Confirm the candidate with a rate-sized run, then
+run the fresh-process warm trials:
+
+```sh
+python benchmarks/elastic-pool/benchmark.py asr --start-rate 24 --decrement 2 --minimum-rate 2 --label descending-screen
+python benchmarks/elastic-pool/benchmark.py asr --rates 14 --confirmation --label confirmation --abort-overload
+python benchmarks/elastic-pool/benchmark.py asr --warm-trials 10
+```
+
+`--start-rate` requires `--decrement` and `--minimum-rate`, generates the
+descending schedule automatically, and stops at the first passing screen. If
+the candidate confirmation fails, confirm the next lower passing
+screened rate. Use a smaller decrement around the boundary when more precision
+is useful. Explicit `--rates` remains available; combine it with
+`--stop-on-pass` to stop at the first pass in a manually ordered schedule.
+
+Use `--confirmation` for the formal candidate run. It selects between 500 and
+2,000 requests from the offered rate, reserving four minutes of a 30-minute
+round for startup, baseline and drain. Rates below 0.321 req/s cannot fit the
+500-request minimum in that budget and are rejected for formal confirmation.
+The selected count and actual elapsed time are recorded in the result. A
+zero-failure run at this sample size has weaker statistical confidence than
+3,000 observations, so compare the observed success rate and count directly.
 
 Use `--abort-overload` to stop a confirmation early once failures exceed its full planned request budget (0.1%); the JSON records planned and actual counts.
 
@@ -45,8 +73,8 @@ runtime waiting are recorded. A rate passes when valid-response success is at
 least 99.9%, successful-response P90 is at most 1.2 times the low-rate, fully
 warm baseline, the final 10-second latency/wait window does not grow materially
 over the first window, and the pool drains after offered traffic stops. The
-default short runs are screening only; use at least 3,000 requests at a candidate
-rate for formal 99.9% confirmation. The P90 ratio is a comparison threshold, not
+default short runs are screening only; use `--confirmation` at a candidate rate
+for formal 99.9% evaluation within the 30-minute round budget. The P90 ratio is a comparison threshold, not
 a universal user-perceived latency SLA.
 
 CPU and RSS are sampled every 100 ms from the server process and accessible child

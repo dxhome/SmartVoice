@@ -78,22 +78,34 @@ class ModelAvailabilityTests(unittest.TestCase):
         self.assertEqual(self.repository.refresh_calls, 1)
 
     def test_expired_snapshot_is_served_while_only_one_background_refresh_starts(self):
-        self.provider._snapshot_refreshed_at = 0
         thread_class = Mock(side_effect=ThreadStub)
         with patch(
             "smartvoice.adapters.inference.composite_provider.threading.Thread", thread_class,
-        ):
-            self.assertEqual(list(self.provider.installed_models()), [MODEL])
-            self.assertEqual(list(self.provider.installed_models()), [MODEL])
+        ), patch(
+            "smartvoice.adapters.inference.composite_provider.time.monotonic", return_value=100.0,
+        ) as clock:
+            self.provider.refresh_model_availability()
+            before = self.backend.scan_calls
 
-        thread_class.assert_called_once()
-        self.assertTrue(self.provider._refresh_in_progress)
-        self.backend.models = [{**MODEL, "id": "updated-model"}]
-        target = thread_class.call_args.kwargs["target"]
-        args = thread_class.call_args.kwargs["args"]
-        target(*args)
-        self.assertEqual(self.provider.installed_models()[0]["id"], "updated-model")
-        self.assertFalse(self.provider._refresh_in_progress)
+            clock.return_value = 699.0
+            self.assertEqual(list(self.provider.installed_models()), [MODEL])
+            thread_class.assert_not_called()
+
+            clock.return_value = 700.0
+            self.assertEqual(list(self.provider.installed_models()), [MODEL])
+            self.assertEqual(list(self.provider.installed_models()), [MODEL])
+            self.assertEqual(self.backend.scan_calls, before)
+
+            thread_class.assert_called_once()
+            self.assertTrue(self.provider._refresh_in_progress)
+            self.backend.models = [{**MODEL, "id": "updated-model"}]
+            target = thread_class.call_args.kwargs["target"]
+            args = thread_class.call_args.kwargs["args"]
+            target(*args)
+            self.assertEqual(self.provider.installed_models()[0]["id"], "updated-model")
+            self.assertFalse(self.provider._refresh_in_progress)
+            self.assertEqual(self.backend.scan_calls, before + 1)
+            thread_class.assert_called_once()
 
     def test_ttl_refresh_retries_after_configured_delays_then_publishes(self):
         self.backend.failures_remaining = 3

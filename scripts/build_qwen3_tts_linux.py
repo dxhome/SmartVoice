@@ -82,6 +82,12 @@ def build_linux_runtime(destination: Path) -> Path:
                 "-j" + str(max(1, min(os.cpu_count() or 1, 8))),
                 "blas",
                 "CC=cc",
+                # These wheels use the generic linux_x86_64 tag, whose baseline does
+                # not guarantee AVX2.  The Makefile's auto profile is build-host
+                # specific and can put unsupported instructions into the wheel.
+                # Keep the packaged executable on the x86_64 baseline so it also
+                # starts on older and virtualized CPUs without AVX2.
+                "SIMD=scalar",
                 "LDFLAGS=-Wl,-rpath,'$$ORIGIN/lib'",
                 # The Makefile's default auto mode detects ISA features exposed to this
                 # host. Do not pass SIMD=auto on the command line: GNU make would prevent

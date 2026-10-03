@@ -12,7 +12,10 @@ SUCCESS_RATE_REQUIRED = float(BENCHMARK_CONFIG.get('success_rate_required', 0.99
 P90_RATIO_LIMIT = float(BENCHMARK_CONFIG.get('p90_ratio_limit', 1.2))
 WINDOW_SECONDS = float(BENCHMARK_CONFIG.get('window_seconds', 10))
 SCREENING_SECONDS = float(BENCHMARK_CONFIG.get('screening_seconds', 30))
-CONFIRMATION_REQUESTS = int(BENCHMARK_CONFIG.get('confirmation_requests', 3000))
+CONFIRMATION_MIN_REQUESTS = int(BENCHMARK_CONFIG.get('confirmation_min_requests', 500))
+CONFIRMATION_MAX_REQUESTS = int(BENCHMARK_CONFIG.get('confirmation_max_requests', 2000))
+CONFIRMATION_MAX_ROUND_SECONDS = float(BENCHMARK_CONFIG.get('confirmation_max_round_seconds', 1800))
+CONFIRMATION_OVERHEAD_RESERVE_SECONDS = float(BENCHMARK_CONFIG.get('confirmation_overhead_reserve_seconds', 240))
 CLIENT_WORKERS = int(BENCHMARK_CONFIG.get('client_workers', 64))
 P = lambda xs, q=0.9: sorted(xs)[min(len(xs) - 1, math.ceil(q * len(xs)) - 1)] if xs else None
 
@@ -67,7 +70,8 @@ class Server:
                                    'p90_ratio_limit': P90_RATIO_LIMIT,
                                    'window_seconds': WINDOW_SECONDS,
                                    'screening_seconds': SCREENING_SECONDS,
-                                   'confirmation_requests': CONFIRMATION_REQUESTS,
+                                   'confirmation_request_range': [CONFIRMATION_MIN_REQUESTS, CONFIRMATION_MAX_REQUESTS],
+                                   'confirmation_max_round_seconds': CONFIRMATION_MAX_ROUND_SECONDS,
                                    'client_workers': CLIENT_WORKERS},
         }
         self.idle_rss = self.process_tree_snapshot()['rss_bytes'] / 2 ** 20
@@ -205,8 +209,19 @@ class Server:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('scenario', choices=CONFIG)
-    ap.add_argument('--rates', type=float, nargs='+')
+    rate_group = ap.add_mutually_exclusive_group()
+    rate_group.add_argument('--rates', type=float, nargs='+')
+    rate_group.add_argument('--start-rate', type=float,
+                            help='Screen from this offered rate down toward --minimum-rate.')
+    ap.add_argument('--decrement', type=float,
+                    help='Positive step used with --start-rate.')
+    ap.add_argument('--minimum-rate', type=float,
+                    help='Lowest offered rate used with --start-rate.')
+    ap.add_argument('--stop-on-pass', action='store_true',
+                    help='Stop a descending screen at its first stable passing rate.')
     ap.add_argument('--count', type=int)
+    ap.add_argument('--confirmation', action='store_true',
+                    help='Choose 500–2,000 requests from the offered rate and 30-minute round budget.')
     ap.add_argument('--warm-trials', type=int, default=0)
     ap.add_argument('--label', default='screen')
     ap.add_argument('--abort-overload', action='store_true')
@@ -214,8 +229,37 @@ def main():
     args = ap.parse_args()
     if args.count is not None and args.count < 1:
         ap.error('--count must be positive')
-    if any(not math.isfinite(rate) or rate <= 0 for rate in args.rates or []):
+    if args.confirmation and (args.count is not None or not args.rates or len(args.rates) != 1):
+        ap.error('--confirmation requires exactly one --rates value and cannot be combined with --count')
+    if args.start_rate is not None:
+        if args.decrement is None or args.minimum_rate is None:
+            ap.error('--start-rate requires --decrement and --minimum-rate')
+        if (not math.isfinite(args.start_rate) or args.start_rate <= 0
+                or not math.isfinite(args.decrement) or args.decrement <= 0
+                or not math.isfinite(args.minimum_rate) or args.minimum_rate <= 0
+                or args.minimum_rate > args.start_rate):
+            ap.error('descending rate values must be finite and positive, with minimum <= start')
+        rates = []
+        rate = args.start_rate
+        while rate >= args.minimum_rate - 1e-9:
+            rates.append(round(rate, 8))
+            rate -= args.decrement
+        args.stop_on_pass = True
+    else:
+        if any(value is not None for value in (args.decrement, args.minimum_rate)):
+            ap.error('--decrement and --minimum-rate require --start-rate')
+        rates = args.rates or []
+    if any(not math.isfinite(rate) or rate <= 0 for rate in rates):
         ap.error('--rates must be finite and positive')
+    confirmation_count = None
+    if args.confirmation:
+        rate = rates[0]
+        workload_budget = CONFIRMATION_MAX_ROUND_SECONDS - CONFIRMATION_OVERHEAD_RESERVE_SECONDS
+        confirmation_count = min(CONFIRMATION_MAX_REQUESTS, math.floor(rate * workload_budget))
+        if confirmation_count < CONFIRMATION_MIN_REQUESTS:
+            minimum_rate = CONFIRMATION_MIN_REQUESTS / workload_budget
+            ap.error(f'Rate {rate:g} req/s cannot fit the {CONFIRMATION_MIN_REQUESTS}-request minimum within the '
+                     f'{CONFIRMATION_MAX_ROUND_SECONDS:g}s round budget; minimum eligible rate is {minimum_rate:.3f} req/s')
     if args.idle_trial:
         server = Server(args.scenario, idle_seconds=1)
         try:
@@ -287,12 +331,17 @@ def main():
         with concurrent.futures.ThreadPoolExecutor(2) as ex:
             for i in range(8):
                 [f.result() for f in [ex.submit(server.request, i), ex.submit(server.request, i)]]
-        baseline_label = 'baseline-' + args.label + '-' + '_'.join(f'{rate:g}' for rate in args.rates or [])
+        baseline_label = 'baseline-' + args.label + '-' + '_'.join(f'{rate:g}' for rate in rates)
+        server.metadata['benchmark_settings']['rate_search'] = {
+            'strategy': 'descending' if args.start_rate is not None else 'explicit_order',
+            'offered_rate_schedule': rates,
+            'stop_on_first_pass': bool(args.stop_on_pass),
+        }
         baseline = server.run_rate(float(server.spec.get('baseline_rps', 0.5 if args.scenario == 'supertonic' else 2)), int(BENCHMARK_CONFIG.get('baseline_requests', 40)), baseline_label)
         if server.spec['task'] == 'asr':
             server.reference_texts = {row['i'] % len(server.audios): row['signature'] for row in baseline['rows'] if row['valid']}
-        for rate in args.rates or []:
-            count = args.count or max(60, math.ceil(rate * SCREENING_SECONDS))
+        for rate in rates:
+            count = confirmation_count or args.count or max(60, math.ceil(rate * SCREENING_SECONDS))
             result = server.run_rate(rate, count, f'{args.label}-{rate:g}', args.abort_overload)
             result['baseline_p90'] = baseline['p90']
             result['p90_ratio'] = result['p90'] / baseline['p90'] if baseline['p90'] else None
@@ -315,6 +364,11 @@ def main():
             )
             (ROOT / f'{args.scenario}-{args.label}-{rate:g}.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
             print('stable=', result['stable'], 'p90_ratio=', round(result['p90_ratio'], 3) if result['p90_ratio'] is not None else None, flush=True)
+            if args.stop_on_pass and result['stable']:
+                print('Descending screen stopped at its first stable passing rate:', rate,
+                      '(rate resolution:', args.decrement if args.start_rate is not None else 'explicit schedule', ')',
+                      flush=True)
+                break
     finally:
         server.close()
 if __name__ == '__main__':
