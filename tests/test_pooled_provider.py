@@ -1,3 +1,5 @@
+
+from tests.audio_fixtures import wav_audio
 """Provider facade integration and routing metadata freshness."""
 from pathlib import Path
 from types import SimpleNamespace
@@ -80,7 +82,7 @@ class ConcurrentSpeechRuntime:
                 self.barrier.wait(timeout=3)
             else:
                 self.release.wait(timeout=3)
-            return SynthesizedSpeech(b"RIFF-test-wav", 24000, 0.1)
+            return SynthesizedSpeech(wav_audio(), 24000, 0.1)
         finally:
             with self.lock:
                 self.active -= 1
@@ -153,7 +155,7 @@ class PooledProviderTests(unittest.TestCase):
                 with ThreadPoolExecutor(max_workers=2) as executor:
                     responses = list(executor.map(
                         lambda text: client.post("/v1/audio/speech", json={
-                            "model": "tts-matcha-zh-baker", "input": text, "language": "zh",
+                            "model": "tts-matcha-zh-baker", "input": text, "language": "zh", "response_format": "wav",
                         }),
                         ("你好", "欢迎"),
                     ))

@@ -43,7 +43,7 @@ OPENAPI_DESCRIPTION = """![SmartVoice logo](/assets/smartvoice-logo.png)
 
 SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It offers both through one OpenAI-style audio API, with models installed and run on your machine. Smart routing chooses an installed model based on the request language. Inference runs locally on CPU with no per-request cloud fee; model files need to be downloaded during setup.
 
-[Test STT and TTS before integrating an application](/test)
+[Open the SmartVoice Console](/console)
 
 [View the SmartVoice project on GitHub](https://github.com/dxhome/SmartVoice)
 """
@@ -178,6 +178,81 @@ def _debug_headers(headers) -> dict[str, str]:
     return summarized
 
 
+class RequestContextMiddleware:
+    """Attach request metadata without wrapping ASGI receive in BaseHTTPMiddleware."""
+
+    def __init__(self, app, *, debug_http: bool = False):
+        self.app = app
+        self.debug_http = debug_http
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http":
+            return await self.app(scope, receive, send)
+        request = Request(scope, receive)
+        request.state.request_id = get_request_id(request)
+        started = time.perf_counter()
+        before = process_metrics()
+        request_body = bytearray()
+        response_body = bytearray()
+        status_code = 500
+        response_started = False
+        response_headers = []
+
+        async def capture_receive():
+            nonlocal status_code
+            message = await receive()
+            if message.get("type") == "http.disconnect" and not response_started:
+                status_code = 499
+            if self.debug_http and message.get("type") == "http.request":
+                request_body.extend(message.get("body", b""))
+            return message
+
+        async def capture_send(message):
+            nonlocal status_code, response_headers, response_started
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+                response_started = True
+                after = process_metrics()
+                cpu_seconds = max(0.0, float(after["cpu_time_seconds"]) - float(before["cpu_time_seconds"]))
+                response_headers = list(message.get("headers", []))
+                response_headers.append((b"x-request-id", request.state.request_id.encode("latin-1")))
+                response_headers.append((b"x-process-cpu-time-seconds", f"{cpu_seconds:.6f}".encode("ascii")))
+                for key, header in (("working_set_bytes", "x-process-working-set-bytes"),
+                                    ("peak_working_set_bytes", "x-process-peak-working-set-bytes")):
+                    if key in after:
+                        response_headers.append((header.encode("ascii"), str(after[key]).encode("ascii")))
+                message = {**message, "headers": response_headers}
+            elif self.debug_http and message["type"] == "http.response.body":
+                response_body.extend(message.get("body", b""))
+            await send(message)
+
+        if self.debug_http:
+            logger.debug("http_request request_id=%s method=%s url=%s headers=%s body=<captured>",
+                         request.state.request_id, request.method, str(request.url),
+                         _debug_headers(request.headers.raw))
+        try:
+            await self.app(scope, capture_receive, capture_send)
+        finally:
+            duration_ms = (time.perf_counter() - started) * 1000
+            after = process_metrics()
+            cpu_seconds = max(0.0, float(after["cpu_time_seconds"]) - float(before["cpu_time_seconds"]))
+            log_method = logger.warning if status_code >= 400 else logger.info
+            log_method(
+                "request_completed request_id=%s method=%s path=%s status=%d duration_ms=%.1f mode=%s model=%s router_sha256=%s language=%s candidates=%s device=%s cpu_seconds=%.4f working_set_bytes=%s",
+                request.state.request_id, request.method, request.url.path, status_code, duration_ms,
+                getattr(request.state, "model_mode", "-"), getattr(request.state, "model_id", "-"),
+                getattr(request.state, "router_sha256", "-"), getattr(request.state, "route_language", "-"),
+                getattr(request.state, "route_candidates", []), getattr(request.state, "actual_device", "-"),
+                cpu_seconds, after.get("working_set_bytes", "unknown"),
+            )
+            if self.debug_http:
+                logger.debug("http_request_body request_id=%s body=%s", request.state.request_id,
+                             _format_http_body(bytes(request_body), request.headers.get("content-type")))
+                logger.debug("http_response request_id=%s status=%d headers=%s body=%s",
+                             request.state.request_id, status_code, _debug_headers(response_headers),
+                             _format_http_body(bytes(response_body), request.headers.get("content-type")))
+
+
 def create_app(settings: Settings | None = None, provider=None, *, debug_http: bool = False) -> FastAPI:
     settings = settings or Settings.from_env()
     model_repository = CatalogModelRepository(settings)
@@ -203,6 +278,15 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
         docs_url=None,
         lifespan=lifespan,
     )
+    from smartvoice.adapters.audio.encoding import AudioEncoder, AudioAssembler
+    from smartvoice.adapters.audio.input import BoundedAudioInput
+    from smartvoice.api.body_limits import SpeechBodyLimit
+    app.add_middleware(SpeechBodyLimit, maximum=settings.max_tts_json_bytes)
+    app.add_middleware(RequestContextMiddleware, debug_http=debug_http)
+    app.state.audio_encoder = AudioEncoder(settings.tts_mp3_bitrate, settings.max_tts_output_bytes,
+                                          settings.max_tts_internal_bytes, settings.max_tts_audio_seconds)
+    app.state.audio_assembler = AudioAssembler(settings.data_dir / "tmp" / "speech", settings.max_tts_internal_bytes,
+                                               settings.max_tts_audio_seconds)
     app.state.settings = settings
     app.state.provider = provider
     app.state.model_repository = model_repository
@@ -232,8 +316,8 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     language_identifier = provider if isinstance(provider, LanguageIdentifier) else None
     app.state.language_identifier_status = provider if isinstance(provider, LanguageIdentifierStatus) else None
     model_lifecycle = provider if isinstance(provider, ModelLifecycle) else None
-    app.state.transcription_service = TranscriptionService(provider, app.state.model_router, model_repository, language_identifier)
-    app.state.speech_service = SpeechService(provider, app.state.model_router, model_repository)
+    app.state.transcription_service = TranscriptionService(provider, app.state.model_router, model_repository, language_identifier, BoundedAudioInput(settings.max_audio_seconds))
+    app.state.speech_service = SpeechService(provider, app.state.model_router, model_repository, encoder=app.state.audio_encoder, assembler=app.state.audio_assembler)
     app.state.model_management = ModelManagementService(
         app.state.model_jobs, model_repository, model_lifecycle,
         on_model_change=refresh_model_availability,
@@ -245,7 +329,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
 
     @app.get("/", include_in_schema=False)
     async def home() -> RedirectResponse:
-        return RedirectResponse(url="/docs")
+        return RedirectResponse(url="/console")
 
     @app.get("/assets/smartvoice-logo.png", include_in_schema=False)
     async def smartvoice_logo() -> FileResponse:
@@ -256,10 +340,14 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
         favicon_path = resource_dir / "smartvoice-favicon.png"
         return FileResponse(favicon_path, media_type="image/png")
 
-    @app.get("/test", response_class=HTMLResponse, include_in_schema=False)
-    async def integration_test_page() -> FileResponse:
-        page_path = Path(__file__).resolve().parent / "web" / "test.html"
+    @app.get("/console", response_class=HTMLResponse, include_in_schema=False)
+    async def console_page() -> FileResponse:
+        page_path = Path(__file__).resolve().parent / "web" / "console.html"
         return FileResponse(page_path, media_type="text/html; charset=utf-8")
+
+    @app.get("/test", include_in_schema=False)
+    async def legacy_test_page() -> RedirectResponse:
+        return RedirectResponse(url="/console")
 
     @app.get("/docs", include_in_schema=False)
     async def swagger_docs() -> HTMLResponse:
@@ -362,58 +450,6 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
                 }
             },
         )
-
-    @app.middleware("http")
-    async def attach_request_id(request: Request, call_next):
-        request.state.request_id = get_request_id(request)
-        request_body = await request.body() if debug_http else b""
-        if debug_http:
-            logger.debug(
-                "http_request request_id=%s method=%s url=%s headers=%s body=%s",
-                request.state.request_id, request.method, str(request.url),
-                _debug_headers(request.headers.raw),
-                _format_http_body(request_body, request.headers.get("content-type")),
-            )
-        started = time.perf_counter()
-        before = process_metrics()
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request.state.request_id
-        duration_ms = (time.perf_counter() - started) * 1000
-        after = process_metrics()
-        cpu_seconds = max(0.0, float(after["cpu_time_seconds"]) - float(before["cpu_time_seconds"]))
-        response.headers["X-Process-CPU-Time-Seconds"] = f"{cpu_seconds:.6f}"
-        for key, header in (
-            ("working_set_bytes", "X-Process-Working-Set-Bytes"),
-            ("peak_working_set_bytes", "X-Process-Peak-Working-Set-Bytes"),
-        ):
-            if key in after:
-                response.headers[header] = str(after[key])
-        log_method = logger.warning if response.status_code >= 400 else logger.info
-        log_method(
-            "request_completed request_id=%s method=%s path=%s status=%d duration_ms=%.1f mode=%s model=%s router_sha256=%s language=%s candidates=%s device=%s cpu_seconds=%.4f working_set_bytes=%s",
-            request.state.request_id, request.method, request.url.path, response.status_code, duration_ms,
-            getattr(request.state, "model_mode", "-"), getattr(request.state, "model_id", "-"),
-            getattr(request.state, "router_sha256", "-"), getattr(request.state, "route_language", "-"),
-            getattr(request.state, "route_candidates", []), getattr(request.state, "actual_device", "-"),
-            cpu_seconds, after.get("working_set_bytes", "unknown"),
-        )
-        if debug_http:
-            original_iterator = response.body_iterator
-
-            async def log_response_body():
-                chunks = []
-                async for chunk in original_iterator:
-                    chunks.append(chunk if isinstance(chunk, bytes) else str(chunk).encode())
-                    yield chunk
-                logger.debug(
-                    "http_response request_id=%s status=%d headers=%s body=%s",
-                    request.state.request_id, response.status_code,
-                    _debug_headers(response.raw_headers),
-                    _format_http_body(b"".join(chunks), response.headers.get("content-type")),
-                )
-
-            response.body_iterator = log_response_body()
-        return response
 
     @app.get("/health", tags=["service"])
     async def health() -> dict[str, str]:

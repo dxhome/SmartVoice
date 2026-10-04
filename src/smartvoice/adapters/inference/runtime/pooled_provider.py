@@ -33,6 +33,9 @@ class PooledInferenceProvider:
                 self._availability_until = time.monotonic() + 1.0
             return list(self._availability)
 
+    def segment_limits(self, model_id):
+        return self.metadata.segment_limits(model_id) if hasattr(self.metadata, "segment_limits") else {}
+
     def capabilities(self):
         return self.metadata.capabilities()
 

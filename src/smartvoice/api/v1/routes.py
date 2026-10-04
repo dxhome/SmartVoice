@@ -30,10 +30,10 @@ class SpeechRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     model: str
-    input: str = Field(min_length=1, max_length=4000)
+    input: str = Field(min_length=1)
     voice: str = "default"
     language: str | None = None
-    response_format: str = "wav"
+    response_format: str = "mp3"
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
 
     @field_validator("input")
@@ -92,6 +92,15 @@ async def capabilities(
     if task not in {None, "transcription", "speech"}:
         raise UnsupportedFeatureError(f"Task {task!r} is not supported.")
     result = get_provider(request).capabilities()
+    result["capability_schema_version"] = "1.1"
+    result["speech_output"] = request.app.state.audio_encoder.capabilities()
+    settings = request.app.state.settings
+    result["limits"] = {
+        "speech": {"characters": settings.max_tts_characters, "json_bytes": settings.max_tts_json_bytes,
+                   "audio_seconds": settings.max_tts_audio_seconds, "internal_bytes": settings.max_tts_internal_bytes,
+                   "response_bytes": settings.max_tts_output_bytes},
+        "transcription": {"upload_bytes": settings.max_upload_bytes, "audio_seconds": settings.max_audio_seconds},
+    }
     language_identifier = request.app.state.language_identifier_status
     if language_identifier is None:
         result["language_identification"] = {
@@ -370,8 +379,7 @@ async def transcriptions(
 
 @router.post("/audio/speech", tags=["audio"])
 async def speech(request: Request, payload: SpeechRequest) -> Response:
-    if payload.response_format != "wav":
-        raise UnsupportedFeatureError(f"Speech response format {payload.response_format!r} is not supported; use 'wav'.")
+    request.app.state.audio_encoder.validate(payload.response_format)
     requested_model = _router_model(payload.model, "speech")
     routed = requested_model == ROUTER_MODEL_IDS["speech"]
     router_config = request.app.state.model_router.snapshot() if routed else None
@@ -388,7 +396,7 @@ async def speech(request: Request, payload: SpeechRequest) -> Response:
     inference_started = time.perf_counter()
     def synthesize_selected():
         return request.app.state.speech_service.execute(
-            payload.input, requested_model, requested_language, payload.voice, payload.speed, router_config,
+            payload.input, requested_model, requested_language, payload.voice, payload.speed, router_config, payload.response_format,
         )
 
     outcome, queue_wait = await _run_request_inference(request, synthesize_selected)
@@ -405,8 +413,10 @@ async def speech(request: Request, payload: SpeechRequest) -> Response:
     inference_seconds = max(0.0, time.perf_counter() - inference_started - queue_wait)
     return StreamingResponse(
         iter([audio]),
-        media_type="audio/wav",
+        media_type={"wav": "audio/wav", "mp3": "audio/mpeg"}[outcome.audio_format],
         headers={
+            "X-Audio-Format": outcome.audio_format,
+            "X-Audio-Segments": str(outcome.segment_count),
             "X-Audio-Sample-Rate": str(sample_rate),
             "X-Audio-Duration": f"{duration:.3f}",
             "X-Model-Id": model,

@@ -1,0 +1,30 @@
+{
+  "en": [
+    {
+      "file": "en_1.wav",
+      "text": "The train leaves at six thirty; please arrive at the station early."
+    },
+    {
+      "file": "en_2.wav",
+      "text": "Could you send me the updated report before our meeting tomorrow?"
+    },
+    {
+      "file": "en_3.wav",
+      "text": "Please leave the window open until the rain stops."
+    }
+  ],
+  "zh": [
+    {
+      "file": "zh_1.wav",
+      "text": "早上好，我们今天先检查设备，再开始录音测试。"
+    },
+    {
+      "file": "zh_2.wav",
+      "text": "请把会议时间改到下午三点，并通知所有同事。"
+    },
+    {
+      "file": "zh_3.wav",
+      "text": "如果周末天气晴朗，我们就沿着河边散步。"
+    }
+  ]
+}

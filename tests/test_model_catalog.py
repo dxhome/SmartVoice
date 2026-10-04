@@ -23,6 +23,19 @@ from smartvoice.services.model_storage import export_model, import_model, instal
 
 
 class ModelCatalogTests(unittest.TestCase):
+    def test_transcription_window_policy_is_explicit_and_optional(self):
+        self.assertEqual(get_model_spec('stt-whisper-base-multilingual-int8').transcription_segment_seconds, 25)
+        self.assertEqual(get_model_spec('stt-sensevoice-small-int8').transcription_segment_seconds, 0)
+
+    def test_invalid_transcription_window_policy_is_rejected(self):
+        raw=json.loads(Path('src/smartvoice/resources/models.json').read_text())
+        for seconds in [1, 30, -1, True, 2.5]:
+            with self.subTest(seconds=seconds):
+                raw['models'][0]['transcription_segment_seconds']=seconds
+                with patch('smartvoice.services.model_registry.read_builtin_json',return_value=json.dumps(raw)):
+                    with self.assertRaisesRegex(RuntimeError, 'transcription segment policy'):
+                        load_catalog()
+
     def test_model_ids_follow_task_prefix_and_reject_retired_names(self):
         specs = load_catalog()
         self.assertTrue(all(spec.id.startswith(("stt-", "tts-")) for spec in specs))

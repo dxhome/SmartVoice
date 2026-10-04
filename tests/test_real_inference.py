@@ -163,7 +163,7 @@ class RealInferenceTests(unittest.TestCase):
         )
         for text, language, model in cases:
             response = self.client.post("/v1/audio/speech", json={
-                "model": model, "input": text, "language": language,
+                "model": model, "input": text, "language": language, "response_format": "wav",
             })
             self.assertEqual(response.status_code, 200, response.text)
             self.assertEqual(response.headers["content-type"], "audio/wav")
@@ -174,6 +174,7 @@ class RealInferenceTests(unittest.TestCase):
     def test_real_tts_detects_text_language_when_language_is_automatic(self):
         response = self.client.post("/v1/audio/speech", json={
             "model": "smartvoice-auto", "input": "Hello, this is an automatic language routing test.",
+            "response_format": "wav",
         })
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.headers["x-resolved-language"], "en")
@@ -229,7 +230,7 @@ class InstalledCatalogModelInferenceTests(unittest.TestCase):
         else:
             text = "你好，这是 SmartVoice 语音合成测试。" if language == "zh" else "Hello, this is a SmartVoice speech test."
             response = self.client.post("/v1/audio/speech", json={
-                "model": spec.id, "input": text, "language": language,
+                "model": spec.id, "input": text, "language": language, "response_format": "wav",
             })
             self.assertEqual(response.status_code, 200, f"{spec.id}: {response.text}")
             self.assertEqual(response.headers["content-type"], "audio/wav")

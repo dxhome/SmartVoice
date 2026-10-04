@@ -226,7 +226,7 @@ python -m smartvoice --host 0.0.0.0 --port 8000
 
 External binding is plain HTTP without API authentication. Use it only on a trusted network and configure the machine firewall as needed. HTTPS is not currently supported.
 
-Open the [test page](http://127.0.0.1:8000/test) to verify basic STT and TTS functionality with your installed models. Open [API docs](http://127.0.0.1:8000/docs) for endpoint details. Sherpa models use a lazy per-model instance pool: parallel inference is enabled by default, one instance is retained, and demand can expand the pool to two independent instances with two native threads each. The per-model waiting limit defaults to four. These settings do not promise a fixed request rate for every model or input. See [inference concurrency](doc/architecture-guidelines.md#inference-concurrency-lifecycle-and-limits) and the [fixed-arrival benchmark protocol](benchmarks/README.md#concurrency-and-request-experience). Service settings are stored in `<data_dir>/smartvoice.json`; routing priorities are stored separately in `<data_dir>/router.json` and can be reloaded with `python -m smartvoice router reload`.
+Open the [SmartVoice Console](http://127.0.0.1:8000/console) to use the speech workspace, review installed models, and verify STT/TTS with your installed models before connecting an application. Open [API docs](http://127.0.0.1:8000/docs) for endpoint details. Sherpa models use a lazy per-model instance pool: parallel inference is enabled by default, one instance is retained, and demand can expand the pool to two independent instances with two native threads each. The per-model waiting limit defaults to four. These settings do not promise a fixed request rate for every model or input. See [inference concurrency](doc/architecture-guidelines.md#inference-concurrency-lifecycle-and-limits) and the [fixed-arrival benchmark protocol](benchmarks/README.md#concurrency-and-request-experience). Service settings are stored in `<data_dir>/smartvoice.json`; routing priorities are stored separately in `<data_dir>/router.json` and can be reloaded with `python -m smartvoice router reload`.
 
 ### 4. Connect an agent or application
 
@@ -255,10 +255,10 @@ Supported upload formats include WAV, MP3, M4A, and FLAC. Audio is limited to 25
 curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
   -H "Content-Type: application/json" `
   -d '{"model":"smartvoice-auto","input":"Hello from SmartVoice.","language":"auto"}' `
-  --output speech.wav
+  --output speech.mp3
 ```
 
-TTS returns mono WAV audio. Requests support up to 4,000 characters; generated audio is limited to 180 seconds or 32 MiB by default. See `/docs` or the [API specification](doc/api-spec.md) for available parameters, language behavior, and error codes.
+TTS defaults to mono MP3 (96 kbps); send `"response_format":"wav"` for WAV. Requests support up to 4,000 characters; generated audio is limited to 180 seconds, with separate 32 MiB canonical WAV and final-response budgets. Supertonic uses bounded text chunks; long STT inputs use silence-aware model-declared windows (25 seconds for Whisper Base; 15 seconds by default) with 1-second overlap and a single language decision across chunks, while retaining the 10-minute input limit. See `/docs` or the [API specification](doc/api-spec.md) for available parameters, language behavior, and error codes. The local Whisper Chinese decoding repair requires a patched native wheel; see [build and validation instructions](doc/whisper-chinese-decoding-fix.md).
 
 ## Manage models
 
@@ -312,7 +312,7 @@ python -m pip install -e ".[dev]"
 python scripts/test.py ci
 ```
 
-Run `python scripts/test.py regression` to execute the full functional suite including real STT/TTS inference. It directly smoke-tests each catalog model installed and available on the current runtime, using one representative language per model; unavailable models are skipped individually. The existing route integration scenarios also run when their optional models and language-ID assets are installed. See [`doc/testing.md`](doc/testing.md) for details and [`benchmarks/README.md`](benchmarks/README.md) for the model quality, serial latency, and same-model concurrency methodology. The current fixed-arrival macOS results are recorded in the [SenseVoice](benchmarks/result/macos-arm64-stt-sensevoice-small-int8-fleurs-standard-2026-09-29.json), [Matcha](benchmarks/result/macos-arm64-tts-matcha-zh-baker-fleurs-standard-2026-09-29.json), and [Supertonic](benchmarks/result/macos-arm64-tts-supertonic-v3-multilingual-int8-fleurs-standard-2026-09-29.json) reports.
+`python scripts/test.py regression` is the default inference regression suite. It includes the existing functional and real-inference tests, short bilingual functional cases for SenseVoice, Qwen3-ASR, and Whisper, audio-window boundary cases, and 75-second segmented inputs. Models not installed on the current runtime are skipped individually. Run `python scripts/test.py full` for every CI and regression test plus 300- and 590-second bilingual inputs across all three STT models. Full mode requires all three models and the validated patched Whisper runtime; it fails its prerequisite check rather than silently skipping them. Long-input expansion is intentionally excluded from the default regression run. The STT tests check functional success and response metadata, not transcript accuracy. See [`doc/testing.md`](doc/testing.md) and [`tests/fixtures/stt/README.md`](tests/fixtures/stt/README.md) for suite details.
 See [`doc/releasing.md`](doc/releasing.md) for versioning, GitHub Releases, and optional PyPI publishing.
 
 ## Repository layout

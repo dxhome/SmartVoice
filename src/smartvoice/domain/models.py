@@ -32,3 +32,5 @@ class ModelSpec:
     estimated_size_bytes: int | None = None
     minimum_free_bytes: int | None = None
     rule_fsts: str | None = None
+    speech_segment_characters: int = 0
+    transcription_segment_seconds: int = 0

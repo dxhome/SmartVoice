@@ -1,6 +1,6 @@
 # Test Suites
 
-SmartVoice provides two standard test entry points. Benchmark and model quality evaluation workflows are documented separately and are not part of these suites.
+SmartVoice provides three standard test entry points. Benchmark and model quality evaluation workflows are documented separately and are not part of these suites.
 
 ## CI tests
 
@@ -10,11 +10,11 @@ Run the complete automated test suite without invoking real speech models:
 python scripts/test.py ci
 ```
 
-This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The CI entry point excludes `test_real_inference.py` so it remains fast and does not depend on local models.
+This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The CI entry point excludes `test_real_inference.py` and `test_stt_audio_regression.py` so it remains fast and does not depend on local models.
 
 The active GitHub Actions CI workflow installs the development dependencies and runs this entry point on pull requests and pushes to `main`. It also builds and checks the source distribution and the Linux wheel.
 
-## Full regression tests
+## Default regression tests
 
 Run the same complete functional suite and exercise real CPU inference through the REST routes. Real inference tests run by default when their dependencies and required models are present; no environment flag is needed. The tests include the routed integration scenarios below plus one direct smoke test for every catalog model that is installed and runtime-available. Each model uses one representative language (Chinese when supported, otherwise English or the first concrete catalog language). Uninstalled models and models whose runtime is unavailable are reported as individual skips. Direct STT tests use `tests/fixtures/zh.wav`, a short Chinese sample generated locally with Kokoro TTS.
 
@@ -22,7 +22,17 @@ Run the same complete functional suite and exercise real CPU inference through t
 python scripts/test.py regression
 ```
 
-SmartVoice's required dependencies include its supported inference runtimes. Existing multi-route integration cases run when their SenseVoice, Kokoro, and Whisper Tiny language-ID assets are available; otherwise those cases are skipped. The per-catalog direct tests independently run for every installed model, while uninstalled models are skipped by model ID. This lets a local regression cover whichever supported models are present without requiring the full catalog.
+The default regression includes all ordinary functional checks and the existing real-inference smoke tests. It also runs fixed short Chinese and English requests, model-specific window boundary cases, and 75-second segmented inputs for SenseVoice, Qwen3-ASR, and Whisper. Missing models are skipped individually so this suite can run on a normal development installation. These STT cases check successful responses, non-empty text, model/language/duration metadata, and segmentation behavior. They do not score transcription accuracy; see [`../tests/fixtures/stt/README.md`](../tests/fixtures/stt/README.md).
+
+## Full test set
+
+```bash
+python scripts/test.py full
+```
+
+Full discovers and runs the same complete test tree as CI and default regression, then adds 300- and 590-second English and Chinese recordings for each of the three STT models (12 long model-language-duration inferences). The recordings are created deterministically from the committed reference utterances, separated by silence, and padded to the exact target duration. Full mode requires all three STT models to be installed and runtime-available, plus the validated `sherpa-onnx 1.13.8+smartvoice.whisper2` wheel. Missing prerequisites fail the run rather than skipping long-audio coverage. It stays out of routine CI and default regression because its long-audio inferences are substantially more expensive.
+
+The `ci` mode remains the lightweight test set used by GitHub Actions. The `regression` mode contains the full existing functional suite and its inference checks with the quick and boundary STT cases; `full` contains all CI and regression cases plus long-audio expansion.
 
 Install dependencies and models first:
 

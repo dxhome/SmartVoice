@@ -89,10 +89,10 @@ Send a JSON object. Unknown fields are rejected.
 | `model` | string | Required | `smartvoice-auto` routes by text/request language, or specify an installed TTS model ID for direct inference. |
 | `voice` | string | `default` | Most models accept `default` or `0`. Kokoro accepts `default` or a speaker ID from `0` to `102`; its default speaker follows the resolved language. Qwen3-TTS accepts `default` or one of its nine named preset speakers. |
 | `language` | string or null | `auto` | `auto` detects text language offline using text and script cues. Short text is repeated for detection when needed; synthesis always uses the original input. An explicit catalog-supported language code takes precedence over detected text script. |
-| `response_format` | string | `wav` | Only `wav` is accepted. |
+| `response_format` | string | `mp3` | `mp3` (96 kbps by default) or explicit `wav`. Unsupported/unavailable formats fail before inference. |
 | `speed` | number | `1.0` | Inclusive range 0.5–2.0. Qwen3-TTS currently supports only `1.0`; other values return `501 not_implemented`. |
 
-Success is `200` with `audio/wav` mono WAV data. Response headers include `X-Audio-Sample-Rate`, `X-Audio-Duration`, `X-Model-Id` (actual model ID), `X-Requested-Model`, `X-Model-Mode`, `X-Resolved-Language`, `X-Language-Source`, `X-Language-Confidence`, `X-Router-SHA256`, `X-Route-Candidates`, `X-Inference-Time-Seconds`, `X-Queue-Wait-Seconds`, `X-Runtime-Wait-Seconds` (time waiting for a provider runtime instance), `X-Real-Time-Factor`, `X-Requested-Language`, and `X-Text-Language`. Default generated-audio limits are 180 seconds and 32 MiB; exceeding either returns `413`.
+Success is `200` with `audio/mpeg` mono MP3 data by default, or `audio/wav` when `response_format="wav"`. WAV is passed through byte-for-byte by the encoder. Response headers include `X-Audio-Format`, `X-Audio-Segments`, `X-Audio-Sample-Rate`, `X-Audio-Duration`, `X-Model-Id` (actual model ID), `X-Requested-Model`, `X-Model-Mode`, `X-Resolved-Language`, `X-Language-Source`, `X-Language-Confidence`, `X-Router-SHA256`, `X-Route-Candidates`, `X-Inference-Time-Seconds`, `X-Queue-Wait-Seconds`, `X-Runtime-Wait-Seconds` (time waiting for a provider runtime instance), `X-Real-Time-Factor`, `X-Requested-Language`, and `X-Text-Language`. Default generated-audio limits are 180 seconds, 32 MiB canonical PCM WAV, and 32 MiB final response, enforced separately; exceeding a limit returns `413`. Speech JSON is capped at 64 KiB before parsing. MP3 cannot bypass the duration or internal PCM budget.
 
 ## Errors
 
@@ -137,7 +137,21 @@ On first startup, SmartVoice creates `<data_dir>/smartvoice.json` with all defau
 | STT audio duration | 600 seconds | `max_audio_seconds` / `SMARTVOICE_MAX_AUDIO_SECONDS` |
 | TTS input | 4,000 characters | `max_tts_characters` / `SMARTVOICE_MAX_TTS_CHARACTERS`; the API field also has a fixed 4,000-character maximum |
 | TTS output duration | 180 seconds | `max_tts_audio_seconds` / `SMARTVOICE_MAX_TTS_AUDIO_SECONDS` |
-| TTS output size | 32 MiB | `max_tts_output_bytes` / `SMARTVOICE_MAX_TTS_OUTPUT_BYTES` |
+| TTS final response size | 32 MiB | `max_tts_output_bytes` / `SMARTVOICE_MAX_TTS_OUTPUT_BYTES` |
+| TTS canonical WAV size | 32 MiB | `max_tts_internal_bytes` / `SMARTVOICE_MAX_TTS_INTERNAL_BYTES` |
+| TTS JSON body size | 64 KiB | `max_tts_json_bytes` / `SMARTVOICE_MAX_TTS_JSON_BYTES` |
+| MP3 bitrate | 96 kbps | `tts_mp3_bitrate` / `SMARTVOICE_TTS_MP3_BITRATE`; 64000, 96000 or 128000 |
 | Model import package | 3 GiB | Fixed by the model catalog implementation |
 
 For model instance limits, adapter admission, overload and timeout behavior, see [inference concurrency in the architecture summary](architecture-guidelines.md#inference-concurrency-lifecycle-and-limits) and `max_concurrent_inference`, `max_queued_inference`, `inference_queue_timeout_seconds`, and `inference_execution_timeout_seconds` in the service configuration.
+
+
+### Audio output and long input policy (2026-10-04)
+
+`/v1/capabilities` schema 1.1 adds `speech_output` (default format, bitrate, per-format availability/reason) and active `limits`. Model generation formats remain separate: inference adapters emit canonical mono PCM16 WAV; an injected audio encoder converts every TTS backend's output uniformly. If MP3 encoding is unavailable, a default request returns `501`; request explicit WAV to use it. There is no silent format fallback. Clients that assumed WAV must now send `response_format="wav"` and choose the file extension from the actual response format.
+
+Capabilities describe segmentation policy by task: TTS may report model-specific `characters`, while STT reports the shared `audio_seconds` window. Supertonic defaults to a 200-character application plan, releases its instance between chunks and joins bounded canonical WAV before final encoding. Qwen3-TTS long-text segmentation remains deferred; its output still uses the same encoder.
+
+Long STT inputs use bounded windows declared by the model capability (Whisper Base: 25 seconds; default: 15 seconds), with quiet cuts preferred and a 1-second overlap at every cut. The service decodes once to private temporary storage, reuses one language decision across chunks when available, and retains the 600-second input limit. `chunk_count` is added to segmented transcription results. Native timestamps receive actual window offsets; unavailable token timestamps are not fabricated. Text overlap removal is bounded exact matching, not guaranteed alignment or lossless recognition. Long-text/audio requests share a single execution deadline; cancellation prevents future segments while current native work retains its lease until completion.
+
+The shared policy addresses bounded long-input handling, not equal model accuracy. Digital silence may produce an empty result; this is not a general noise-rejection claim. See [validation and rollout decisions](audio-optimization-validation.md).

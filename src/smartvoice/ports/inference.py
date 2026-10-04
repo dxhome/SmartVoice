@@ -11,6 +11,12 @@ from smartvoice.domain.contracts import (
 )
 
 
+@runtime_checkable
+class SegmentPlanning(Protocol):
+    """Measured segment policy, also published in model capability documents."""
+    def segment_limits(self, model_id: str) -> dict[str, float | int]: ...
+
+
 class InferenceProvider(Protocol):
     """Required operations an inference adapter exposes to application services."""
 

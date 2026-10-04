@@ -16,6 +16,7 @@ from smartvoice.domain.contracts import SynthesizedSpeech
 from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 from smartvoice.services.file_integrity import cache_verified_files
 from smartvoice.services.model_registry import get_model_spec
+from tests.audio_fixtures import wav_audio
 
 
 class ProviderContractTests(unittest.TestCase):
@@ -123,6 +124,30 @@ class ProviderContractTests(unittest.TestCase):
         self.assertEqual(factory.call_args.kwargs["language"], "fr")
         self.assertEqual(factory.call_args.kwargs["task"], "transcribe")
 
+    def test_unaligned_whisper_text_does_not_decode_partial_utf8_tokens(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        import numpy as np
+
+        class Result:
+            text = "科幻电影，家喻户晓"
+            lang = "zh"
+            timestamps = []
+
+            @property
+            def tokens(self):
+                raise UnicodeDecodeError('utf-8', b'\xe7', 0, 1, 'partial token')
+
+        provider = SherpaOnnxProvider(Settings(data_dir=Path('/tmp/whisper-contract')))
+        provider._model_dir = lambda _: Path('/model')
+        provider._manifest_path = lambda directory, name, **_: directory/name
+        provider._decode_audio = lambda *_: np.full(16000, .2, dtype=np.float32)
+        stream = SimpleNamespace(result=Result(), accept_waveform=Mock())
+        provider._get_recognizer = lambda *_: SimpleNamespace(create_stream=lambda: stream, decode_stream=Mock())
+        result = provider.transcribe(b'fixture', 'zh', 'stt-whisper-base-multilingual-int8')
+        self.assertEqual(result['text'], Result.text)
+        self.assertNotIn('segments', result)
+
     def test_supertonic_config_uses_all_required_assets(self):
         from types import SimpleNamespace
 
@@ -220,11 +245,11 @@ class ProviderContractTests(unittest.TestCase):
                     self.assertEqual(ready.status_code, 200)
                     transcription = client.post(
                         "/v1/audio/transcriptions",
-                        files={"file": ("sample.wav", b"fixture", "audio/wav")},
+                        files={"file": ("sample.wav", wav_audio(16000), "audio/wav")},
                         data={"model": "smartvoice-auto", "language": "zh"},
                     )
                     speech = client.post("/v1/audio/speech", json={
-                        "model": "smartvoice-auto", "input": "Hello", "language": "en",
+                        "model": "smartvoice-auto", "input": "Hello", "language": "en", "response_format": "wav",
                     })
                     self.assertEqual(transcription.status_code, 200)
                     self.assertEqual(transcription.json()["text"], "contract")

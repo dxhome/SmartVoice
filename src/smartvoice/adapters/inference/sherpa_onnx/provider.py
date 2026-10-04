@@ -15,6 +15,7 @@ from pathlib import Path
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import (
     InferenceError,
+    SmartVoiceError,
     InvalidAudioError,
     ModelUnavailableError,
     SpeechOutputTooLargeError,
@@ -22,6 +23,8 @@ from smartvoice.domain.errors import (
 )
 from smartvoice.domain.contracts import InstalledModel, LanguageIdentificationResult, SynthesizedSpeech, TranscriptionResult
 from smartvoice.ports.model_repository import ModelRepository
+from smartvoice.ports.inference_context import check_execution, request_segmented
+from smartvoice.ports.audio import DEFAULT_TRANSCRIPTION_WINDOW_SECONDS
 from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
 from smartvoice.services.spoken_language_identifier import installed_language_id_model_dir
 from smartvoice.services.file_integrity import load_hash_cache, save_hash_cache
@@ -168,6 +171,12 @@ class SherpaOnnxProvider:
             "process": process_metrics(),
         }
 
+    def segment_limits(self, model_id):
+        spec = self.model_repository.get_spec(model_id)
+        return {"characters": spec.speech_segment_characters,
+                "audio_seconds": (spec.transcription_segment_seconds or DEFAULT_TRANSCRIPTION_WINDOW_SECONDS)
+                if spec.task == "transcription" else 0}
+
     def capabilities(self) -> dict[str, object]:
         return self.capabilities_for_models(self.installed_models())
 
@@ -177,9 +186,11 @@ class SherpaOnnxProvider:
             task = {"task": model["task"], "model": model["id"], "languages": model["languages"], "streaming": False}
             if model["task"] == "speech":
                 task["voices"] = ["default"]
+                task["generation_formats"] = ["wav"]
                 spec = self.model_repository.get_spec(str(model["id"]))
                 if spec.voice_count:
                     task["voice_count"] = spec.voice_count
+            task["segmentation"] = self.segment_limits(str(model["id"]))
             tasks.append(task)
         return {"api_version": "v1", "capability_schema_version": "1.0", "backend": "sherpa-onnx", "tasks": tasks}
 
@@ -209,6 +220,11 @@ class SherpaOnnxProvider:
         duration = samples.size / TARGET_SAMPLE_RATE
         if duration > self.settings.max_audio_seconds:
             raise InvalidAudioError(f"Audio duration exceeds the {self.settings.max_audio_seconds:g} second limit.")
+
+        if not np.any(samples):
+            return {"text": "", "language": language if language != "auto" else None,
+                    "duration": round(duration, 3), "model": model_id, "device": "cpu",
+                    "processing_seconds": 0.0, "runtime_wait_seconds": 0.0, "rtf": 0.0}
 
         # Recognizers can be language-specific cached instances for one model;
         # serialize the model as a whole to avoid parallel duplicate sessions.
@@ -240,7 +256,10 @@ class SherpaOnnxProvider:
             "rtf": round(elapsed / duration, 4) if duration else None,
         }
         timestamps = list(getattr(result, "timestamps", []) or [])
-        tokens = list(getattr(result, "tokens", []) or [])
+        # Whisper byte-level tokens may each contain only part of a UTF-8
+        # character. The complete text is valid; do not convert unused tokens
+        # through the Python binding when no alignment was produced.
+        tokens = list(getattr(result, "tokens", []) or []) if timestamps else []
         if timestamps and tokens and len(timestamps) == len(tokens):
             output["segments"] = [
                 {"text": token, "start": round(float(start_time), 3)}
@@ -297,9 +316,12 @@ class SherpaOnnxProvider:
             else:
                 raise UnsupportedFeatureError("Kokoro voice must be default or an integer from 0 to 102.")
         else:
-            if voice not in {"default", "0"}:
+            if voice in {"default", "0"}:
+                sid = 0
+            elif spec.voice_count and voice.isdecimal() and 0 <= int(voice) < spec.voice_count:
+                sid = int(voice)
+            else:
                 raise UnsupportedFeatureError("The selected voice is not available in the installed TTS model.")
-            sid = 0
         model_dir = self._model_dir(model_id)
         spec = self.model_repository.get_spec(model_id)
         model_path = self._manifest_path(model_dir, spec.model_file)
@@ -326,11 +348,14 @@ class SherpaOnnxProvider:
         runtime_wait = time.perf_counter() - wait_started
         try:
             start = time.perf_counter()
-            text_chunks = self._split_tts_text(text, 200)
+            # Measured application segmentation calls this adapter once per
+            # chunk; other models retain their existing internal strategy.
+            text_chunks = [text] if request_segmented.get() else self._split_tts_text(text, 200)
             audio_chunks = []
             sample_rate = 0
             total_samples = 0
             for text_chunk in text_chunks:
+                check_execution()
                 if spec.model_type == "supertonic":
                     config = self._sherpa().GenerationConfig()
                     config.sid = sid
@@ -340,6 +365,7 @@ class SherpaOnnxProvider:
                     generated = tts.generate(text_chunk, config=config)
                 else:
                     generated = tts.generate(text_chunk, sid=sid, speed=speed)
+                check_execution()
                 chunk_samples = np.asarray(generated.samples, dtype=np.float32)
                 chunk_sample_rate = int(generated.sample_rate)
                 if chunk_samples.size == 0 or chunk_sample_rate <= 0:
@@ -350,11 +376,11 @@ class SherpaOnnxProvider:
                 total_samples += chunk_samples.size
                 duration_so_far = total_samples / sample_rate
                 pcm_bytes_so_far = total_samples * 2 + 44
-                if duration_so_far > self.settings.max_tts_audio_seconds or pcm_bytes_so_far > self.settings.max_tts_output_bytes:
+                if duration_so_far > self.settings.max_tts_audio_seconds or pcm_bytes_so_far > self.settings.max_tts_internal_bytes:
                     raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio output limit.")
                 audio_chunks.append(chunk_samples)
             elapsed = time.perf_counter() - start
-        except SpeechOutputTooLargeError:
+        except SmartVoiceError:
             raise
         except Exception as exc:
             raise InferenceError("Speech synthesis failed.", detail=type(exc).__name__) from exc
@@ -407,6 +433,9 @@ class SherpaOnnxProvider:
                         encoder=str(model_path), decoder=str(decoder_path), tokens=str(tokens_path),
                         num_threads=self.settings.num_threads, provider=self.settings.device,
                         language="" if language == "auto" else language, task="transcribe",
+                        # Keep room for multilingual Whisper's 300 recommended
+                        # tail frames (3 seconds) within the 30-second feature window.
+                        tail_paddings=300,
                     )
                 elif model_type == "qwen3_asr":
                     if decoder_path is None:

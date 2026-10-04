@@ -11,7 +11,7 @@ from typing import TypeVar
 import anyio
 
 from smartvoice.domain.errors import InferenceOverloadedError, InferenceTimeoutError
-from smartvoice.ports.inference_context import request_cancelled
+from smartvoice.ports.inference_context import request_cancelled, request_deadline
 
 T = TypeVar("T")
 
@@ -55,12 +55,14 @@ class InferenceQueue:
 
             async def execute() -> T:
                 context_token = request_cancelled.set(cancelled)
+                deadline_token = request_deadline.set(time.monotonic() + execution_timeout_seconds)
                 try:
                     if self._thread_limiter is None:
                         self._thread_limiter = anyio.CapacityLimiter(self._max_concurrent)
                     return await anyio.to_thread.run_sync(operation, limiter=self._thread_limiter)
                 finally:
                     request_cancelled.reset(context_token)
+                    request_deadline.reset(deadline_token)
                     self._semaphore.release()
                     with self._lock:
                         self._reserved -= 1

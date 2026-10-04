@@ -111,6 +111,7 @@ class QwenTTSProvider:
                 "voices": ["default", *SPEAKERS.values()],
                 "voice_count": len(SPEAKERS),
                 "speed_control": False,
+                "generation_formats": ["wav"],
                 "available": runtime_available,
             })
         return {
@@ -163,7 +164,7 @@ class QwenTTSProvider:
                 f"Install it with `python -m smartvoice models install {model_id}`."
             )
         audio, runtime_wait = self._native_runtime.synthesize(model_id, text, speaker, language)
-        if len(audio) > self.settings.max_tts_output_bytes:
+        if len(audio) > self.settings.max_tts_internal_bytes:
             raise SpeechOutputTooLargeError("Synthesized speech exceeds the configured audio output limit.")
         try:
             with wave.open(io.BytesIO(audio), "rb") as wav:

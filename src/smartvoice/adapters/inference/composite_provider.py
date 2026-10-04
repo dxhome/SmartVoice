@@ -261,6 +261,11 @@ class CompositeInferenceProvider:
             "tasks": tasks,
         }
 
+    def segment_limits(self, model_id):
+        provider = self._provider_for_model(model_id)
+        method = getattr(provider, "segment_limits", None)
+        return method(model_id) if callable(method) else {}
+
     def transcribe(
         self, audio: bytes, language: str = "auto", model_id: str | None = None,
     ) -> TranscriptionResult:

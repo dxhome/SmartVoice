@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Hashable, TypeVar
 
 from smartvoice.domain.errors import InferenceOverloadedError
-from smartvoice.ports.inference_context import request_cancelled
+from smartvoice.ports.inference_context import request_cancelled, request_continuation, request_deadline, check_execution
 
 T = TypeVar("T")
 
@@ -59,7 +59,8 @@ class ElasticRuntimePool:
 
     def run(self, key: Hashable, operation: Callable[[object], T]) -> tuple[T, float]:
         started = time.monotonic()
-        deadline = started + self.wait_seconds
+        check_execution()
+        deadline = min(started + self.wait_seconds, request_deadline.get() or float("inf"))
         token = object()
         cancelled = request_cancelled.get()
         with self._condition:
@@ -69,7 +70,10 @@ class ElasticRuntimePool:
             # An immediately available lease does not count as queued work.
             idle = any(i.ready and not i.busy for i in group.instances)
             grow = len(group.instances) < self.maximum and not group.warming
-            if (group.waiting or not (idle or grow)) and len(group.waiting) >= self.max_waiting:
+            # Reserved continuation capacity is bounded by active instances. It
+            # lets admitted operations rejoin behind waiting short requests.
+            waiting_limit = self.max_waiting + (self.maximum if request_continuation.get() else 0)
+            if (group.waiting or not (idle or grow)) and len(group.waiting) >= waiting_limit:
                 raise InferenceOverloadedError("The model inference queue is full.")
             group.waiting.append(token)
             try:
@@ -77,6 +81,9 @@ class ElasticRuntimePool:
                     if self._closed or (cancelled is not None and cancelled.is_set()):
                         raise InferenceOverloadedError("Queued inference was cancelled.")
                     if time.monotonic() >= deadline:
+                        execution_deadline = request_deadline.get()
+                        if execution_deadline is not None and time.monotonic() >= execution_deadline:
+                            check_execution()
                         raise InferenceOverloadedError("Timed out waiting for a model instance.")
                     if group.waiting[0] is token:
                         instance = next((i for i in group.instances if i.ready and not i.busy), None)
@@ -107,6 +114,7 @@ class ElasticRuntimePool:
         try:
             if new:
                 instance.runtime = self.factory(seed)
+            check_execution()
             result = operation(instance.runtime)
             succeeded = True
             return result, wait

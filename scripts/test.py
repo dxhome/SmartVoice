@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -27,28 +28,49 @@ def _without_real_inference(suite: unittest.TestSuite) -> unittest.TestSuite:
     for test in suite:
         if isinstance(test, unittest.TestSuite):
             filtered.addTests(_without_real_inference(test))
-        elif not test.__class__.__module__.endswith("test_real_inference"):
+        elif not test.__class__.__module__.endswith(("test_real_inference", "test_stt_audio_regression")):
             filtered.addTest(test)
     return filtered
 
 
 def main() -> int:
-    if len(sys.argv) != 2 or sys.argv[1] not in {"ci", "regression"}:
-        print("Usage: python scripts/test.py {ci|regression}", file=sys.stderr)
+    if len(sys.argv) != 2 or sys.argv[1] not in {"ci", "regression", "full"}:
+        print("Usage: python scripts/test.py {ci|regression|full}", file=sys.stderr)
         return 2
 
     mode = sys.argv[1]
-    if mode == "regression":
+    os.environ["SMARTVOICE_TEST_SUITE"] = mode
+    if mode in {"regression", "full"}:
         missing = _regression_prerequisites()
         if missing:
             print("Regression test prerequisites are not met:", file=sys.stderr)
             for item in missing:
                 print(f"- {item}", file=sys.stderr)
             print(
-                "Install the listed inference dependencies, then rerun "
-                "'python scripts/test.py regression'.",
+                f"Install the listed inference dependencies, then rerun 'python scripts/test.py {mode}'.",
                 file=sys.stderr,
             )
+            return 2
+    if mode == "full":
+        from smartvoice.config.settings import Settings
+        from smartvoice.services.model_storage import model_directory
+        import sherpa_onnx
+
+        settings = Settings.from_env()
+        required_models = (
+            "stt-sensevoice-small-int8",
+            "stt-qwen3-asr-600m-int8",
+            "stt-whisper-base-multilingual-int8",
+        )
+        missing_models = [model for model in required_models
+                          if not (model_directory(settings, model)/"smartvoice-model.json").is_file()]
+        if missing_models:
+            print("Full suite requires all three STT models; missing:", file=sys.stderr)
+            for model in missing_models:
+                print(f"- {model}", file=sys.stderr)
+            return 2
+        if sherpa_onnx.__version__ != "1.13.8+smartvoice.whisper2":
+            print("Full suite requires the validated Whisper whisper2 repair wheel; see doc/whisper-chinese-decoding-fix.md.", file=sys.stderr)
             return 2
     suite = unittest.defaultTestLoader.discover(
         start_dir=str(TESTS), pattern="test_*.py", top_level_dir=str(ROOT)

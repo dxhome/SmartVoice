@@ -16,5 +16,8 @@
   "min_instances": 1,
   "max_instances": 2,
   "model_availability_ttl_seconds": 600,
-  "instance_idle_seconds": 300
+  "instance_idle_seconds": 300,
+  "max_tts_internal_bytes": 33554432,
+  "max_tts_json_bytes": 65536,
+  "tts_mp3_bitrate": 96000
 }

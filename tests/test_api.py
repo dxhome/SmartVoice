@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tests.audio_fixtures import wav_audio
+
 import unittest
 import uuid
 import hashlib
@@ -13,6 +15,8 @@ from fastapi.testclient import TestClient
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import SynthesizedSpeech
+
+TRANSCRIPTION_FIXTURE = wav_audio(rate=16000, seconds=0.001)
 
 
 class FakeProvider:
@@ -39,7 +43,7 @@ class FakeProvider:
 
     def transcribe(self, audio, language="auto", model_id=None):
         self.transcribe_calls.append((language, model_id))
-        assert audio == b"audio fixture"
+        assert audio.startswith(b"RIFF")
         return {
             "text": "测试转写",
             "language": language if language != "auto" else "zh",
@@ -51,13 +55,13 @@ class FakeProvider:
 
     def identify_language(self, audio):
         self.identify_calls += 1
-        assert audio == b"audio fixture"
+        assert audio.startswith(b"RIFF")
         return {"language": "zh", "model": "sherpa-onnx-whisper-tiny-int8-language-id", "processing_seconds": 0.01}
 
     def synthesize(self, text, voice="default", speed=1.0, model_id=None, language="auto"):
         self.synthesize_call = (text, model_id, language)
         assert text in {"你好", "Hi", "Hello", "Bonjour", "The weather is sunny today and I will take a walk in the park."}
-        return SynthesizedSpeech(audio=b"RIFF-test-wav", sample_rate=24000, duration=0.8)
+        return SynthesizedSpeech(audio=wav_audio(), sample_rate=24000, duration=0.8)
 
 
 class ApiTests(unittest.TestCase):
@@ -65,7 +69,7 @@ class ApiTests(unittest.TestCase):
         self.data_dir = Path.cwd() / ".smartvoice-dev" / f"api-test-{uuid.uuid4().hex}"
         self.data_dir.mkdir(parents=True)
 
-    def make_client(self, max_upload_bytes=100):
+    def make_client(self, max_upload_bytes=1024):
         settings = Settings(data_dir=self.data_dir, max_upload_bytes=max_upload_bytes)
         return TestClient(create_app(settings=settings, provider=FakeProvider()))
 
@@ -366,7 +370,7 @@ class ApiTests(unittest.TestCase):
             response = client.post(
                 "/v1/audio/transcriptions",
                 headers={"X-Request-ID": "test-123"},
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "zh", "timestamps": "true", "response_format": "verbose_json"},
             )
             self.assertEqual(response.status_code, 200)
@@ -378,7 +382,7 @@ class ApiTests(unittest.TestCase):
         with self.make_client() as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "unexpected": "value"},
             )
             self.assertEqual(response.status_code, 501)
@@ -388,7 +392,7 @@ class ApiTests(unittest.TestCase):
         with self.make_client() as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "stt-sensevoice-small-int8", "language": "en"},
             )
             self.assertEqual(response.status_code, 200)
@@ -399,7 +403,7 @@ class ApiTests(unittest.TestCase):
         with self.make_client() as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "zh"},
             )
         self.assertEqual(response.status_code, 200, response.text)
@@ -415,7 +419,7 @@ class ApiTests(unittest.TestCase):
             with self.assertLogs("smartvoice.application.transcription", level="DEBUG") as captured:
                 response = client.post(
                     "/v1/audio/transcriptions",
-                    files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                    files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                     data={"model": "smartvoice-auto", "language": "auto"},
                 )
         self.assertEqual(response.status_code, 200, response.text)
@@ -424,7 +428,7 @@ class ApiTests(unittest.TestCase):
         detection_log = next(line for line in captured.output if "language_detection_completed" in line)
         self.assertIn("model=sherpa-onnx-whisper-tiny-int8-language-id", detection_log)
         self.assertIn("language=zh", detection_log)
-        self.assertNotIn("audio fixture", detection_log)
+        self.assertNotIn("RIFF", detection_log)
         self.assertEqual(provider.transcribe_calls, [
             ("zh", "stt-sensevoice-small-int8"),
         ])
@@ -435,7 +439,7 @@ class ApiTests(unittest.TestCase):
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": ""},
             )
         self.assertEqual(response.status_code, 200, response.text)
@@ -451,7 +455,7 @@ class ApiTests(unittest.TestCase):
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "auto"},
             )
         self.assertEqual(response.status_code, 200, response.text)
@@ -468,7 +472,7 @@ class ApiTests(unittest.TestCase):
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "auto"},
             )
         self.assertEqual(response.status_code, 200, response.text)
@@ -485,7 +489,7 @@ class ApiTests(unittest.TestCase):
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "auto"},
             )
         self.assertEqual(response.status_code, 200, response.text)
@@ -500,7 +504,7 @@ class ApiTests(unittest.TestCase):
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=NoAutoModelProvider())) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "auto"},
             )
         self.assertEqual(response.status_code, 501)
@@ -520,7 +524,7 @@ class ApiTests(unittest.TestCase):
         )) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "auto"},
             )
         self.assertEqual(response.status_code, 503)
@@ -538,7 +542,7 @@ class ApiTests(unittest.TestCase):
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "zh"},
             )
         self.assertEqual(response.status_code, 500)
@@ -561,7 +565,7 @@ class ApiTests(unittest.TestCase):
         with self.make_client() as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "en-US"},
             )
         self.assertEqual(response.status_code, 501)
@@ -577,7 +581,7 @@ class ApiTests(unittest.TestCase):
                 if task == "transcription":
                     response = client.post(
                         "/v1/audio/transcriptions",
-                        files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                        files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                         data={"model": model_id, "language": "ru"},
                     )
                 else:
@@ -590,7 +594,7 @@ class ApiTests(unittest.TestCase):
             with self.subTest(model_id=model_id), self.make_client() as client:
                 response = client.post(
                     "/v1/audio/transcriptions",
-                    files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                    files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                     data={"model": model_id, "language": "zh"},
                 )
             self.assertEqual(response.status_code, 501)
@@ -599,11 +603,11 @@ class ApiTests(unittest.TestCase):
         with self.make_client() as client:
             stt = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto", "language": "zh", "response_format": "srt"},
             )
             tts = client.post("/v1/audio/speech", json={
-                "model": "smartvoice-auto", "input": "Hello", "language": "en", "response_format": "mp3",
+                "model": "smartvoice-auto", "input": "Hello", "language": "en", "response_format": "ogg",
             })
         self.assertEqual(stt.status_code, 501)
         self.assertEqual(tts.status_code, 501)
@@ -639,7 +643,7 @@ class ApiTests(unittest.TestCase):
 
     def test_tts_returns_wav_and_metadata_headers(self):
         with self.make_client() as client:
-            response = client.post("/v1/audio/speech", json={"model": "smartvoice-auto", "input": "你好"})
+            response = client.post("/v1/audio/speech", json={"model": "smartvoice-auto", "input": "你好", "response_format": "wav"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["content-type"], "audio/wav")
             self.assertEqual(response.headers["x-audio-sample-rate"], "24000")
@@ -661,7 +665,7 @@ class ApiTests(unittest.TestCase):
         text = "Bonjour, je voudrais réserver une table pour deux personnes ce soir."
         provider.synthesize = lambda text, voice="default", speed=1.0, model_id=None, language="auto": (
             setattr(provider, "synthesize_call", (text, model_id, language))
-            or SynthesizedSpeech(audio=b"RIFF-test-wav", sample_rate=24000, duration=0.8)
+            or SynthesizedSpeech(audio=wav_audio(), sample_rate=24000, duration=0.8)
         )
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:
             with self.assertLogs("smartvoice.application.speech", level="DEBUG") as captured:
@@ -733,7 +737,7 @@ class ApiTests(unittest.TestCase):
         with TestClient(create_app(settings=settings, provider=SlowProvider())) as client:
             response = client.post(
                 "/v1/audio/transcriptions",
-                files={"file": ("sample.wav", b"audio fixture", "audio/wav")},
+                files={"file": ("sample.wav", TRANSCRIPTION_FIXTURE, "audio/wav")},
                 data={"model": "smartvoice-auto"},
             )
         self.assertEqual(response.status_code, 504)

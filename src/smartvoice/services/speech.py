@@ -6,7 +6,11 @@ import logging
 from dataclasses import dataclass
 
 from smartvoice.domain.errors import InvalidRequestError, UnsupportedFeatureError
-from smartvoice.ports.inference import InferenceAvailability, InferenceProvider
+from smartvoice.ports.inference import InferenceAvailability, InferenceProvider, SegmentPlanning
+from smartvoice.ports.audio import AudioEncoding, AudioAssembly
+from smartvoice.domain.contracts import SynthesizedSpeech
+from smartvoice.ports.inference_context import check_execution, segment_scope
+from smartvoice.services.audio_planning import split_text
 from smartvoice.services.language_detection import detect_text_language, prepare_text_for_language_detection, script_language
 from smartvoice.ports.model_repository import ModelRepository
 from smartvoice.services.model_registry import supported_language_codes
@@ -27,15 +31,18 @@ class SpeechOutcome:
     candidates: tuple[dict[str, object], ...]
     text_language: str | None
     runtime_wait_seconds: float
+    audio_format: str = "wav"
+    segment_count: int = 1
 
 
 class SpeechService:
     """Resolve language and model policy, then synthesize speech."""
 
-    def __init__(self, provider: InferenceProvider, model_router: ModelRouter, model_repository: ModelRepository) -> None:
+    def __init__(self, provider: InferenceProvider, model_router: ModelRouter, model_repository: ModelRepository, *, encoder: AudioEncoding | None = None, assembler: AudioAssembly | None = None) -> None:
         self.provider = provider
         self.model_router = model_router
         self.model_repository = model_repository
+        self.encoder, self.assembler = encoder, assembler
 
     def execute(
         self,
@@ -45,7 +52,13 @@ class SpeechService:
         voice: str,
         speed: float,
         router_config: RouterConfig | None = None,
+        response_format: str = "wav",
     ) -> SpeechOutcome:
+        check_execution()
+        if self.encoder is not None:
+            self.encoder.validate(response_format)
+        elif response_format != "wav":
+            raise UnsupportedFeatureError("No output encoder is configured.")
         routed = requested_model == "smartvoice-auto"
         text_language = script_language(text)
         candidates: tuple[dict[str, object], ...] = ()
@@ -103,7 +116,29 @@ class SpeechService:
             )
             model_id, states = self.model_router.choose("speech", resolved, available, config=router_config)
             candidates = tuple(states)
-        synthesized = self.provider.synthesize(text, voice, speed, model_id, resolved)
+        limits = self.provider.segment_limits(model_id) if isinstance(self.provider, SegmentPlanning) else {}
+        maximum = int(limits.get("characters", 0))
+        chunks = split_text(text, maximum) if maximum and self.assembler is not None else [text]
+        if len(chunks) > 1:
+            wait = 0.0
+            with self.assembler.session() as (append, finish):
+                for index, chunk in enumerate(chunks):
+                    with segment_scope(index):
+                        audio = self.provider.synthesize(chunk, voice, speed, model_id, resolved)
+                        wait += audio.runtime_wait_seconds
+                        append(audio)
+                assembled = finish()
+            synthesized = SynthesizedSpeech(assembled.audio, assembled.sample_rate, assembled.duration, wait)
+        else:
+            check_execution()
+            if maximum and self.assembler is not None:
+                with segment_scope(0):
+                    synthesized = self.provider.synthesize(text, voice, speed, model_id, resolved)
+            else:
+                synthesized = self.provider.synthesize(text, voice, speed, model_id, resolved)
+        check_execution()
+        if self.encoder is not None:
+            synthesized = self.encoder.encode(synthesized, response_format)
         return SpeechOutcome(
             synthesized.audio,
             synthesized.sample_rate,
@@ -115,4 +150,6 @@ class SpeechService:
             candidates,
             text_language,
             synthesized.runtime_wait_seconds,
+            synthesized.audio_format,
+            len(chunks),
         )

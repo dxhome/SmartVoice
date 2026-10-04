@@ -59,6 +59,8 @@ Model and runtime capabilities should be explicit, including tasks, languages, f
 
 Integrate new models and backends through capability descriptions and compatibility validation. Do not scatter model-specific conditions across APIs, application flows, and clients.
 
+The domain and application core must remain model-agnostic: do not branch on a model ID, model name, model family, or provider-specific runtime detail in shared business flows. Put model-specific preprocessing, initialization, decoding, and output handling inside the model adapter. Describe caller-relevant differences through the stable capability contract or validated model configuration, so shared flows can apply generic rules without knowing which model supplied a capability. Adding or replacing a model should normally require changes to its adapter, catalog or capability data, and focused tests—not special cases in shared orchestration. Before adding a model-specific condition, check whether the adapter or a declared capability can own it.
+
 #### 3.6 Make Configuration-Driven Behavior Explainable
 
 Represent changeable policies, such as routing, model catalogs, and runtime limits, as validated data or configuration. The system should be able to report the active configuration, the model or device actually selected, and why a capability is unavailable.
@@ -119,6 +121,7 @@ At minimum, design and code reviews should check:
 
 - Is new logic in the right responsibility boundary? Are dependency directions stable?
 - Are backend, model, operating system, or HTTP framework details leaking into layers that do not need them?
+- Do domain and application flows avoid branching on individual model IDs, names, or families? Are model-specific behaviors contained in adapters or expressed as declared capabilities/configuration?
 - Does a new interface solve a real replacement or isolation need, and is it small and clear?
 - Are changes to external behavior, errors, capabilities, and configuration documented with compatibility notes?
 - Are unavailability, failures, timeouts, cancellation, overload, and resource cleanup covered?
@@ -148,7 +151,7 @@ These criteria are goals, not a claim that every change can remain fully local. 
 
 ## Part II — Current Architecture and Platform Compatibility
 
-**Implementation snapshot last reviewed:** 2026-10-02
+**Implementation snapshot last reviewed:** 2026-10-04
 
 ### Functional Layered Architecture
 
@@ -399,3 +402,18 @@ Qwen availability preflight checks CPU support, the native executable, and insta
 - `python scripts/test.py ci` checks mocked/unit/API behavior and excludes real model inference.
 - `python scripts/test.py regression` exercises real inference for installed models whose runtime is reported available. Missing models or unavailable runtimes are skipped individually.
 - For a platform/backend combination to be considered fully verified, retain a clean-environment build/install result and a real inference regression result for that target. Linux x86_64 has passed these checks on Ubuntu 26.04; a successful compile or native `--self-test` alone is not model-backed acceptance.
+
+
+### Audio encoding and bounded long input — implementation update, 2026-10-04
+
+The composition root injects `AudioEncoding`, `AudioAssembly` and `AudioInput` ports into application services. Concrete PyAV, WAV, PCM and temporary-file behavior lives in `adapters/audio`; `services/audio_planning.py` contains text planning and bounded overlap text merge. API parsing and MIME selection remain in `api/v1`, including the pre-parse speech JSON byte bound. No codec or native arrays enter service/domain contracts.
+
+Inference adapters emit `SynthesizedSpeech` with `audio_format="wav"` (mono PCM16); the unified encoder returns WAV unchanged or MP3. Capability schema 1.1 publishes service output formats separately from model generation formats, using the existing dictionary representation. The audio port defines a default 15-second, 1-second-overlap policy. Validated catalog entries can declare transcription window seconds, published through the segmentation capability; Whisper Base currently declares 25 seconds. Every cut overlaps, including cuts selected near silence, because a quiet interval does not guarantee a word boundary. Supertonic retains its model-specific 200-character text plan. The transcription service applies bounded windows without inferring model names or backend-specific rules, and reuses one language decision across chunks where available. Audio input preparation is bounded and reused for language-ID sampling.
+
+`InferenceQueue` propagates one monotonic execution deadline and cancellation event. Application segments check them before/after native calls and codec work; model FIFO queues have bounded reserved continuation capacity. Segments release model instances between native calls. A cancelled native call retains its instance until it really returns; no forced interruption or streaming response is claimed. Private spooled audio has a 1 MiB RAM threshold and closes on success/failure/cancellation. Complete canonical WAV and encoded response still use bounded memory, so this is not zero-copy processing.
+
+Existing input/output duration defaults are preserved. Internal WAV and final response byte budgets are independently configurable, and persisted legacy byte limits initialize the internal budget when the new field is absent. Startup does not rewrite saved settings. MP3 availability is checked before model creation; explicit WAV remains available without a MP3 codec. macOS CPU validation is recorded in [audio-optimization-validation.md](audio-optimization-validation.md); this does not establish Windows/Linux codec packaging or arbitrary-language long-input quality.
+
+### Whisper native decoding repair
+
+The published sherpa-onnx 1.13.8 package loses UTF-8 characters split across byte-level tokens and limits decoding to six tokens per second. A scoped native patch and explicit build script are provided for the local Whisper repair; they do not run at service startup. Only the macOS Apple Silicon / Python 3.11 repair wheel has been verified. This is an exception to the usual prebuilt dependency path, not a claim that the base PyPI package contains the repair. See [Whisper repair validation](whisper-chinese-decoding-fix.md) for pinned source, installation, measurements, and limitations.

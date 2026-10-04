@@ -1,0 +1,53 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 03ed01e..ed5df03 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,7 @@ project(sherpa-onnx)
+ # Remember to update
+ # ./CHANGELOG.md
+ # ./new-release.sh
+-set(SHERPA_ONNX_VERSION "1.13.8")
++set(SHERPA_ONNX_VERSION "1.13.8+smartvoice.whisper2")
+ 
+ # Disable warning about
+ #
+diff --git a/sherpa-onnx/csrc/offline-recognizer-whisper-impl.h b/sherpa-onnx/csrc/offline-recognizer-whisper-impl.h
+index 47a40d1..39d9bad 100644
+--- a/sherpa-onnx/csrc/offline-recognizer-whisper-impl.h
++++ b/sherpa-onnx/csrc/offline-recognizer-whisper-impl.h
+@@ -173,13 +173,14 @@ class OfflineRecognizerWhisperImpl : public OfflineRecognizerImpl {
+       }
+ 
+       std::string s = sym_table[i];
+-      s = ApplyInverseTextNormalization(s);
+-      s = ApplyHomophoneReplacer(std::move(s));
+ 
+       text += s;
+       r.tokens.push_back(s);
+     }
+ 
++    // Normalize complete UTF-8, never individual byte-level tokens.
++    text = ApplyInverseTextNormalization(text);
++    text = ApplyHomophoneReplacer(std::move(text));
+     r.text = text;
+     r.lang = src.lang;
+ 
+diff --git a/sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.cc b/sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.cc
+index 0613146..aa8047a 100644
+--- a/sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.cc
++++ b/sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.cc
+@@ -193,9 +193,11 @@ OfflineWhisperGreedySearchDecoder::Decode(Ort::Value cross_k,
+     }
+   }
+ 
+-  // assume at most 6 tokens per second
+-  int32_t num_possible_tokens = num_feature_frames / 100.0 * 6;
+-  num_possible_tokens = std::min<int32_t>(num_possible_tokens, n_text_ctx / 2);
++  // Multilingual speech can exceed six byte-level tokens per second, but an
++  // audio-relative budget limits hallucinations on short inputs.
++  int32_t num_possible_tokens = std::min<int32_t>(
++      num_feature_frames / 100.0 * 12,
++      n_text_ctx - initial_tokens.size() - 1);
+ 
+   for (int32_t i = 0; i < num_possible_tokens; ++i) {
+     if (max_token_id == eot) {

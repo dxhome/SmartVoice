@@ -3,6 +3,7 @@
   "models": [
     {
       "id": "stt-whisper-base-multilingual-int8",
+      "transcription_segment_seconds": 25,
       "task": "transcription",
       "name": "Whisper Base Multilingual INT8",
       "languages": [
@@ -274,7 +275,9 @@
       ],
       "license_note": "Model weights are subject to OpenRAIL-M; review the bundled license for usage and redistribution terms.",
       "model_type": "supertonic",
-      "estimated_size_bytes": 145318372
+      "estimated_size_bytes": 145318372,
+      "speech_segment_characters": 200,
+      "voice_count": 10
     },
     {
       "id": "tts-qwen3-0-6b-customvoice",

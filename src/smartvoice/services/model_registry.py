@@ -51,6 +51,14 @@ def load_catalog() -> list[ModelSpec]:
                         or not isinstance(metadata["source"], str)
                         or not metadata["source"].startswith(allowed_source_prefixes)):
                     raise RuntimeError(f"Invalid extra file metadata for {item['id']}: {name}")
+        characters = item.get("speech_segment_characters", 0)
+        seconds = item.get("transcription_segment_seconds", 0)
+        if (type(seconds) is not int or not (seconds == 0 or 2 <= seconds <= 29)
+                or (seconds and item["task"] != "transcription")):
+            raise RuntimeError(f"Invalid transcription segment policy for {item['id']}")
+        if (type(characters) is not int or not (characters == 0 or 40 <= characters <= 400)
+                or (characters and item["task"] != "speech")):
+            raise RuntimeError(f"Invalid segment policy for {model_id}")
         specs.append(ModelSpec(
             id=item["id"], task=item["task"], name=item["name"],
             languages=tuple(item["languages"]), backend=item["backend"],
@@ -68,6 +76,8 @@ def load_catalog() -> list[ModelSpec]:
             estimated_size_bytes=item.get("estimated_size_bytes"),
             minimum_free_bytes=item.get("minimum_free_bytes"),
             rule_fsts=item.get("rule_fsts"),
+            speech_segment_characters=item.get("speech_segment_characters", 0),
+            transcription_segment_seconds=seconds,
         ))
     identifiers = [spec.id for spec in specs]
     if len(identifiers) != len(set(identifiers)):

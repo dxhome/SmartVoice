@@ -172,7 +172,7 @@ def _print_startup_banner(address: str, settings: Settings, debug: bool) -> None
     print(border)
     debug_label = " | DEBUG MODE" if debug else ""
     print(f"Starting SmartVoice API at {address} (CPU, {settings.num_threads} inference threads{debug_label})")
-    print(f"Docs: {address}/docs | Test: {address}/test")
+    print(f"Docs: {address}/docs | Console: {address}/console")
 
 
 def _smartvoice_is_running(host: str, port: int) -> bool:
