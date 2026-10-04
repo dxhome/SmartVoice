@@ -55,6 +55,8 @@ class SpeechService:
         response_format: str = "wav",
     ) -> SpeechOutcome:
         check_execution()
+        if not text.strip():
+            raise InvalidRequestError("Speech input must contain non-whitespace text.")
         if self.encoder is not None:
             self.encoder.validate(response_format)
         elif response_format != "wav":
@@ -119,6 +121,9 @@ class SpeechService:
         limits = self.provider.segment_limits(model_id) if isinstance(self.provider, SegmentPlanning) else {}
         maximum = int(limits.get("characters", 0))
         chunks = split_text(text, maximum) if maximum and self.assembler is not None else [text]
+        # A hard character cut can leave a whitespace-only tail. It carries no
+        # speech and some runtimes return empty audio for it.
+        chunks = [chunk for chunk in chunks if chunk.strip()]
         if len(chunks) > 1:
             wait = 0.0
             with self.assembler.session() as (append, finish):
@@ -133,7 +138,7 @@ class SpeechService:
             check_execution()
             if maximum and self.assembler is not None:
                 with segment_scope(0):
-                    synthesized = self.provider.synthesize(text, voice, speed, model_id, resolved)
+                    synthesized = self.provider.synthesize(chunks[0], voice, speed, model_id, resolved)
             else:
                 synthesized = self.provider.synthesize(text, voice, speed, model_id, resolved)
         check_execution()

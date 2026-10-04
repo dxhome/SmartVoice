@@ -23,6 +23,7 @@ from smartvoice.domain.errors import (
 )
 from smartvoice.domain.contracts import InstalledModel, LanguageIdentificationResult, SynthesizedSpeech, TranscriptionResult
 from smartvoice.ports.model_repository import ModelRepository
+from smartvoice.ports.diagnostics import stage
 from smartvoice.ports.inference_context import check_execution, request_segmented
 from smartvoice.ports.audio import DEFAULT_TRANSCRIPTION_WINDOW_SECONDS
 from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
@@ -65,7 +66,8 @@ class SherpaOnnxProvider:
                 "The optional spoken-language detector is not installed. Install its assets or specify a language."
             )
         try:
-            samples = self._decode_audio(av, audio, self.settings.max_audio_seconds)
+            with stage("native_preparation"):
+                samples = self._decode_audio(av, audio, self.settings.max_audio_seconds)
         except Exception as exc:
             raise InvalidAudioError(
                 "Could not decode this audio. Try a valid WAV, MP3, M4A, or FLAC file.",
@@ -90,13 +92,15 @@ class SherpaOnnxProvider:
                 raise InferenceError("Spoken language identification failed.", detail=type(exc).__name__) from exc
             identifier = self._language_identifier
         wait_started = time.perf_counter()
-        self._language_identifier_lock.acquire()
+        with stage("native_lock"):
+            self._language_identifier_lock.acquire()
         runtime_wait = time.perf_counter() - wait_started
         try:
             start = time.perf_counter()
             stream = identifier.create_stream()
             stream.accept_waveform(sample_rate=TARGET_SAMPLE_RATE, waveform=samples.astype(np.float32, copy=False))
-            language = identifier.compute(stream)
+            with stage("lid_inference"):
+                language = identifier.compute(stream)
             elapsed = time.perf_counter() - start
         except Exception as exc:
             raise InferenceError("Spoken language identification failed.", detail=type(exc).__name__) from exc
@@ -209,7 +213,8 @@ class SherpaOnnxProvider:
         tokens_path = self._manifest_path(model_dir, spec.tokens_file, expect_directory=spec.model_type == "qwen3_asr")
         decoder_path = self._manifest_path(model_dir, spec.decoder_file) if spec.decoder_file else None
         try:
-            samples = self._decode_audio(av, audio, self.settings.max_audio_seconds)
+            with stage("native_preparation"):
+                samples = self._decode_audio(av, audio, self.settings.max_audio_seconds)
         except Exception as exc:
             raise InvalidAudioError(
                 "Could not decode this audio. Try a valid WAV, MP3, M4A, or FLAC file.",
@@ -230,15 +235,18 @@ class SherpaOnnxProvider:
         # serialize the model as a whole to avoid parallel duplicate sessions.
         cache_key = model_dir.name
         recognizer_lock = self._model_lock(self._recognizer_locks, cache_key)
-        recognizer = self._get_recognizer(spec.model_type, model_path, decoder_path, tokens_path, language)
+        with stage("recognizer_lookup"):
+            recognizer = self._get_recognizer(spec.model_type, model_path, decoder_path, tokens_path, language)
         wait_started = time.perf_counter()
-        recognizer_lock.acquire()
+        with stage("native_lock"):
+            recognizer_lock.acquire()
         runtime_wait = time.perf_counter() - wait_started
         try:
             stream = recognizer.create_stream()
             stream.accept_waveform(TARGET_SAMPLE_RATE, samples)
             start = time.perf_counter()
-            recognizer.decode_stream(stream)
+            with stage("native_inference"):
+                recognizer.decode_stream(stream)
             elapsed = time.perf_counter() - start
             result = stream.result
         except Exception as exc:
@@ -419,37 +427,40 @@ class SherpaOnnxProvider:
         return chunks
 
     def _get_recognizer(self, model_type: str, model_path: Path, decoder_path: Path | None, tokens_path: Path, language: str):
-        key = (model_path.parent.name, language)
+        # Qwen's constructor has no language option. Reuse its native model
+        # across requested languages; other factories configure language.
+        key = (model_path.parent.name, "" if model_type == "qwen3_asr" else language)
         with self._cache_lock:
             if key not in self._recognizers:
-                sherpa_onnx = self._sherpa()
-                if model_type == "sense_voice":
-                    recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
-                        model=str(model_path), tokens=str(tokens_path), num_threads=self.settings.num_threads,
-                        provider=self.settings.device, language=language, use_itn=True,
-                    )
-                elif model_type == "whisper" and decoder_path:
-                    recognizer = sherpa_onnx.OfflineRecognizer.from_whisper(
-                        encoder=str(model_path), decoder=str(decoder_path), tokens=str(tokens_path),
-                        num_threads=self.settings.num_threads, provider=self.settings.device,
-                        language="" if language == "auto" else language, task="transcribe",
-                        # Keep room for multilingual Whisper's 300 recommended
-                        # tail frames (3 seconds) within the 30-second feature window.
-                        tail_paddings=300,
-                    )
-                elif model_type == "qwen3_asr":
-                    if decoder_path is None:
-                        raise UnsupportedFeatureError("Qwen3-ASR requires its encoder and decoder assets.")
-                    recognizer = sherpa_onnx.OfflineRecognizer.from_qwen3_asr(
-                        conv_frontend=str(model_path),
-                        encoder=str(self._manifest_path(model_path.parent, "encoder.int8.onnx")),
-                        decoder=str(decoder_path), tokenizer=str(tokens_path),
-                        num_threads=self.settings.num_threads, feature_dim=128,
-                        max_new_tokens=512, provider=self.settings.device,
-                    )
-                else:
-                    raise UnsupportedFeatureError(f"Unsupported sherpa-onnx STT model type {model_type!r}.")
-                self._recognizers[key] = recognizer
+                with stage("model_initialization"):
+                    sherpa_onnx = self._sherpa()
+                    if model_type == "sense_voice":
+                        recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+                            model=str(model_path), tokens=str(tokens_path), num_threads=self.settings.num_threads,
+                            provider=self.settings.device, language=language, use_itn=True,
+                        )
+                    elif model_type == "whisper" and decoder_path:
+                        recognizer = sherpa_onnx.OfflineRecognizer.from_whisper(
+                            encoder=str(model_path), decoder=str(decoder_path), tokens=str(tokens_path),
+                            num_threads=self.settings.num_threads, provider=self.settings.device,
+                            language="" if language == "auto" else language, task="transcribe",
+                            # Keep room for multilingual Whisper's 300 recommended
+                            # tail frames (3 seconds) within the 30-second feature window.
+                            tail_paddings=300,
+                        )
+                    elif model_type == "qwen3_asr":
+                        if decoder_path is None:
+                            raise UnsupportedFeatureError("Qwen3-ASR requires its encoder and decoder assets.")
+                        recognizer = sherpa_onnx.OfflineRecognizer.from_qwen3_asr(
+                            conv_frontend=str(model_path),
+                            encoder=str(self._manifest_path(model_path.parent, "encoder.int8.onnx")),
+                            decoder=str(decoder_path), tokenizer=str(tokens_path),
+                            num_threads=self.settings.num_threads, feature_dim=128,
+                            max_new_tokens=512, provider=self.settings.device,
+                        )
+                    else:
+                        raise UnsupportedFeatureError(f"Unsupported sherpa-onnx STT model type {model_type!r}.")
+                    self._recognizers[key] = recognizer
             return self._recognizers[key]
 
     def _get_tts(self, model_id: str, model_type: str, paths: dict[str, Path], lexicon_path: str | None, tokens_path: Path | None, data_dir: Path | None, rule_fsts: str | None = None):

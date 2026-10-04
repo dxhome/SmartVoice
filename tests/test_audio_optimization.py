@@ -1,5 +1,6 @@
 """Production integration contracts for the independently validated audio path."""
 import asyncio
+import gc
 import io
 import tempfile
 import threading
@@ -19,7 +20,7 @@ from smartvoice.domain.errors import InferenceTimeoutError, SpeechOutputTooLarge
 from smartvoice.adapters.audio.encoding import AudioEncoder, AudioAssembler
 from smartvoice.adapters.audio.input import BoundedAudioInput
 from smartvoice.ports.inference_context import request_cancelled, request_deadline
-from smartvoice.services.audio_planning import split_text, merge
+from smartvoice.services.audio_planning import append_timed_segments, split_text, merge
 
 class Provider:
     def __init__(self):self.speech=[];self.stt=[];self.lid=[];self.cancel=None
@@ -76,10 +77,22 @@ class AudioOptimizationTests(unittest.TestCase):
     def test_long_text_single_application_plan_and_cumulative_audio(self):
         text='Hello everyone. Please check 12.5 kilograms. '*20
         result=self.speech(input=text,response_format='wav');self.assertEqual(result.status_code,200,result.text)
-        self.assertEqual(''.join(self.provider.speech),text);self.assertGreater(len(self.provider.speech),1)
+        self.assertEqual(''.join(self.provider.speech).rstrip(),text.rstrip());self.assertGreater(len(self.provider.speech),1)
         self.assertTrue(all(len(s)<=200 for s in self.provider.speech))
         self.assertAlmostEqual(float(result.headers['x-audio-duration']),len(self.provider.speech)*.8,places=3)
         self.assertEqual(list((Path(self.directory.name)/'tmp/speech').iterdir()),[])
+    def test_long_tts_does_not_send_whitespace_only_chunks(self):
+        original=self.provider.synthesize
+        def synthesize(text,*args,**kwargs):
+            self.assertTrue(text.strip(), 'Whitespace must not reach inference')
+            return original(text,*args,**kwargs)
+        self.provider.synthesize=synthesize
+        text='The next order is ready. '*40
+        self.assertFalse(split_text(text,200)[-1].strip())
+        result=self.speech(input=text)
+        self.assertEqual(result.status_code,200,result.text)
+        self.assertEqual(len(self.provider.speech),5)
+        self.assertEqual(''.join(self.provider.speech),text.rstrip())
     def test_cancellation_stops_future_chunks(self):
         event=threading.Event();self.provider.cancel=event;token=request_cancelled.set(event)
         try:
@@ -105,12 +118,112 @@ class AudioOptimizationTests(unittest.TestCase):
         self.assertEqual(result.status_code,200,result.text)
         self.assertEqual(self.provider.lid,[29.]);self.assertEqual(result.json()['duration'],70)
         self.assertEqual(self.provider.stt,[15.,15.,15.,15.,14.])
+    def test_lid_timeout_does_not_fall_back_to_transcription(self):
+        def identify(audio):raise InferenceTimeoutError('LID deadline expired')
+        self.provider.identify_language=identify
+        result=self.client.post('/v1/audio/transcriptions',files={'file':('short.wav',wav_audio(),'audio/wav')},data={'model':'smartvoice-auto'})
+        self.assertEqual(result.status_code,504,result.text)
+        self.assertEqual(self.provider.stt,[])
+    def test_lid_queue_overload_does_not_fall_back(self):
+        from smartvoice.domain.errors import InferenceOverloadedError
+        def identify(audio):raise InferenceOverloadedError('LID queue full')
+        self.provider.identify_language=identify
+        result=self.client.post('/v1/audio/transcriptions',files={'file':('long.wav',wav_audio(16000,70),'audio/wav')},data={'model':'smartvoice-auto','language':'auto'})
+        self.assertEqual(result.status_code,503)
+        self.assertEqual(self.provider.stt,[])
+
+    def test_unexpected_lid_error_is_not_silently_recovered(self):
+        def identify(audio):raise RuntimeError('programming error')
+        self.provider.identify_language=identify
+        with self.assertRaises(RuntimeError):
+            self.app.state.transcription_service.execute(wav_audio(16000,70),'smartvoice-auto','auto')
+        self.assertEqual(self.provider.stt,[])
+
+    def test_lid_cancellation_does_not_start_transcription(self):
+        event=threading.Event()
+        def identify(audio):
+            event.set()
+            raise InferenceError('Native LID failed after cancellation')
+        self.provider.identify_language=identify
+        token=request_cancelled.set(event)
+        try:
+            with self.assertRaises(InferenceTimeoutError):
+                self.app.state.transcription_service.execute(wav_audio(),'smartvoice-auto','auto')
+        finally:request_cancelled.reset(token)
+        self.assertEqual(self.provider.stt,[])
     def test_stt_uses_declared_window_policy(self):
         self.provider.segment_limits=lambda model: {'audio_seconds':25}
         result=self.client.post('/v1/audio/transcriptions',files={'file':('long.wav',wav_audio(16000,70),'audio/wav')},data={'model':'stt-sensevoice-small-int8','language':'en','response_format':'verbose_json'})
         self.assertEqual(result.status_code,200,result.text)
         self.assertEqual(result.json()['chunk_count'],3)
         self.assertEqual(self.provider.stt,[25.,25.,22.])
+    def test_direct_auto_stays_auto_for_each_window(self):
+        original=self.provider.transcribe;languages=[]
+        def transcribe(audio,language,model):
+            languages.append(language)
+            result=original(audio,language,model)
+            result['language']='zh' if len(languages)==1 else 'en'
+            return result
+        self.provider.transcribe=transcribe
+        result=self.client.post('/v1/audio/transcriptions',files={'file':('mixed.wav',wav_audio(16000,40),'audio/wav')},data={'model':'stt-sensevoice-small-int8','language':'auto'})
+        self.assertEqual(result.status_code,200,result.text)
+        self.assertEqual(languages,['auto']*3)
+        self.assertIsNone(result.json()['language'])
+        self.assertEqual(self.provider.lid,[])
+    def test_auto_does_not_label_unknown_windows_with_first_language(self):
+        original=self.provider.transcribe
+        def transcribe(*args):
+            result=original(*args)
+            result['language']='en' if len(self.provider.stt)==1 else None
+            return result
+        self.provider.transcribe=transcribe
+        outcome=self.app.state.transcription_service.execute(wav_audio(16000,40),'stt-sensevoice-small-int8','auto')
+        self.assertIsNone(outcome.result['language'])
+    def test_crossing_timestamp_interval_is_preserved(self):
+        original=self.provider.transcribe
+        def transcribe(*args):
+            result=original(*args)
+            result['segments']=[{'text':'crossing','start':.8,'end':1.3},
+                                {'text':'duplicate','start':.2,'end':.6}]
+            return result
+        self.provider.transcribe=transcribe
+        result=self.app.state.transcription_service.execute(wav_audio(16000,29),'stt-sensevoice-small-int8','en').result
+        self.assertIn({'text':'crossing','start':14.8,'end':15.3},result['segments'])
+        self.assertNotIn({'text':'duplicate','start':14.2,'end':14.6},result['segments'])
+    def test_routed_auto_uses_one_lid_language_for_all_windows(self):
+        original=self.provider.transcribe;languages=[]
+        def transcribe(audio,language,model):
+            languages.append(language)
+            return original(audio,language,model)
+        self.provider.transcribe=transcribe
+        outcome=self.app.state.transcription_service.execute(wav_audio(16000,40),'smartvoice-auto','auto')
+        self.assertEqual(languages,['en']*3)
+        self.assertEqual(self.provider.lid,[29.])
+        self.assertEqual(outcome.result['language'],'en')
+    def test_start_only_overlap_is_retained_and_sorted(self):
+        original=self.provider.transcribe
+        def transcribe(*args):
+            result=original(*args)
+            result['segments']=([{'text':'tail','start':14.9}] if len(self.provider.stt)==1
+                                else [{'text':'crossing','start':.8}, {'text':'tail','start':.9}])
+            return result
+        self.provider.transcribe=transcribe
+        result=self.app.state.transcription_service.execute(wav_audio(16000,29),'stt-sensevoice-small-int8','en').result
+        self.assertEqual(result['segments'],[{'text':'crossing','start':14.8},{'text':'tail','start':14.9}])
+        self.assertTrue(all('end' not in item for item in result['segments']))
+    def test_start_only_alignment_preserves_uncertain_and_repeated_tokens(self):
+        previous=[{'text':'again','start':14.5}]
+        append_timed_segments(previous,[{'text':'again','start':.5},
+                                       {'text':'again','start':.5},
+                                       {'text':'again','start':.6},
+                                       {'text':'different','start':.5}],14,1)
+        self.assertEqual(len(previous),4)
+        self.assertEqual(sum(item['text']=='again' for item in previous),3)
+    def test_start_only_alignment_requires_overlap_and_text_evidence(self):
+        previous=[{'text':'word','start':14}, {'start':14.2}]
+        append_timed_segments(previous,[{'text':'word','start':0}],14,0)
+        append_timed_segments(previous,[{'start':.2}],14,1)
+        self.assertEqual(len(previous),4)
     def test_stt_cancellation_stops_after_current_window(self):
         event=threading.Event();original=self.provider.transcribe
         def transcribe(*args):
@@ -168,7 +281,9 @@ class AudioOptimizationTests(unittest.TestCase):
         def blocked_transcribe(*args,**kwargs):
             calls.append(len(calls)+1)
             if len(calls)==1:
-                entered.set();release.wait(timeout=5)
+                # Released by the test's finally block. A timeout here can
+                # expire during gc.collect(), invalidating lease assertions.
+                entered.set();release.wait()
             return original(*args,**kwargs)
         self.provider.transcribe=blocked_transcribe
         from starlette.requests import Request
@@ -210,6 +325,9 @@ class AudioOptimizationTests(unittest.TestCase):
             self.assertEqual(calls,[1],'disconnect must prevent later STT windows from starting')
             self.assertFalse(any(m.get('type')=='http.response.start' for m in sent),
                              'a disconnected client must not receive a synthetic error response')
+            # A cancelled request detaches the native worker from its caller.
+            # Force collection to verify the queue keeps that worker alive.
+            gc.collect()
             self.assertEqual(self.app.state.inference_queue._reserved,1,
                              'active native work must retain its queue slot until it returns')
         finally:release.set()
@@ -246,6 +364,7 @@ class AudioOptimizationTests(unittest.TestCase):
     def test_planning_preserves_numbers_and_repetitions(self):
         text='Order 12.5 kilograms. '*30;self.assertEqual(''.join(split_text(text,200)),text)
         self.assertEqual(merge('again again','again again',0),'again again again again')
+        self.assertEqual(merge('İZMİR hello','İZMİR hello there',1),'İZMİR hello there')
     def test_settings_validate_encoding(self):
         with self.assertRaises(ValueError):Settings(data_dir=Path(self.directory.name),tts_mp3_bitrate=1)
         with self.assertRaises(ValueError):Settings(data_dir=Path(self.directory.name),max_tts_internal_bytes=0)

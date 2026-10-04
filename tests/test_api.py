@@ -159,7 +159,7 @@ class ApiTests(unittest.TestCase):
         self.assertIn('"payload":"<content omitted: 130 bytes>"', formatted)
         self.assertNotIn("x" * 129, formatted)
 
-    def test_docs_show_project_branding_and_github_link(self):
+    def test_docs_expose_api_reference_and_brand_assets(self):
         with self.make_client() as client:
             docs = client.get("/docs")
             schema = client.get("/openapi.json").json()
@@ -167,13 +167,10 @@ class ApiTests(unittest.TestCase):
             favicon = client.get("/assets/smartvoice-favicon.png")
 
         self.assertEqual(docs.status_code, 200)
-        self.assertIn('img[src*="smartvoice-logo.png"]', docs.text)
-        self.assertIn("width: 200px !important", docs.text)
-        self.assertIn("height: auto !important", docs.text)
+        self.assertIn("SmartVoice | API documentation", docs.text)
         self.assertIn("/openapi.json", docs.text)
         description = schema["info"]["description"]
-        self.assertIn("Local speech recognition and synthesis", description)
-        self.assertIn("https://github.com/dxhome/SmartVoice", description)
+        self.assertEqual("Interactive API reference for SmartVoice endpoints.", description)
         self.assertNotIn("prototype", description.lower())
         self.assertEqual(logo.status_code, 200)
         self.assertEqual(logo.headers["content-type"], "image/png")
@@ -449,7 +446,8 @@ class ApiTests(unittest.TestCase):
     def test_transcription_falls_back_to_auto_model_when_language_identifier_fails(self):
         class FailedIdentifierProvider(FakeProvider):
             def identify_language(self, audio):
-                raise RuntimeError("identifier unavailable")
+                from smartvoice.domain.errors import ModelUnavailableError
+                raise ModelUnavailableError("identifier unavailable")
 
         provider = FailedIdentifierProvider()
         with TestClient(create_app(settings=Settings(data_dir=self.data_dir), provider=provider)) as client:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import argparse
 import os
 import sys
 import unittest
@@ -34,11 +35,16 @@ def _without_real_inference(suite: unittest.TestSuite) -> unittest.TestSuite:
 
 
 def main() -> int:
-    if len(sys.argv) != 2 or sys.argv[1] not in {"ci", "regression", "full"}:
-        print("Usage: python scripts/test.py {ci|regression|full}", file=sys.stderr)
-        return 2
-
-    mode = sys.argv[1]
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('mode',choices=('ci','regression','full'))
+    parser.add_argument('--stt-models',nargs='+',choices=('stt-sensevoice-small-int8','stt-qwen3-asr-600m-int8','stt-whisper-base-multilingual-int8'))
+    args=parser.parse_args()
+    mode=args.mode
+    if args.stt_models:
+        os.environ['SMARTVOICE_TEST_STT_MODELS']=','.join(args.stt_models)
+        print('Selected STT scope: '+', '.join(args.stt_models),flush=True)
+    else:
+        os.environ.pop('SMARTVOICE_TEST_STT_MODELS',None)
     os.environ["SMARTVOICE_TEST_SUITE"] = mode
     if mode in {"regression", "full"}:
         missing = _regression_prerequisites()
@@ -62,14 +68,15 @@ def main() -> int:
             "stt-qwen3-asr-600m-int8",
             "stt-whisper-base-multilingual-int8",
         )
+        required_models=tuple(args.stt_models or required_models)
         missing_models = [model for model in required_models
                           if not (model_directory(settings, model)/"smartvoice-model.json").is_file()]
         if missing_models:
-            print("Full suite requires all three STT models; missing:", file=sys.stderr)
+            print("Full suite requires selected STT models (all three when unfiltered); missing:", file=sys.stderr)
             for model in missing_models:
                 print(f"- {model}", file=sys.stderr)
             return 2
-        if sherpa_onnx.__version__ != "1.13.8+smartvoice.whisper2":
+        if "stt-whisper-base-multilingual-int8" in required_models and sherpa_onnx.__version__ != "1.13.8+smartvoice.whisper2":
             print("Full suite requires the validated Whisper whisper2 repair wheel; see doc/whisper-chinese-decoding-fix.md.", file=sys.stderr)
             return 2
     suite = unittest.defaultTestLoader.discover(

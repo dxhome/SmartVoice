@@ -1,5 +1,6 @@
 """Real bilingual STT functional and duration-boundary regressions."""
 import importlib.util
+from contextlib import ExitStack
 import io
 import os
 import unittest
@@ -10,6 +11,7 @@ from fastapi.testclient import TestClient
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from tests.stt_regression_audio import build_audio, short_samples
+from tests.inference_environment import isolated_runtime
 
 
 _SETTINGS = Settings.from_env()
@@ -20,6 +22,8 @@ _MODELS = (
     "stt-qwen3-asr-600m-int8",
     "stt-whisper-base-multilingual-int8",
 )
+if os.environ.get('SMARTVOICE_TEST_STT_MODELS'):
+    _MODELS=tuple(m for m in _MODELS if m in os.environ['SMARTVOICE_TEST_STT_MODELS'].split(','))
 _WINDOWS = {
     "stt-sensevoice-small-int8": 15,
     "stt-qwen3-asr-600m-int8": 15,
@@ -30,7 +34,14 @@ _WINDOWS = {
 class RealSttAudioRegressionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = TestClient(create_app(settings=_SETTINGS))
+        if _FULL and "stt-whisper-base-multilingual-int8" in _MODELS:
+            import sherpa_onnx
+            if sherpa_onnx.__version__ != "1.13.8+smartvoice.whisper2":
+                raise RuntimeError("Full STT regression requires the validated Whisper whisper2 repair wheel")
+        environment = ExitStack()
+        cls.addClassCleanup(environment.close)
+        settings, provider = environment.enter_context(isolated_runtime(_SETTINGS))
+        cls.client = TestClient(create_app(settings=settings, provider=provider))
         cls.client.__enter__()
         cls.provider = cls.client.app.state.provider
         cls.installed = {str(item["id"]) for item in cls.provider.installed_models()}

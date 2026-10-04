@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Hashable, TypeVar
 
 from smartvoice.domain.errors import InferenceOverloadedError
+from smartvoice.ports.diagnostics import stage
 from smartvoice.ports.inference_context import request_cancelled, request_continuation, request_deadline, check_execution
 
 T = TypeVar("T")
@@ -63,57 +64,59 @@ class ElasticRuntimePool:
         deadline = min(started + self.wait_seconds, request_deadline.get() or float("inf"))
         token = object()
         cancelled = request_cancelled.get()
-        with self._condition:
-            if self._closed:
-                raise InferenceOverloadedError("Inference runtime is shutting down.")
-            group = self._groups.setdefault(key, _Group())
-            # An immediately available lease does not count as queued work.
-            idle = any(i.ready and not i.busy for i in group.instances)
-            grow = len(group.instances) < self.maximum and not group.warming
-            # Reserved continuation capacity is bounded by active instances. It
-            # lets admitted operations rejoin behind waiting short requests.
-            waiting_limit = self.max_waiting + (self.maximum if request_continuation.get() else 0)
-            if (group.waiting or not (idle or grow)) and len(group.waiting) >= waiting_limit:
-                raise InferenceOverloadedError("The model inference queue is full.")
-            group.waiting.append(token)
-            try:
-                while True:
-                    if self._closed or (cancelled is not None and cancelled.is_set()):
-                        raise InferenceOverloadedError("Queued inference was cancelled.")
-                    if time.monotonic() >= deadline:
-                        execution_deadline = request_deadline.get()
-                        if execution_deadline is not None and time.monotonic() >= execution_deadline:
-                            check_execution()
-                        raise InferenceOverloadedError("Timed out waiting for a model instance.")
-                    if group.waiting[0] is token:
-                        instance = next((i for i in group.instances if i.ready and not i.busy), None)
-                        if instance is not None:
-                            instance.busy = True
-                            new = False
-                            seed = None
-                            break
-                        if len(group.instances) < self.maximum and not group.warming:
-                            seed = next((i.runtime for i in group.instances if i.ready), None)
-                            instance = _Instance()
-                            group.instances.append(instance)
-                            group.warming = True
-                            new = True
-                            break
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0:
-                        raise InferenceOverloadedError("Timed out waiting for a model instance.")
-                    self._condition.wait(min(remaining, 0.1))
-            finally:
-                group.waiting.remove(token)
-                self._condition.notify_all()
-            group.peak_active = max(group.peak_active, sum(i.busy for i in group.instances))
-            ordinal = len(group.instances)
+        with stage("model_queue"):
+            with self._condition:
+                if self._closed:
+                    raise InferenceOverloadedError("Inference runtime is shutting down.")
+                group = self._groups.setdefault(key, _Group())
+                # An immediately available lease does not count as queued work.
+                idle = any(i.ready and not i.busy for i in group.instances)
+                grow = len(group.instances) < self.maximum and not group.warming
+                # Reserved continuation capacity is bounded by active instances. It
+                # lets admitted operations rejoin behind waiting short requests.
+                waiting_limit = self.max_waiting + (self.maximum if request_continuation.get() else 0)
+                if (group.waiting or not (idle or grow)) and len(group.waiting) >= waiting_limit:
+                    raise InferenceOverloadedError("The model inference queue is full.")
+                group.waiting.append(token)
+                try:
+                    while True:
+                        if self._closed or (cancelled is not None and cancelled.is_set()):
+                            raise InferenceOverloadedError("Queued inference was cancelled.")
+                        if time.monotonic() >= deadline:
+                            execution_deadline = request_deadline.get()
+                            if execution_deadline is not None and time.monotonic() >= execution_deadline:
+                                check_execution()
+                            raise InferenceOverloadedError("Timed out waiting for a model instance.")
+                        if group.waiting[0] is token:
+                            instance = next((i for i in group.instances if i.ready and not i.busy), None)
+                            if instance is not None:
+                                instance.busy = True
+                                new = False
+                                seed = None
+                                break
+                            if len(group.instances) < self.maximum and not group.warming:
+                                seed = next((i.runtime for i in group.instances if i.ready), None)
+                                instance = _Instance()
+                                group.instances.append(instance)
+                                group.warming = True
+                                new = True
+                                break
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise InferenceOverloadedError("Timed out waiting for a model instance.")
+                        self._condition.wait(min(remaining, 0.1))
+                finally:
+                    group.waiting.remove(token)
+                    self._condition.notify_all()
+                group.peak_active = max(group.peak_active, sum(i.busy for i in group.instances))
+                ordinal = len(group.instances)
         wait = time.monotonic() - started
         warm_started = time.monotonic()
         succeeded = False
         try:
             if new:
-                instance.runtime = self.factory(seed)
+                with stage("runtime_construction"):
+                    instance.runtime = self.factory(seed)
             check_execution()
             result = operation(instance.runtime)
             succeeded = True

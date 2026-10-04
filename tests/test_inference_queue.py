@@ -93,6 +93,28 @@ class InferenceQueueTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.05)
         self.assertEqual((await queue.run(lambda: "after", timeout_seconds=1))[0], "after")
 
+    async def test_canceling_detached_execution_keeps_native_capacity(self):
+        queue = InferenceQueue(max_concurrent=1, max_queued=0)
+        entered = threading.Event(); release = threading.Event(); signals = []
+        def native():
+            from smartvoice.ports.inference_context import request_cancelled
+            entered.set(); release.wait(); signals.append(request_cancelled.get().is_set()); return 'done'
+        request = asyncio.create_task(queue.run(native, 1))
+        self.assertTrue(await asyncio.to_thread(entered.wait, 2))
+        try:
+            worker = next(iter(queue._running_tasks))
+            worker.cancel()
+            with self.assertRaises(asyncio.CancelledError): await request
+            self.assertEqual(queue._reserved, 1)
+            with self.assertRaises(InferenceOverloadedError): await queue.run(lambda: 'early', .01)
+        finally: release.set()
+        for _ in range(100):
+            if not queue._reserved: break
+            await asyncio.sleep(.01)
+        self.assertEqual(queue._reserved, 0)
+        self.assertEqual(signals, [True])
+        self.assertEqual((await queue.run(lambda: 'recovered', 1))[0], 'recovered')
+
 
 if __name__ == "__main__":
     unittest.main()

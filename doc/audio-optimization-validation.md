@@ -2,6 +2,10 @@
 
 日期：2026-10-04。本机 macOS 27 / Apple Silicon arm64 / CPU，每实例 2 个原生线程，实例上限 2。独立实验在 `sandbox/tts-output`；产品迁移依照 [架构指导](architecture-guidelines.md)，不涉及另一项 streaming sandbox 的 S 阶段。实验目录被 Git 忽略，本文件保留可版本化的结论。
 
+后续终止逻辑修复、LID 超时/取消处理及当前版本完整 HTTP 检查见 [长音频完成性验证](stt-completion-validation.md)。下文迁移阶段的测试数量和性能数据是历史记录，应与后续验证范围分开阅读。
+
+逐段 auto、Qwen3-ASR 缓存复用、重叠边界保护及真人样本窗口对比见 [语言与策略验证](stt-language-cache-policy-validation.md)。具体模型 auto 不再沿用首段语言；智能路由的一次 LID 决策仍按请求复用。
+
 ## 已迁移
 
 | 范围 | 当前行为 |
@@ -67,3 +71,5 @@ FLEURS 为 Google/FLEURS、CC BY 4.0；使用本机已有固定缓存，原始�
 ## 保留的验证边界
 
 本次完成的是本机 REST 实现和迁移范围。Windows/Linux 新编码路径、任意连续长语音的边界质量、完整长文本韵律及正式多语言质量基线未验收。已有跨平台原生引擎验证不会自动覆盖这些新路径；后续应使用独立样本和目标平台检查，不以当前有限数据宣布正式质量或并发容量。
+
+后续真人原始录音对照、start-only 时间戳修复、纯空白 TTS 尾段修复及混合交互测量见 [补充验证](stt-interaction-alignment-validation.md)。

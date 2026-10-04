@@ -20,6 +20,36 @@ from tests.audio_fixtures import wav_audio
 
 
 class ProviderContractTests(unittest.TestCase):
+    def test_qwen_recognizer_reuses_language_independent_initialization(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        provider=SherpaOnnxProvider(Settings(data_dir=Path.cwd()/'.smartvoice-dev'/'cache-contract'))
+        factory=Mock(side_effect=lambda **kwargs: object())
+        provider._sherpa=lambda: SimpleNamespace(OfflineRecognizer=SimpleNamespace(from_qwen3_asr=factory))
+        provider._manifest_path=lambda root,name: root/name
+        path=Path('stt-qwen3-asr-600m-int8/conv.onnx')
+        values=[provider._get_recognizer('qwen3_asr',path,Path('decoder.onnx'),Path('tokenizer'),lang)
+                for lang in ('auto','zh','en','auto')]
+        self.assertTrue(all(value is values[0] for value in values))
+        self.assertEqual(factory.call_count,1)
+        self.assertEqual(len(provider._recognizers),1)
+        self.assertTrue(provider.is_model_loaded(path.parent.name))
+        provider._get_recognizer('qwen3_asr',Path('another-model/conv.onnx'),Path('decoder.onnx'),Path('tokenizer'),'zh')
+        self.assertEqual(factory.call_count,2)
+    def test_language_configured_factories_keep_distinct_recognizers(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        for model_type in ('whisper','sense_voice'):
+            with self.subTest(model_type=model_type):
+                provider=SherpaOnnxProvider(Settings(data_dir=Path.cwd()/'.smartvoice-dev'/'cache-contract'))
+                factory=Mock(side_effect=lambda **kwargs: object())
+                provider._sherpa=lambda: SimpleNamespace(OfflineRecognizer=SimpleNamespace(from_whisper=factory,from_sense_voice=factory))
+                first=provider._get_recognizer(model_type,Path('model/encoder.onnx'),Path('decoder.onnx'),Path('tokens.txt'),'auto')
+                second=provider._get_recognizer(model_type,Path('model/encoder.onnx'),Path('decoder.onnx'),Path('tokens.txt'),'zh')
+                self.assertIsNot(first,second)
+                self.assertEqual(factory.call_count,2)
+                self.assertIs(provider._get_recognizer(model_type,Path('model/encoder.onnx'),Path('decoder.onnx'),Path('tokens.txt'),'auto'),first)
+
     def test_close_releases_cached_runtime_models(self):
         provider = SherpaOnnxProvider(Settings(data_dir=Path.cwd() / ".smartvoice-dev" / "provider-close"))
         provider._recognizers[("model", "zh")] = object()

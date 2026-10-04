@@ -267,7 +267,8 @@ class ModelCatalogTests(unittest.TestCase):
             "smartvoice.services.model_download.get_model_spec", return_value=spec
         ), patch("smartvoice.services.model_storage.get_model_spec", return_value=spec), patch(
             "smartvoice.services.model_storage.load_catalog", return_value=[spec]
-        ):
+        ), patch("smartvoice.services.model_download.shutil.disk_usage",
+                 return_value=type("DiskUsage", (), {"free": 8 * 1024**3})()):
             destination = install_model(settings, "stt-sensevoice-small-int8")
             self.assertTrue((destination / "smartvoice-model.json").is_file())
             self.assertEqual([entry["id"] for entry in installed_models(settings)], ["stt-sensevoice-small-int8"])

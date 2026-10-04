@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
+from contextlib import ExitStack
 import io
+import os
 import unittest
 from pathlib import Path
 
@@ -13,7 +15,7 @@ from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.services.model_storage import model_directory
 from smartvoice.services.model_registry import load_catalog
-from smartvoice.services.spoken_language_identifier import installed_language_id_model_dir
+from tests.inference_environment import isolated_runtime, language_id_ready
 
 
 _settings = Settings.from_env()
@@ -21,7 +23,7 @@ _dependencies_ready = all(importlib.util.find_spec(name) is not None for name in
 _models_ready = all(
     (model_directory(_settings, model_id) / "smartvoice-model.json").is_file()
     for model_id in ("stt-sensevoice-small-int8", "tts-kokoro-multilingual-v1-1-zh-en")
-) and installed_language_id_model_dir(_settings) is not None
+) and language_id_ready(_settings)
 _catalog = load_catalog()
 
 
@@ -57,7 +59,10 @@ class RealInferenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.client = TestClient(create_app(settings=_settings))
+        environment = ExitStack()
+        cls.addClassCleanup(environment.close)
+        settings, provider = environment.enter_context(isolated_runtime(_settings))
+        cls.client = TestClient(create_app(settings=settings, provider=provider))
         cls.client.__enter__()
 
     @classmethod
@@ -159,7 +164,9 @@ class RealInferenceTests(unittest.TestCase):
         cases = (
             ("你好，这是 SmartVoice 的本地语音合成测试。", "zh", "smartvoice-auto"),
             ("Hello, this is a local SmartVoice speech synthesis test.", "en", "tts-kokoro-multilingual-v1-1-zh-en"),
-            ("这是一个用于验证长文本语音合成分段处理的测试。" * 24, "zh", "smartvoice-auto"),
+            # Long-text optimization is validated with Supertonic; Qwen3-TTS
+            # remains covered by short direct/routed compatibility checks.
+            ("This is a long text test for segmented speech synthesis. " * 24, "en", "tts-supertonic-v3-multilingual-int8"),
         )
         for text, language, model in cases:
             response = self.client.post("/v1/audio/speech", json={
@@ -192,7 +199,10 @@ class InstalledCatalogModelInferenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.client = TestClient(create_app(settings=_settings))
+        environment = ExitStack()
+        cls.addClassCleanup(environment.close)
+        settings, provider = environment.enter_context(isolated_runtime(_settings))
+        cls.client = TestClient(create_app(settings=settings, provider=provider))
         cls.client.__enter__()
 
     @classmethod
@@ -249,6 +259,8 @@ def _model_test(spec):
 
 
 for _model_spec in _catalog:
+    if _model_spec.task=='transcription' and os.environ.get('SMARTVOICE_TEST_STT_MODELS') and _model_spec.id not in os.environ['SMARTVOICE_TEST_STT_MODELS'].split(','):
+        continue
     setattr(
         InstalledCatalogModelInferenceTests,
         f"test_{_model_spec.id.replace('-', '_')}",

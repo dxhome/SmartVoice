@@ -38,15 +38,7 @@ if not logger.handlers:
 logger.setLevel(logging.INFO)
 logger.propagate = False
 
-OPENAPI_DESCRIPTION = """![SmartVoice logo](/assets/smartvoice-logo.png)
-**Local speech recognition and synthesis, with language-aware model routing.**
-
-SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It offers both through one OpenAI-style audio API, with models installed and run on your machine. Smart routing chooses an installed model based on the request language. Inference runs locally on CPU with no per-request cloud fee; model files need to be downloaded during setup.
-
-[Open the SmartVoice Console](/console)
-
-[View the SmartVoice project on GitHub](https://github.com/dxhome/SmartVoice)
-"""
+OPENAPI_DESCRIPTION = "Interactive API reference for SmartVoice endpoints."
 
 
 def _validation_details(exc: RequestValidationError) -> list[dict[str, str]]:
@@ -356,27 +348,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
             title="SmartVoice | API documentation",
             swagger_favicon_url="/assets/smartvoice-favicon.png",
         )
-        html = page.body.decode("utf-8")
-        style = """<style>
-        .swagger-ui img[src*="smartvoice-logo.png"] {
-            display: block !important;
-            width: 200px !important;
-            height: auto !important;
-            max-width: 200px !important;
-            object-fit: contain !important;
-            margin: 0 auto !important;
-        }
-        .swagger-ui .info .markdown p { max-width: 900px; }
-        .swagger-ui .info .description .markdown > p:first-child {
-            text-align: center;
-            margin: 0 0 14px;
-        }
-        .swagger-ui .info .description .markdown > p:nth-child(2) {
-            text-align: center;
-            margin: 0 auto 14px;
-        }
-        </style>"""
-        return HTMLResponse(html.replace("</head>", f"{style}</head>"))
+        return page
 
     @app.exception_handler(RequestValidationError)
     async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
