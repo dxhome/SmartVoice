@@ -216,7 +216,15 @@ async def download_model(request: Request, model_id: str) -> dict[str, object]:
 async def refresh_models(request: Request) -> dict[str, object]:
     refresh = getattr(get_provider(request), "refresh_model_availability", None)
     operation = refresh if callable(refresh) else get_provider(request).installed_models
-    models = await run_in_threadpool(operation)
+    try:
+        payload = await request.json()
+    except json.JSONDecodeError:
+        payload = {}
+    force_integrity_check = isinstance(payload, dict) and payload.get("force_integrity_check") is True
+    if force_integrity_check and callable(refresh):
+        models = await run_in_threadpool(operation, force_integrity_check=True)
+    else:
+        models = await run_in_threadpool(operation)
     return {
         "status": "refreshed",
         "count": len(models),

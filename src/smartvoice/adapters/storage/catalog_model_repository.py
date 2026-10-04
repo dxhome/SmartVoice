@@ -39,13 +39,20 @@ class CatalogModelRepository(ModelRepository):
                 self._installed_models_stale = False
             return copy.deepcopy(self._installed_models_snapshot)
 
-    def refresh_installed_models(self) -> Sequence[InstalledModel]:
+    def refresh_installed_models(self, *, force_integrity_check: bool = False) -> Sequence[InstalledModel]:
         """Rescan and replace the process-wide verified filesystem snapshot."""
         with self._installed_models_lock:
-            models = tuple(installed_models(self.settings))
+            if force_integrity_check:
+                models = tuple(installed_models(self.settings, force_integrity_check=True))
+            else:
+                models = tuple(installed_models(self.settings))
             self._installed_models_snapshot = models
             self._installed_models_stale = False
             return copy.deepcopy(models)
+
+    def force_refresh_installed_models(self) -> Sequence[InstalledModel]:
+        """Rehash every file listed in installed model manifests and persist results."""
+        return self.refresh_installed_models(force_integrity_check=True)
 
     def invalidate_installed_models(self) -> None:
         with self._installed_models_lock:

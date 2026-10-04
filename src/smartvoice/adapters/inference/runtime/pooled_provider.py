@@ -81,6 +81,11 @@ class PooledInferenceProvider:
         self.pool.close()
         self.metadata.close()
 
+    def reload_integrity_cache(self):
+        method = getattr(self.metadata, "reload_integrity_cache", None)
+        if callable(method):
+            method()
+
 
 class PooledSherpaProvider(PooledInferenceProvider):
     backend = "sherpa-onnx"

@@ -55,7 +55,7 @@ class CompositeInferenceProvider:
         self._refresh_retries_exhausted = False
         self._last_refresh_error: str | None = None
 
-    def refresh_model_availability(self) -> list[InstalledModel]:
+    def refresh_model_availability(self, *, force_integrity_check: bool = False) -> list[InstalledModel]:
         """Force a full scan and atomically publish it as the shared snapshot."""
         with self._scan_lock:
             with self._availability_lock:
@@ -65,7 +65,7 @@ class CompositeInferenceProvider:
                 self._refresh_retries_exhausted = False
                 self._last_refresh_error = None
             try:
-                models = self._scan_model_availability()
+                models = self._scan_model_availability(force_integrity_check=force_integrity_check)
             except Exception:
                 with self._availability_lock:
                     if generation == self._refresh_generation:
@@ -79,10 +79,21 @@ class CompositeInferenceProvider:
                     self._last_refresh_error = None
                 return copy.deepcopy(self._installed_snapshot or ())
 
-    def _scan_model_availability(self) -> list[InstalledModel]:
+    def _scan_model_availability(self, *, force_integrity_check: bool = False) -> list[InstalledModel]:
         refresh_repository = getattr(self.model_repository, "refresh_installed_models", None)
-        if callable(refresh_repository):
+        if force_integrity_check:
+            force_refresh = getattr(self.model_repository, "force_refresh_installed_models", None)
+            if callable(force_refresh):
+                force_refresh()
+            elif callable(refresh_repository):
+                refresh_repository()
+        elif callable(refresh_repository):
             refresh_repository()
+        if force_integrity_check:
+            for provider in self.providers.values():
+                reload_cache = getattr(provider, "reload_integrity_cache", None)
+                if callable(reload_cache):
+                    reload_cache()
         return [
             model
             for provider in self.providers.values()

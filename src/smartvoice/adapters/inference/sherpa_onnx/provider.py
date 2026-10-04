@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import threading
 import time
 import wave
@@ -23,12 +24,14 @@ from smartvoice.domain.contracts import InstalledModel, LanguageIdentificationRe
 from smartvoice.ports.model_repository import ModelRepository
 from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
 from smartvoice.services.spoken_language_identifier import installed_language_id_model_dir
+from smartvoice.services.file_integrity import load_hash_cache, save_hash_cache
 from smartvoice.adapters.platform.host_metrics import host_info, process_metrics, system_memory_info
 
 STT_MODEL_ID = "stt-sensevoice-small-int8"
 DEFAULT_TTS_MODEL_ID = "tts-kokoro-multilingual-v1-1-zh-en"
 TARGET_SAMPLE_RATE = 16000
 SUPERTONIC_GENERATION_STEPS = 6
+logger = logging.getLogger(__name__)
 
 
 class SherpaOnnxProvider:
@@ -45,6 +48,7 @@ class SherpaOnnxProvider:
         self._tts: dict[str, object] = {}
         self._tts_locks: dict[str, threading.Lock] = {}
         self._verified_files: dict[str, tuple[int, int, str]] = {}
+        self._integrity_cache: dict[str, dict[str, object]] | None = None
 
     def identify_language(self, audio: bytes) -> LanguageIdentificationResult:
         """Detect spoken language using sherpa-onnx's dedicated Whisper LID API."""
@@ -134,6 +138,15 @@ class SherpaOnnxProvider:
             self._tts_locks.clear()
             self._language_identifier = None
             self._verified_files.clear()
+            self._integrity_cache = None
+
+    def reload_integrity_cache(self) -> None:
+        """Reload persisted file validation after an explicit integrity refresh."""
+        with self._cache_lock:
+            self._verified_files.clear()
+            self._integrity_cache = load_hash_cache(
+                self.settings.models_dir / ".integrity-cache.json"
+            )
 
     def runtime(self) -> dict[str, object]:
         return self.runtime_for_models(self.installed_models())
@@ -476,23 +489,56 @@ class SherpaOnnxProvider:
             metadata = json.loads(manifest.read_text(encoding="utf-8"))
             if metadata.get("id") != spec.id:
                 raise ModelUnavailableError("The installed model manifest ID does not match its directory.")
+            cache_path = self.settings.models_dir / ".integrity-cache.json"
+            cache_changed = False
+            with self._cache_lock:
+                if self._integrity_cache is None:
+                    self._integrity_cache = load_hash_cache(cache_path)
             for relative, expected_hash in metadata.get("file_sha256", {}).items():
                 checked = self._manifest_path(directory, relative)
                 stat = checked.stat()
                 signature = (stat.st_size, stat.st_mtime_ns)
                 with self._cache_lock:
                     cached = self._verified_files.get(str(checked))
-                    if cached and cached[:2] == signature:
+                    persistent = (self._integrity_cache or {}).get(str(checked), {})
+                    if (
+                        persistent.get("size") == stat.st_size
+                        and persistent.get("mtime_ns") == stat.st_mtime_ns
+                        and persistent.get("sha256") == expected_hash
+                    ):
+                        digest = expected_hash
+                        self._verified_files[str(checked)] = (*signature, digest)
+                    elif cached and cached[:2] == signature and cached[2] == expected_hash:
                         digest = cached[2]
                     else:
                         with checked.open("rb") as stream:
                             digest = hashlib.file_digest(stream, "sha256").hexdigest()
                         self._verified_files[str(checked)] = (*signature, digest)
+                        if digest == expected_hash:
+                            self._integrity_cache.setdefault(str(checked), {}).update({
+                                "size": stat.st_size,
+                                "mtime_ns": stat.st_mtime_ns,
+                                "sha256": digest,
+                            })
+                            cache_changed = True
+                        else:
+                            self._integrity_cache.pop(str(checked), None)
+                            cache_changed = True
                 if digest != expected_hash:
+                    if cache_changed:
+                        self._save_integrity_cache(cache_path)
                     raise ModelUnavailableError(f"Installed model integrity check failed for {relative!r}.")
+            if cache_changed:
+                self._save_integrity_cache(cache_path)
         except (OSError, json.JSONDecodeError) as exc:
             raise ModelUnavailableError("The installed model manifest cannot be read.") from exc
         return directory
+
+    def _save_integrity_cache(self, cache_path: Path) -> None:
+        try:
+            save_hash_cache(cache_path, self._integrity_cache or {})
+        except OSError:
+            logger.warning("Could not persist model integrity cache; future scans may rehash model files.", exc_info=True)
 
     @staticmethod
     def _normalize_language(value: str | None) -> str | None:

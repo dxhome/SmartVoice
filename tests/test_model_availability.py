@@ -143,6 +143,31 @@ class ModelAvailabilityTests(unittest.TestCase):
         self.assertEqual(list(self.provider.installed_models()), [MODEL])
         self.assertFalse(self.provider._refresh_in_progress)
 
+    def test_forced_integrity_refresh_precedes_runtime_availability_scan(self):
+        events = []
+
+        class ForcedRepository(Repository):
+            def force_refresh_installed_models(self):
+                events.append("filesystem-integrity-refresh")
+
+        class ForcedProvider(Provider):
+            def reload_integrity_cache(self):
+                events.append("reload-integrity-cache")
+
+            def installed_models(self):
+                events.append("runtime-model-scan")
+                return super().installed_models()
+
+        repository = ForcedRepository()
+        provider = CompositeInferenceProvider({"test": ForcedProvider()}, repository)
+        provider.refresh_model_availability(force_integrity_check=True)
+
+        self.assertEqual(events, [
+            "filesystem-integrity-refresh",
+            "reload-integrity-cache",
+            "runtime-model-scan",
+        ])
+
     def test_repository_caches_last_good_scan_until_explicit_refresh(self):
         from smartvoice.adapters.storage import catalog_model_repository as repository_module
 

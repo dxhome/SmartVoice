@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import hashlib
 import json
+import os
 import shutil
 import tarfile
 import threading
@@ -103,6 +104,57 @@ class ModelCatalogTests(unittest.TestCase):
 
         (model_dir / "smartvoice-model.json").write_text("not json", encoding="utf-8")
         self.assertEqual(installed_models(Settings(data_dir=test_dir / "data")), [])
+
+    def test_installed_model_scan_reuses_persisted_hashes_and_force_refresh_rehashes(self):
+        from smartvoice.services import model_storage
+        from smartvoice.services.file_integrity import cache_verified_files, load_hash_cache
+
+        test_dir = Path.cwd() / ".smartvoice-dev" / f"integrity-cache-test-{uuid.uuid4().hex}"
+        settings = Settings(data_dir=test_dir / "data")
+        spec = replace(get_model_spec("stt-sensevoice-small-int8"), file_sha256={})
+        model_dir = settings.models_dir / spec.id
+        model_dir.mkdir(parents=True)
+        files = {}
+        hashes = {}
+        for name in spec.required_files:
+            content = f"fixture:{name}".encode()
+            (model_dir / name).write_bytes(content)
+            files[name] = name
+            hashes[name] = hashlib.sha256(content).hexdigest()
+        (model_dir / "smartvoice-model.json").write_text(json.dumps({
+            "schema_version": "1.0", "id": spec.id, "task": spec.task,
+            "source": spec.source, "archive_sha256": spec.archive_sha256,
+            "files": files, "file_sha256": hashes,
+        }), encoding="utf-8")
+        cache_verified_files(
+            settings.models_dir / ".integrity-cache.json",
+            {model_dir / name: digest for name, digest in hashes.items()},
+        )
+
+        with patch.object(model_storage, "get_model_spec", return_value=spec), patch.object(
+            model_storage, "load_catalog", return_value=[spec]
+        ), patch.object(model_storage, "_sha256", wraps=model_storage._sha256) as digest:
+            self.assertEqual([item["id"] for item in installed_models(settings)], [spec.id])
+            digest.assert_not_called()
+
+            changed_name = spec.required_files[0]
+            changed_path = model_dir / changed_name
+            before = changed_path.stat()
+            changed_path.write_bytes(b"x" * before.st_size)
+            self.assertEqual(changed_path.stat().st_size, before.st_size)
+            os.utime(changed_path, ns=(before.st_atime_ns, before.st_mtime_ns))
+
+            # The default path trusts the persisted signature and remains fast.
+            self.assertEqual([item["id"] for item in installed_models(settings)], [spec.id])
+            digest.assert_not_called()
+
+            # An explicit refresh ignores the cache, detects the change, and
+            # removes the stale persisted digest.
+            self.assertEqual(installed_models(settings, force_integrity_check=True), [])
+            digest.assert_called()
+
+        cache = load_hash_cache(settings.models_dir / ".integrity-cache.json")
+        self.assertNotIn(str(changed_path.resolve()), cache)
 
     def test_uninstall_refuses_a_model_loaded_by_the_provider(self):
         test_dir = Path.cwd() / ".smartvoice-dev" / f"loaded-uninstall-{uuid.uuid4().hex}"

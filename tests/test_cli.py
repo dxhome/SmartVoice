@@ -83,6 +83,29 @@ class ModelListOutputTests(unittest.TestCase):
         self.assertEqual(request.get_method(), "POST")
         self.assertIn("abc123", output.getvalue())
 
+    def test_model_refresh_forces_full_integrity_check_on_running_service(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                return json.dumps({"status": "refreshed", "count": 1}).encode()
+
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as data_dir, patch.dict(
+            os.environ, {"SMARTVOICE_HOME": data_dir}, clear=True
+        ), patch("smartvoice.__main__.urllib.request.urlopen", return_value=Response()) as urlopen:
+            with redirect_stdout(output):
+                _models(["refresh"])
+
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://127.0.0.1:8000/v1/models/refresh")
+        self.assertEqual(json.loads(request.data), {"force_integrity_check": True})
+        self.assertIn("Model availability refreshed", output.getvalue())
+
     def test_router_reload_rejects_non_loopback_host(self):
         with tempfile.TemporaryDirectory() as data_dir, patch.dict(os.environ, {"SMARTVOICE_HOME": data_dir}, clear=True):
             with self.assertRaises(SystemExit) as raised:

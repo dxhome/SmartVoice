@@ -3,7 +3,10 @@ from __future__ import annotations
 import threading
 import unittest
 import uuid
+import hashlib
+import json
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -11,6 +14,8 @@ from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import SynthesizedSpeech
 from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
+from smartvoice.services.file_integrity import cache_verified_files
+from smartvoice.services.model_registry import get_model_spec
 
 
 class ProviderContractTests(unittest.TestCase):
@@ -31,6 +36,41 @@ class ProviderContractTests(unittest.TestCase):
         self.assertFalse(provider._tts_locks)
         self.assertIsNone(provider._language_identifier)
         self.assertFalse(provider._verified_files)
+
+    def test_model_directory_validation_reuses_persisted_integrity_cache(self):
+        data_dir = Path.cwd() / ".smartvoice-dev" / f"provider-integrity-cache-{uuid.uuid4().hex}"
+        settings = Settings(data_dir=data_dir)
+        spec = get_model_spec("stt-sensevoice-small-int8")
+        model_dir = settings.models_dir / spec.id
+        model_dir.mkdir(parents=True)
+        files = {}
+        hashes = {}
+        for name in spec.required_files:
+            path = model_dir / name
+            path.write_bytes(f"fixture:{name}".encode())
+            files[name] = name
+            hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+        (model_dir / "smartvoice-model.json").write_text(json.dumps({
+            "id": spec.id,
+            "files": files,
+            "file_sha256": hashes,
+        }), encoding="utf-8")
+        cache_verified_files(
+            settings.models_dir / ".integrity-cache.json",
+            {model_dir / name: digest for name, digest in hashes.items()},
+        )
+
+        class Repository:
+            def get_spec(self, _model_id):
+                return spec
+
+            def model_directory(self, _model_id):
+                return model_dir
+
+        provider = SherpaOnnxProvider(settings, Repository())
+        with patch("smartvoice.adapters.inference.sherpa_onnx.provider.hashlib.file_digest") as digest:
+            self.assertEqual(provider._model_dir(spec.id), model_dir)
+            digest.assert_not_called()
 
     def test_spoken_language_identifier_uses_sherpa_whisper_tiny_api(self):
         from types import ModuleType, SimpleNamespace

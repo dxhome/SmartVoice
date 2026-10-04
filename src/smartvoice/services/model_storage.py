@@ -8,7 +8,6 @@ import os
 import shutil
 import uuid
 import zipfile
-from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
@@ -25,19 +24,17 @@ from smartvoice.services.model_registry import get_model_spec, load_catalog
 from smartvoice.services.model_local_state import load_state as load_local_model_state, record_state as record_local_model_state
 
 
-@lru_cache(maxsize=4096)
-def _cached_sha256(path: str, size: int, mtime_ns: int) -> str:
-    """Reuse integrity checks until a model file's size or modification time changes."""
-    return _sha256(Path(path))
-
-
 def model_directory(settings: Settings, model_id: str) -> Path:
     """Return the install directory for a canonical catalog model ID."""
     spec = get_model_spec(model_id)
     return settings.models_dir / spec.id
 
 
-def installed_models(settings: Settings) -> list[dict[str, object]]:
+def installed_models(
+    settings: Settings,
+    *,
+    force_integrity_check: bool = False,
+) -> list[dict[str, object]]:
     results: list[dict[str, object]] = []
     integrity_cache_path = settings.models_dir / ".integrity-cache.json"
     integrity_cache = load_hash_cache(integrity_cache_path)
@@ -86,34 +83,52 @@ def installed_models(settings: Settings) -> list[dict[str, object]]:
                 if not resolved.is_relative_to(root.resolve()) or not resolved.is_dir():
                     valid = False
                     break
-            if valid and spec.file_sha256:
-                for required, expected in spec.file_sha256.items():
+            if valid:
+                manifest_hashes = manifest.get("file_sha256", {})
+                if not isinstance(manifest_hashes, dict):
+                    valid = False
+                    manifest_hashes = {}
+                # Verify every file listed in the installed manifest. Installed
+                # hashes are persisted at install time; normal scans reuse them,
+                # while an explicit refresh can force a fresh digest.
+                expected_hashes = dict(manifest_hashes)
+                expected_hashes.update(spec.file_sha256 or {})
+                for required, expected in expected_hashes.items():
+                    if not isinstance(required, str) or not isinstance(expected, str):
+                        valid = False
+                        continue
+                    if required in (spec.file_sha256 or {}) and manifest_hashes.get(required) != expected:
+                        valid = False
+                        continue
                     relative = file_map.get(required)
                     resolved = (root / relative).resolve() if isinstance(relative, str) else root
                     if not resolved.is_relative_to(root.resolve()) or not resolved.is_file():
                         valid = False
-                        break
+                        continue
                     stat = resolved.stat()
                     cache_key = str(resolved)
                     cached = integrity_cache.get(cache_key, {})
                     if (
-                        cached.get("size") == stat.st_size
+                        not force_integrity_check
+                        and cached.get("size") == stat.st_size
                         and cached.get("mtime_ns") == stat.st_mtime_ns
                         and cached.get("sha256") == expected
                     ):
                         continue
-                    actual = _cached_sha256(cache_key, stat.st_size, stat.st_mtime_ns)
+                    actual = _sha256(resolved)
                     if actual != expected:
                         integrity_cache.pop(cache_key, None)
                         integrity_cache_changed = True
                         valid = False
-                        break
-                    integrity_cache[cache_key] = {
+                        continue
+                    next_cache_entry = {
                         "size": stat.st_size,
                         "mtime_ns": stat.st_mtime_ns,
                         "sha256": actual,
                     }
-                    integrity_cache_changed = True
+                    if integrity_cache.get(cache_key) != next_cache_entry:
+                        integrity_cache[cache_key] = next_cache_entry
+                        integrity_cache_changed = True
         except (OSError, KeyError, AttributeError, TypeError, json.JSONDecodeError):
             valid = False
             manifest_stat = None

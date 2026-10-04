@@ -289,7 +289,12 @@ def _models(args: list[str]) -> None:
         display_host = f"[{host}]" if ":" in host else host
         address = f"http://{display_host}:{port}/v1/models/refresh"
         try:
-            request = urllib.request.Request(address, data=b"{}", headers={"Content-Type": "application/json"}, method="POST")
+            request = urllib.request.Request(
+                address,
+                data=b'{"force_integrity_check":true}',
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
             with urllib.request.urlopen(request, timeout=30) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:

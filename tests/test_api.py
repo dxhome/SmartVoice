@@ -97,6 +97,18 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.json()["count"], 4)
         provider.refresh_model_availability.assert_called_once_with()
 
+    def test_model_refresh_endpoint_can_force_persistent_integrity_refresh(self):
+        with self.make_client() as client:
+            provider = client.app.state.provider
+            provider.refresh_model_availability = Mock(return_value=provider.installed_models())
+            response = client.post(
+                "/v1/models/refresh",
+                json={"force_integrity_check": True},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        provider.refresh_model_availability.assert_called_once_with(force_integrity_check=True)
+
     def test_service_startup_builds_the_shared_availability_snapshot(self):
         provider = FakeProvider()
         provider.refresh_model_availability = Mock(return_value=provider.installed_models())
