@@ -192,11 +192,27 @@ The build script runs the native runtime self-test and stages `qwen_tts.exe`, it
 
 </details>
 
-Activate `.venv` before running the model and server commands below. On Windows PowerShell, you can instead keep the environment inactive and replace `python` with `.\.venv\Scripts\python.exe` in those commands.
+Activate `.venv` before running the commands below. On Windows PowerShell, you can keep the environment inactive and replace `python` with ``.\.venv\Scripts\python.exe``.
 
-### 2. Download models
+### 2. Start SmartVoice
 
-Install a basic STT and TTS model. Model files are downloaded once and stored outside the source checkout, under `~/Library/Application Support/SmartVoice` on macOS, `~/.smartvoice` on Linux, or `%LOCALAPPDATA%\SmartVoice` on Windows.
+Start the local service:
+
+```bash
+python -m smartvoice --host 127.0.0.1 --port 8000
+```
+
+The service listens only on `127.0.0.1` by default. To allow other machines to connect, explicitly bind to an external interface, for example `--host 0.0.0.0`. External binding is plain HTTP without API authentication; use it only on a trusted network and configure the machine firewall as needed. HTTPS is not currently supported.
+
+### 3. Manage models and try speech in Console
+
+Open the [SmartVoice Console](http://127.0.0.1:8000/console). Use **Models** to browse the model catalog and install or manage models. Model downloads require internet access and are stored outside the source checkout, under `~/Library/Application Support/SmartVoice` on macOS, `~/.smartvoice` on Linux, or `%LOCALAPPDATA%\SmartVoice` on Windows. After installation, inference runs locally. See [Model catalog](#model-catalog) for supported languages and estimated sizes.
+
+In the Console workspace, try speech recognition and synthesis with installed models. Use the generated API examples for your selected models and settings, and edit Smart Router priorities in the Console; saved routing changes take effect immediately. The interactive [API docs](http://127.0.0.1:8000/docs) are also available.
+
+Service settings are stored in `<data_dir>/smartvoice.json`; router priorities are stored separately in `<data_dir>/router.json`. Sherpa models use a lazy instance pool for parallel inference. See [inference concurrency](doc/architecture-guidelines.md#inference-concurrency-lifecycle-and-limits) for details.
+
+You can manage models from the CLI as well. For example, install a basic STT and TTS pair and the language detector:
 
 ```bash
 python -m smartvoice models install stt-sensevoice-small-int8
@@ -204,29 +220,11 @@ python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
 python -m smartvoice models install-language-id
 ```
 
-On the macOS Apple Silicon, Windows x64, and Linux x86_64 PyPI wheels, the Qwen3-TTS runtime is bundled. From a source checkout, build the runtime on Windows and Linux as described above; the macOS source build compiles it during installation. Then install Qwen3-TTS to use the configured Chinese and multilingual routes:
+On macOS Apple Silicon, Windows x64, and Linux x86_64 PyPI installations, the Qwen3-TTS runtime is bundled. From a source checkout, build the runtime on Windows and Linux as described above; the macOS source install compiles it automatically. Then install Qwen3-TTS:
 
 ```bash
 python -m smartvoice models install tts-qwen3-0-6b-customvoice
 ```
-
-Without the native runtime in a source deployment, Qwen3-TTS is listed as unavailable and other installed TTS models remain usable.
-
-The first model installation requires internet access. After installation, inference runs locally. See [Model catalog](#model-catalog) for supported languages and estimated sizes.
-
-### 3. Start SmartVoice
-
-By default the HTTP service listens only on `127.0.0.1`. To allow other machines to connect, explicitly bind to an external interface, for example:
-
-```bash
-python -m smartvoice --host 127.0.0.1 --port 8000
-# To listen on all IPv4 interfaces:
-python -m smartvoice --host 0.0.0.0 --port 8000
-```
-
-External binding is plain HTTP without API authentication. Use it only on a trusted network and configure the machine firewall as needed. HTTPS is not currently supported.
-
-Open the [SmartVoice Console](http://127.0.0.1:8000/console) to use the speech workspace, review installed models, and verify STT/TTS with your installed models before connecting an application. Open [API docs](http://127.0.0.1:8000/docs) for endpoint details. Sherpa models use a lazy per-model instance pool: parallel inference is enabled by default, one instance is retained, and demand can expand the pool to two independent instances with two native threads each. The per-model waiting limit defaults to four. These settings do not promise a fixed request rate for every model or input. See [inference concurrency](doc/architecture-guidelines.md#inference-concurrency-lifecycle-and-limits) and the [fixed-arrival benchmark protocol](benchmarks/README.md#concurrency-and-request-experience). Service settings are stored in `<data_dir>/smartvoice.json`; routing priorities are stored separately in `<data_dir>/router.json` and can be reloaded with `python -m smartvoice router reload`.
 
 ### 4. Connect an agent or application
 
@@ -235,6 +233,8 @@ In your agent or application's settings, choose **OpenAI-compatible API** and se
 ```text
 http://127.0.0.1:8000/v1
 ```
+
+The API supports a subset of the OpenAI Audio API conventions. Copy an STT or TTS example from the Console, or use the examples in [API](#api). The API base URL ends in `/v1`; the Console and interactive API docs are served from the same local SmartVoice instance.
 
 ## API
 
