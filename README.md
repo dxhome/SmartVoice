@@ -2,6 +2,7 @@
   <img src="https://raw.githubusercontent.com/dxhome/SmartVoice/main/assets/smartvoice-logo.png" alt="SmartVoice logo" width="220">
   <p><strong>Run speech recognition and speech synthesis on your own machine.</strong></p>
   <p>One OpenAI-style audio API · Language-aware model routing · CPU inference · No per-request inference fee</p>
+  <p><a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
 # SmartVoice
@@ -266,7 +267,7 @@ curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
   --output speech.mp3
 ```
 
-TTS defaults to mono MP3 (96 kbps); send `"response_format":"wav"` for WAV. Requests support up to 4,000 characters; generated audio is limited to 180 seconds, with separate 32 MiB canonical WAV and final-response budgets. Supertonic uses bounded text chunks; long STT inputs use silence-aware model-declared windows (25 seconds for Whisper Base; 15 seconds by default) with 1-second overlap and a single language decision across chunks, while retaining the 10-minute input limit. See `/docs` or the [API specification](doc/api-spec.md) for available parameters, language behavior, and error codes. The local Whisper Chinese decoding repair requires a patched native wheel; see [build and validation instructions](doc/whisper-chinese-decoding-fix.md).
+TTS defaults to mono MP3 (96 kbps); send `"response_format":"wav"` for WAV. Requests support up to 4,000 characters; generated audio is limited to 180 seconds, with separate 32 MiB canonical WAV and final-response budgets. Supertonic uses bounded text chunks; long STT inputs use silence-aware model-declared windows (25 seconds for Whisper Base; 15 seconds by default) with 1-second overlap and a single language decision across chunks, while retaining the 10-minute input limit. See `/docs` or the [API specification](doc/api-spec.md) for available parameters, language behavior, and error codes. The local Whisper Chinese decoding repair requires a patched native wheel; see [build and validation instructions](doc/archive/stt/whisper-chinese-decoding-fix.md).
 
 ## Manage models
 
