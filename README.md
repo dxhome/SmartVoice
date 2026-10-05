@@ -1,22 +1,30 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/dxhome/SmartVoice/main/assets/smartvoice-logo.png" alt="SmartVoice logo" width="220">
-  <p><strong>Local speech recognition and synthesis, with language-aware model routing.</strong></p>
-  <p>Multilingual STT and TTS · CPU inference · OpenAPI · No per-request API fee</p>
+  <p><strong>Run speech recognition and speech synthesis on your own machine.</strong></p>
+  <p>One OpenAI-style audio API · Language-aware model routing · CPU inference · No per-request inference fee</p>
 </div>
 
 # SmartVoice
 
-SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service. It offers both through one OpenAI-style audio API, with models installed and run on your machine.
+SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service for developers building voice-enabled apps and agents. Install the models you want, run inference on your machine, and connect through one OpenAI-style audio API.
+
+**Audio stays on your machine during inference.** Once the models are installed, supported workflows can run offline, with no cloud account or per-request inference fee. SmartVoice supports CPU inference on Windows x64, macOS Apple Silicon, and Linux x86_64.
+
+[Get started](#quick-start) · [Browse models](#model-catalog) · [Try the API](#api) · [Architecture](#architecture) · [Report an issue](https://github.com/dxhome/SmartVoice/issues)
+
+## What can you build?
+
+- **Private voice input:** Transcribe recordings locally instead of sending audio to a hosted speech API.
+- **Offline voice assistants:** Add speech recognition and speech output to a local agent or application.
+- **Multilingual speech features:** Use the `smartvoice-auto` model ID to route STT and TTS requests by task and language.
 
 ## Why SmartVoice?
 
-- **Private, local processing:** Audio and text are processed by models on your machine, without sending inference requests to a third-party speech service. You control where your data, models, and service configuration live.
-- **One API for speech in both directions:** Transcribe audio and synthesize speech through a single OpenAI-style audio API, making it straightforward to connect compatible agents and applications.
-- **Language-aware model routing:** Send requests to `smartvoice-auto` and SmartVoice selects an installed model for the requested task and language, following your editable priority list.
-- **Freedom to manage and move models:** Install only the models you need, choose explicit model IDs when desired, and export/import model packages to transfer them to another machine.
-- **Run locally without per-request fees:** Supported CPU deployments work on Windows x64, macOS Apple Silicon, and Linux x86_64. After setup, inference can run offline without a cloud account or network connection.
+- **Private by design:** Inference runs on your machine; you choose where models, audio, and service configuration live.
+- **One API for STT and TTS:** Connect compatible agents and apps through a single audio API.
+- **Choose and move your models:** Install only what you need, select models directly, or export model packages for offline transfer.
 
-Model installation and updates may download files from their configured sources. SmartVoice binds to `127.0.0.1` by default. If you expose the API on your network, it currently has no authentication, so restrict access with your network configuration and firewall.
+**Current scope:** CPU inference is supported; GPU inference, streaming, packaged installers, and Android are not yet supported. Installing or updating models requires downloading files from their configured sources. The service binds to `127.0.0.1` by default; network exposure has no API authentication, so keep it on a trusted network and restrict access with your firewall.
 
 ## Capabilities
 
