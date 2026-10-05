@@ -21,7 +21,7 @@
 
 排队超时设为 0.1 秒；同时核对公开错误信息以区分拒绝来源。四次后台任务均返回 200、7 个窗口，成功原生调用增量均为 7，证明拒绝请求未进入原生推理。每次池 active/waiting 和 HTTP 队列预留归零，恢复短请求再次返回 200。自有服务器退出，临时状态删除。这是有界错误链路检查，不是过载容量或持续吞吐测量。
 
-### 原失败 MP3 候选复测
+### 原失败 MP3 复测（用户已确认身份）
 
 在 Downloads 找到文件名与电影解说用途一致、解码时长与旧记录精确一致的候选：
 
@@ -30,7 +30,7 @@
 - 文件 1,287,308 字节，实际解码 53.5684375 秒。
 - SHA256：`22977910b0775e63acdcf11fc26fe290e3cdb621644db330dd2eb3f5caccfebd`。
 - 路径为 `/Users/xuan/Downloads/` 下同名文件；只读使用，未复制原音频到报告或仓库。
-- 尚无旧上传的 SHA256 可核对，候选身份与人工参考全文已向用户询问，不能自动视为已确认的原上传，也没有做本轮 CER 验收。
+- 用户于 2026-10-05 确认该文件就是原先失败的 MP3；历史上传未留存独立 SHA256，但现在样本身份已由用户确认。
 
 | 模型/语言 | 状态 | 分段 / 原生调用 | HTTP 耗时 |
 |---|---:|---:|---:|
@@ -43,6 +43,18 @@
 | smartvoice-auto / auto | 200 | 4 / 4 | 1.80 秒 |
 
 具体模型路径的独立 LID 调用数为 0，智能路由为 1；全部返回 53.568 秒。冷加载与缓存状态不同，不据此做速度排名。
+
+### 当前工作树复测补记（2026-10-05）
+
+重新读取上述 Downloads 文件并核对 SHA256，仍为 `22977910b0775e63acdcf11fc26fe290e3cdb621644db330dd2eb3f5caccfebd`，字节数与解码时长也与上表相同。当前工作树以真实 loopback TCP HTTP 重跑 SenseVoice 的 `zh`、`auto` 和 `smartvoice-auto + auto`：均为 200，4/4 原生调用，4/4 分段，覆盖到 53.5684375 秒；具体窗口为 0–15、14–29、28–43、42–53.568 秒。队列、超时和断连检查也完成，最终实例池与请求预留排空。只保存元数据的报告为 `sandbox/tts-output/runs/stt-original-mp3-sensevoice.json`。
+
+当前机器缺少 Whisper 模型资产，因此完整三模型命令在发请求前停止；随后分别运行了当前 SenseVoice 与 Qwen3-ASR 的单模型矩阵，结果见本节下方。2026-10-04 表中的 Whisper 成功属于当日代码和环境结果，不代表当前工作树重跑。用户现已确认该文件就是原失败 MP3；API 完成不代表准确率通过。历史 Whisper 质量比较使用过用户提供的参考文本，但该参考没有固化在元数据回归报告中，需重新固定后才能复现质量指标。
+
+### 用户确认身份后的补充复测（2026-10-05）
+
+用户确认上述 Downloads 文件就是原先失败文件。当前工作树另以 Qwen3-ASR 重跑同一真实 TCP HTTP 矩阵：显式 `zh`、模型 `auto`、`smartvoice-auto + auto` 均返回 200，各 4/4 原生调用和 4/4 分段，覆盖到 53.5684375 秒；智能路由选择 SenseVoice。元数据报告为 `sandbox/tts-output/runs/stt-original-mp3-qwen.json`。结合上面的 SenseVoice 复测，当前代码已确认 SenseVoice 与 Qwen3-ASR 能完整处理原 MP3。
+
+当前 Whisper 模型资产缺失，故没有当前代码下的 Whisper 复测。2026-10-04 的原生修复验证在此文件上曾使 Whisper 的 HTTP `zh`/`auto` 请求均返回 200、3/3 窗口覆盖全长，CER 从约 49.24% 降至约 32.11%；后者仍是显著识别错误，不能视为质量通过。参考文本曾由用户提供，但没有随元数据报告固定保存，需重新固定以复现 CER。故长音频处理完成性已由当前 SenseVoice/Qwen 复测确认；Whisper 当前环境的回归及全文质量仍是 P2。
 
 同一自有 HTTP 服务还通过 601 秒拒绝、损坏音频、Supertonic MP3/WAV、执行截止时间和断连检查。截止时间返回 504 时仍有一个原生租约，完成 6 次原生调用后停止并释放；本次断连发生在原生启动前，调用数为 0。最终所有池 active/waiting 和 HTTP 队列预留归零。
 
@@ -97,11 +109,11 @@
 
 ```bash
 .venv/bin/python scripts/test.py full
-.venv/bin/python scripts/verify_stt_admission.py --report sandbox/tts-output/runs/stt-admission.json
-.venv/bin/python scripts/verify_stt_http.py --sample '/absolute/path/sample.mp3' --sample-only --report sandbox/tts-output/runs/stt-local-sample-http.json
-.venv/bin/python scripts/compare_stt_policies.py --quiet-boundaries --report sandbox/tts-output/runs/stt-quiet-boundaries.json
-.venv/bin/python scripts/compare_stt_policies.py --relative-boundaries --report sandbox/tts-output/runs/stt-relative-boundaries.json
-.venv/bin/python scripts/compare_stt_policies.py --relative-boundaries --minimum-quiet-seconds 8 --report sandbox/tts-output/runs/stt-relative-boundaries-8.json
+.venv/bin/python scripts/validate_speech.py stt-admission --report sandbox/tts-output/runs/stt-admission.json
+.venv/bin/python scripts/validate_speech.py stt-http --sample '/absolute/path/sample.mp3' --sample-only --report sandbox/tts-output/runs/stt-local-sample-http.json
+.venv/bin/python scripts/validate_speech.py stt-policy --quiet-boundaries --report sandbox/tts-output/runs/stt-quiet-boundaries.json
+.venv/bin/python scripts/validate_speech.py stt-policy --relative-boundaries --report sandbox/tts-output/runs/stt-relative-boundaries.json
+.venv/bin/python scripts/validate_speech.py stt-policy --relative-boundaries --minimum-quiet-seconds 8 --report sandbox/tts-output/runs/stt-relative-boundaries-8.json
 .venv/bin/python scripts/test.py ci
 .venv/bin/python scripts/test.py regression
 ```

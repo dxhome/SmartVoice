@@ -41,7 +41,7 @@
 .venv/bin/python scripts/test.py ci
 .venv/bin/python scripts/test.py regression
 .venv/bin/python scripts/test.py full
-.venv/bin/python scripts/verify_stt_http.py --report sandbox/tts-output/runs/stt-http-current.json
+.venv/bin/python scripts/validate_speech.py stt-http --report sandbox/tts-output/runs/stt-http-current.json
 ```
 
 原始本机报告在被 Git 忽略的 `sandbox/tts-output/runs/stt-http-current.json`。固定语音资产和来源见 `tests/fixtures/stt/README.md`；运行与依赖说明见 `doc/testing.md`。

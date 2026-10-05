@@ -62,9 +62,9 @@ Whisper 本样本有改善但仍存在明显质量问题；SenseVoice 增加一�
 ```sh
 .venv/bin/python scripts/test.py ci
 .venv/bin/python scripts/test.py regression
-.venv/bin/python scripts/compare_stt_policies.py --report sandbox/tts-output/runs/stt-policy-confirmed.json
-.venv/bin/python scripts/compare_stt_policies.py --legacy-only --report sandbox/tts-output/runs/stt-policy-legacy-language.json
-.venv/bin/python scripts/verify_stt_http.py --report sandbox/tts-output/runs/stt-http-language-cache.json
+.venv/bin/python scripts/validate_speech.py stt-policy --report sandbox/tts-output/runs/stt-policy-confirmed.json
+.venv/bin/python scripts/validate_speech.py stt-policy --legacy-only --report sandbox/tts-output/runs/stt-policy-legacy-language.json
+.venv/bin/python scripts/validate_speech.py stt-http --report sandbox/tts-output/runs/stt-http-language-cache.json
 ```
 
 原始结果保留在被 Git 忽略的 sandbox；正式文档保留结论与限制，报告默认不保存转写全文。比较脚本依赖既有本地样本和修复包，缺失时失败，不自动下载。耗时包含不同缓存状态，不作性能排名。

@@ -9,7 +9,7 @@ import time
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, File, Form, Query, Request, UploadFile, HTTPException
+from fastapi import APIRouter, Body, File, Form, Query, Request, UploadFile, HTTPException
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.concurrency import run_in_threadpool
 from starlette.background import BackgroundTask
@@ -196,6 +196,28 @@ async def retrieve_model(request: Request, model_id: str) -> dict[str, object]:
     if model is None:
         raise HTTPException(status_code=404, detail=f"Model {model_id!r} is not installed or unavailable for inference.")
     return _openai_model_object(model)
+
+
+@router.get("/router/config", tags=["runtime"])
+async def router_configuration(request: Request) -> dict[str, object]:
+    router_service = request.app.state.model_router
+    return {
+        "configuration": router_service.configuration(),
+        "status": router_service.public_status(get_provider(request).installed_models()),
+    }
+
+
+@router.put("/router/config", tags=["runtime"])
+async def update_router_configuration(
+    request: Request, payload: dict[str, object] = Body(...),
+) -> dict[str, object]:
+    router_service = request.app.state.model_router
+    result = router_service.update(payload)
+    return {
+        **result,
+        "configuration": router_service.configuration(),
+        "status": router_service.public_status(get_provider(request).installed_models()),
+    }
 
 
 @router.post("/router/reload", tags=["runtime"])

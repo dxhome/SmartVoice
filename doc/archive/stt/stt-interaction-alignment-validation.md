@@ -61,8 +61,8 @@ Whisper 原始中文单条已有较高错误率；混合长音频进一步退化
 ## 复现与验证记录
 
 ```bash
-.venv/bin/python scripts/compare_stt_policies.py --diagnostic --report sandbox/tts-output/runs/stt-natural-diagnostic-final.json
-.venv/bin/python scripts/verify_speech_interaction.py --report sandbox/tts-output/runs/speech-interaction-all.json
+.venv/bin/python scripts/validate_speech.py stt-policy --diagnostic --report sandbox/tts-output/runs/stt-natural-diagnostic-final.json
+.venv/bin/python scripts/validate_speech.py speech-interaction --report sandbox/tts-output/runs/speech-interaction-all.json
 .venv/bin/python scripts/test.py ci
 .venv/bin/python scripts/test.py regression
 ```

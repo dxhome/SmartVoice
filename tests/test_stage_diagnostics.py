@@ -4,7 +4,7 @@ from contextvars import copy_context
 import unittest
 from unittest.mock import patch
 from smartvoice.ports.diagnostics import StageTimings, stage, stage_timings
-from scripts.stt_validation_common import check_coverage
+from scripts.validation.stt_validation_common import check_coverage
 
 class StageDiagnosticsTests(unittest.TestCase):
     def test_nested_scopes_are_exclusive(self):

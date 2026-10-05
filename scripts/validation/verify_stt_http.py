@@ -18,7 +18,7 @@ import sys
 import threading
 import time
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -30,7 +30,7 @@ from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from tests.stt_regression_audio import build_audio
 from tests.inference_environment import isolated_runtime, language_id_ready
-from scripts.stt_validation_common import TraceStore, WindowTrace, check_coverage, provenance, TemporaryStorageTrace
+from scripts.validation.stt_validation_common import TraceStore, WindowTrace, check_coverage, provenance, TemporaryStorageTrace
 
 MODELS = ("stt-sensevoice-small-int8", "stt-whisper-base-multilingual-int8", "stt-qwen3-asr-600m-int8")
 

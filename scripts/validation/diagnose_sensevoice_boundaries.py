@@ -7,7 +7,7 @@ These diagnostics do not promote a policy or change production configuration.
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 import hashlib
 import io
 import importlib.util
@@ -20,37 +20,19 @@ import sys
 import time
 import wave
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'src'))
 
-from scripts.compare_stt_policies import normalize, recording_spans, score
-from scripts.stt_validation_common import (
+from scripts.validation.compare_stt_policies import normalize, recording_spans, score
+from scripts.validation.stt_validation_common import (
     TemporaryStorageTrace, TraceStore, WindowTrace, check_coverage, fingerprint, provenance,
 )
-from scripts.verify_stt_candidates import corpus
+from scripts.validation.verify_stt_candidates import corpus
+from scripts.validation.stt_window_policies import Policy, BASE_POLICIES as POLICIES
 from smartvoice.services.audio_planning import merge
 
 MODEL = 'stt-sensevoice-small-int8'
-
-
-@dataclass(frozen=True)
-class Policy:
-    relative_quiet: bool = False
-    minimum_window_seconds: float | None = None
-    overlap_on_silence: bool = True
-
-
-POLICIES = {
-    'current': Policy(),
-    'relative': Policy(relative_quiet=True),
-    'minimum8': Policy(minimum_window_seconds=8),
-    'forced': Policy(overlap_on_silence=False),
-    'relative-minimum8': Policy(True, 8, True),
-    'relative-forced': Policy(True, None, False),
-    'minimum8-forced': Policy(False, 8, False),
-    'candidate': Policy(True, 8, False),
-}
 
 
 def units(text, language):

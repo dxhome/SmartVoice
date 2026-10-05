@@ -15,7 +15,7 @@ import wave
 
 from smartvoice.ports.diagnostics import StageTimings, stage_timings
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def fingerprint(path):

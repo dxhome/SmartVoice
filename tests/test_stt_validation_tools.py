@@ -2,8 +2,8 @@
 import io
 import unittest
 import zipfile
-from scripts.prepare_stt_continuous import textgrid, ami_words, overlap_seconds
-from scripts.compare_stt_policies import score
+from scripts.validation.prepare_stt_continuous import textgrid, ami_words, overlap_seconds
+from scripts.validation.compare_stt_policies import score
 
 class SttValidationToolTests(unittest.TestCase):
     def test_interrupt_preserves_partial_worker_evidence(self):
@@ -14,7 +14,7 @@ class SttValidationToolTests(unittest.TestCase):
         from unittest.mock import patch
         for name,worker_arg in [('verify_stt_load','same'),
                                 ('verify_stt_candidates','stt-sensevoice-small-int8')]:
-            module=importlib.import_module('scripts.'+name)
+            module=importlib.import_module('scripts.validation.'+name)
             with self.subTest(tool=name),tempfile.TemporaryDirectory() as folder:
                 path=Path(folder)/'partial.json'
                 def interrupted(*args):
@@ -29,7 +29,7 @@ class SttValidationToolTests(unittest.TestCase):
 
     def test_load_gate_rejects_failed_confirmation_despite_fast_percentiles(self):
         import copy
-        from scripts.verify_stt_load import evaluate_pair
+        from scripts.validation.verify_stt_load import evaluate_pair
         current={'completed':True,'success_rate':1,'queue_stable':True,
                  'max_scheduling_lag':0,'interval_seconds':.8,
                  'latency':{'p95':1},'background':[{'seconds':10}],
@@ -90,7 +90,7 @@ class SttValidationToolTests(unittest.TestCase):
 
     def test_audio_spool_observer_detects_spill_and_explicit_cleanup(self):
         import tempfile
-        from scripts.stt_validation_common import TemporaryStorageTrace
+        from scripts.validation.stt_validation_common import TemporaryStorageTrace
         with TemporaryStorageTrace() as trace:
             with tempfile.SpooledTemporaryFile(max_size=1) as file:
                 file.write(b'abc')
@@ -101,17 +101,23 @@ class SttValidationToolTests(unittest.TestCase):
     def test_resume_rejects_changed_source_or_incomplete_evidence(self):
         import copy
         from unittest.mock import patch
-        from scripts.verify_stt_candidates import reusable_trial
+        from scripts.validation.verify_stt_candidates import reusable_trial
         current={'settings':{'num_threads':4},'dependencies':{'native':'1'},
                  'models':{'asr':'digest'},'python_files_sha256':{'src/service.py':'new'}}
         previous={'completed':True,'model':'asr','policy':'current','repeat':1,
                   'provenance':copy.deepcopy(current),
                   'cases':[{'id':'clip','sha256':'audio','status':200,'raw_concat_quality':{}}]}
         inputs=[{'id':'clip','sha256':'audio'}]
-        with patch('scripts.verify_stt_candidates.provenance',return_value=current):
+        with patch('scripts.validation.verify_stt_candidates.provenance',return_value=current):
             self.assertTrue(reusable_trial(previous,'asr','current',1,inputs,None))
             previous['provenance']['python_files_sha256']['src/service.py']='old'
             self.assertFalse(reusable_trial(previous,'asr','current',1,inputs,None))
             previous['provenance']=copy.deepcopy(current)
             previous['cases'][0].pop('raw_concat_quality')
             self.assertFalse(reusable_trial(previous,'asr','current',1,inputs,None))
+
+    def test_resume_rejects_a_different_named_candidate(self):
+        from scripts.validation.verify_stt_candidates import reusable_trial
+        previous={'completed':True,'model':'asr','policy':'candidate','repeat':1,
+                  'candidate_policy':'relative-minimum8'}
+        self.assertFalse(reusable_trial(previous,'asr','candidate',1,[],None,'candidate'))

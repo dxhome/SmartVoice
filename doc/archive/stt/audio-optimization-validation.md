@@ -1,6 +1,6 @@
 # REST 音频优化：P0–P3 验证和迁移记录
 
-日期：2026-10-04。本机 macOS 27 / Apple Silicon arm64 / CPU，每实例 2 个原生线程，实例上限 2。独立实验在 `sandbox/tts-output`；产品迁移依照 [架构指导](architecture-guidelines.md)，不涉及另一项 streaming sandbox 的 S 阶段。实验目录被 Git 忽略，本文件保留可版本化的结论。
+日期：2026-10-04。本机 macOS 27 / Apple Silicon arm64 / CPU，每实例 2 个原生线程，实例上限 2。独立实验在 `sandbox/tts-output`；产品迁移依照 [架构指导](../../architecture-guidelines.md)，不涉及另一项 streaming sandbox 的 S 阶段。实验目录被 Git 忽略，本文件保留可版本化的结论。
 
 后续终止逻辑修复、LID 超时/取消处理及当前版本完整 HTTP 检查见 [长音频完成性验证](stt-completion-validation.md)。下文迁移阶段的测试数量和性能数据是历史记录，应与后续验证范围分开阅读。
 

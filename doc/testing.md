@@ -2,6 +2,8 @@
 
 SmartVoice provides three standard test entry points. Benchmark and model quality evaluation workflows are documented separately and are not part of these suites.
 
+Speech-model verification experiments use one command entry point: `python scripts/validate_speech.py <workflow> [options]`. Run `python scripts/validate_speech.py --help` to list workflows and `python scripts/validate_speech.py <workflow> --help` for each workflow's options. The focused runners remain separate internal modules so each can keep its own model/process lifecycle; build scripts are not validation commands.
+
 ## CI tests
 
 Run the complete automated test suite without invoking real speech models:
@@ -41,7 +43,7 @@ The `ci` mode remains the lightweight test set used by GitHub Actions. The `regr
 After the suites above, run the explicit local HTTP matrix:
 
 ```bash
-python scripts/verify_stt_http.py --report sandbox/tts-output/runs/stt-http-current.json
+python scripts/validate_speech.py stt-http --report sandbox/tts-output/runs/stt-http-current.json
 ```
 
 This starts an owned loopback server on an ephemeral port, accesses verified model assets through a repository with an immutable installed snapshot, and shuts down the server and removes isolated temporary state on exit. Only LID assets are linked into that state; integrity caches and the routing snapshot are copied locally. The real-inference test suites use the same isolation helper. The HTTP matrix requires all three STT models, installed LID assets, Supertonic, and the validated Whisper repair wheel. It neither downloads models nor changes the user's routing configuration.
@@ -53,7 +55,7 @@ For an explicitly selected local MP3, add `--sample /absolute/path/sample.mp3`. 
 Real queue admission supplements use the installed Qwen3-ASR runtime:
 
 ```bash
-python scripts/verify_stt_admission.py --report sandbox/tts-output/runs/stt-admission.json
+python scripts/validate_speech.py stt-admission --report sandbox/tts-output/runs/stt-admission.json
 ```
 
 This creates four isolated TCP applications: transport capacity exhausted, transport queue wait expired, model capacity exhausted and model queue wait expired. One prewarmed native instance processes 70 seconds of Chinese audio while a short request exercises rejection. The probe checks HTTP 503 / `inference_overloaded`, the rejection source, exact background chunk/native-call counts, final queue/pool drain and a successful recovery request. It uses actual native inference, without blocking model mocks or changing production defaults.
@@ -61,31 +63,31 @@ This creates four isolated TCP applications: transport capacity exhausted, trans
 ## Local natural-speech policy experiments
 
 ```bash
-python scripts/compare_stt_policies.py --report sandbox/tts-output/runs/stt-policy-confirmed.json
-python scripts/compare_stt_policies.py --legacy-only --report sandbox/tts-output/runs/stt-policy-legacy-language.json
-python scripts/compare_stt_policies.py --diagnostic --report sandbox/tts-output/runs/stt-natural-diagnostic-final.json
-python scripts/compare_stt_policies.py --quiet-boundaries --report sandbox/tts-output/runs/stt-quiet-boundaries.json
-python scripts/compare_stt_policies.py --relative-boundaries --report sandbox/tts-output/runs/stt-relative-boundaries.json
-python scripts/compare_stt_policies.py --relative-boundaries --minimum-quiet-seconds 8 --report sandbox/tts-output/runs/stt-relative-boundaries-8.json
+python scripts/validate_speech.py stt-policy --report sandbox/tts-output/runs/stt-policy-confirmed.json
+python scripts/validate_speech.py stt-policy --legacy-only --report sandbox/tts-output/runs/stt-policy-legacy-language.json
+python scripts/validate_speech.py stt-policy --diagnostic --report sandbox/tts-output/runs/stt-natural-diagnostic-final.json
+python scripts/validate_speech.py stt-policy --quiet-boundaries --report sandbox/tts-output/runs/stt-quiet-boundaries.json
+python scripts/validate_speech.py stt-policy --relative-boundaries --report sandbox/tts-output/runs/stt-relative-boundaries.json
+python scripts/validate_speech.py stt-policy --relative-boundaries --minimum-quiet-seconds 8 --report sandbox/tts-output/runs/stt-relative-boundaries-8.json
 ```
 
-These explicit experiments require the existing pinned local FLEURS manifest/audio and validated Whisper wheel; missing inputs fail without downloads. They compare three window/overlap policies on four Chinese and four English utterances and their mixed concatenation, retaining digests, source attribution, CER/WER and actual recognizer initialization events. The legacy probe reconstructs the previous native-call language sequence for mixed input only, not old response metadata. It does not change product defaults. See [language/cache/policy results](stt-language-cache-policy-validation.md) for the limited sample scope and remaining alignment work.
+These explicit experiments require the existing pinned local FLEURS manifest/audio and validated Whisper wheel; missing inputs fail without downloads. They compare three window/overlap policies on four Chinese and four English utterances and their mixed concatenation, retaining digests, source attribution, CER/WER and actual recognizer initialization events. The legacy probe reconstructs the previous native-call language sequence for mixed input only, not old response metadata. It does not change product defaults. See [language/cache/policy results](archive/stt/stt-language-cache-policy-validation.md) for the limited sample scope and remaining alignment work.
 
 Diagnostic mode uses ten clean recordings per language, verifies unsegmented original-clip results under explicit language and auto, and compares current long-window results with the original recording boundaries and raw native-window concatenation. Timestamp requests are enabled; reports retain only scores and metadata. Known recording boundaries are diagnostic references, not word alignment or a production capability.
 
 Quiet-boundary mode uses the same twenty recordings and compares declared maximum windows with candidates that search for a 200 ms quiet interval from the second second onward, with all-cut or forced-only overlap. Window start/overlap, native duration, model-reported language and output length are recorded. It verifies finite coverage through the actual end. The optional adapter minimum is experimental; production assembly retains the last-third search and all-cut overlap. An acoustic quiet interval is not a verified sentence or word boundary.
 
-Relative-boundary mode probes an experimental RMS threshold: the lower of 0.006 and 10% of the search interval's 95th-percentile RMS, keeping the original threshold for exact silence. It compares declared-window/all-overlap and early-cut/forced-overlap candidates. `--minimum-quiet-seconds` varies the minimum for early candidates. Reports annotate known recording intersections and energy above the original absolute threshold; neither is asserted word alignment or VAD. All policies preserve original samples sent to inference. Production defaults do not enable relative thresholds. See [admission and boundary results](stt-admission-boundary-validation.md) for completed runs and policy decisions.
+Relative-boundary mode probes an experimental RMS threshold: the lower of 0.006 and 10% of the search interval's 95th-percentile RMS, keeping the original threshold for exact silence. It compares declared-window/all-overlap and early-cut/forced-overlap candidates. `--minimum-quiet-seconds` varies the minimum for early candidates. Reports annotate known recording intersections and energy above the original absolute threshold; neither is asserted word alignment or VAD. All policies preserve original samples sent to inference. Production defaults do not enable relative thresholds. See [admission and boundary results](archive/stt/stt-admission-boundary-validation.md) for completed runs and policy decisions.
 
 ## Continuous speech acceptance workflow
 
 The current implementation task prioritizes SenseVoice. Scope commands explicitly; a scoped full run is not an all-model full run:
 
 ```bash
-python scripts/verify_stt_candidates.py --models stt-sensevoice-small-int8 --resume --report sandbox/tts-output/runs/stt-sensevoice-candidates.json
-python scripts/verify_stt_http.py --models stt-sensevoice-small-int8 --report sandbox/tts-output/runs/stt-sensevoice-http.json
-python scripts/verify_stt_admission.py --model stt-sensevoice-small-int8 --report sandbox/tts-output/runs/stt-sensevoice-admission.json
-python scripts/verify_stt_load.py --models stt-sensevoice-small-int8 --interval .2 --report sandbox/tts-output/runs/stt-sensevoice-load.json
+python scripts/validate_speech.py stt-quality --models stt-sensevoice-small-int8 --resume --report sandbox/tts-output/runs/stt-sensevoice-candidates.json
+python scripts/validate_speech.py stt-http --models stt-sensevoice-small-int8 --report sandbox/tts-output/runs/stt-sensevoice-http.json
+python scripts/validate_speech.py stt-admission --model stt-sensevoice-small-int8 --report sandbox/tts-output/runs/stt-sensevoice-admission.json
+python scripts/validate_speech.py stt-load --models stt-sensevoice-small-int8 --interval .2 --report sandbox/tts-output/runs/stt-sensevoice-load.json
 python scripts/test.py full --stt-models stt-sensevoice-small-int8
 ```
 
@@ -94,10 +96,10 @@ Unfiltered `full` still requires all three STT models and the Whisper repair whe
 Run these explicit commands separately from other native model workloads:
 
 ```bash
-python scripts/prepare_stt_continuous.py --help
-python scripts/prepare_stt_continuous.py --output sandbox/stt-continuous
-python scripts/verify_stt_candidates.py --report sandbox/tts-output/runs/stt-candidates-final.json
-python scripts/verify_stt_load.py --report sandbox/tts-output/runs/stt-current-load.json
+python scripts/validate_speech.py prepare-corpus --help
+python scripts/validate_speech.py prepare-corpus --output sandbox/stt-continuous
+python scripts/validate_speech.py stt-quality --report sandbox/tts-output/runs/stt-candidates-final.json
+python scripts/validate_speech.py stt-load --report sandbox/tts-output/runs/stt-current-load.json
 python scripts/test.py full
 ```
 
@@ -109,27 +111,38 @@ The mixed-load tool screens a fixed arrival rate, then runs 500 short requests p
 
 Internal diagnostics are disabled by default. Validation middleware binds an opt-in collector through a framework-independent port; nested scopes report exclusive wall time for transport/model queues, decoding, initialization, native inference, LID and merge. Uninstrumented orchestration and response work remain outside those totals. Existing HTTP responses and public capability defaults are unchanged. Reports record source differences by digest and changed paths, dependency/model/sample fingerprints and effective settings.
 
-Recommended candidate gates require every language and continuous/stitched group to avoid quality regression, a completed human boundary audit, and paired short P95, long completion and peak RSS ratios no greater than 1.1, with stable queues, full success and final drain. A completed trial means execution finished; it does not imply promotion. Original problem MP3 identity and reference text must be confirmed independently. See [continuous acceptance results](stt-continuous-acceptance-validation.md).
+Recommended candidate gates require every language and continuous/stitched group to avoid quality regression, a completed human boundary audit, and paired short P95, long completion and peak RSS ratios no greater than 1.1, with stable queues, full success and final drain. A completed trial means execution finished; it does not imply promotion. The original problem MP3 identity is confirmed; its historical reference text must be pinned again for reproducible quality scoring. See [continuous acceptance results](archive/stt/stt-continuous-acceptance-validation.md) and the [original MP3 replay](archive/stt/stt-admission-boundary-validation.md).
 
 ### SenseVoice boundary diagnosis
 
 ```bash
-python scripts/diagnose_sensevoice_boundaries.py --report sandbox/tts-output/runs/stt-sensevoice-boundary-diagnosis.json
-python scripts/diagnose_sensevoice_boundaries.py --report sandbox/tts-output/runs/stt-sensevoice-boundary-diagnosis.json --review-dir sandbox/stt-boundary-review
+python scripts/validate_speech.py sensevoice-boundaries --report sandbox/tts-output/runs/stt-sensevoice-boundary-diagnosis.json
+python scripts/validate_speech.py sensevoice-boundaries --report sandbox/tts-output/runs/stt-sensevoice-boundary-diagnosis.json --review-dir sandbox/stt-boundary-review
 ```
 
 This optional edit-alignment diagnostic requires `rapidfuzz` in the verification environment; ordinary regression scoring retains its fallback. Eight fresh subprocesses isolate relative quiet threshold, an eight-second minimum and forced-cut-only overlap. The default scope contains four 75-second continuous prefixes plus the three stitched controls; `--full` includes 300/590-second inputs. This is a diagnostic round, not three-round quality acceptance or a production default change.
 
-Without `--review-dir`, reports contain scores, edit positions and timings only. The explicit flag exports local audio excerpts and bounded reference/native-output snippets. `review.md` prioritizes candidate error recordings and compares current/candidate cuts. Continuous listening material covers the four 75-second prefixes, including when `--full` is selected. Reference intervals are context, not invented native word timestamps. Human verdicts remain pending until reviewed. Preserve corpus license/attribution when sharing exported excerpts. See [SenseVoice boundary findings](stt-sensevoice-boundary-diagnosis.md).
+Without `--review-dir`, reports contain scores, edit positions and timings only. The explicit flag exports local audio excerpts and bounded reference/native-output snippets. `review.md` prioritizes candidate error recordings and compares current/candidate cuts. Continuous listening material covers the four 75-second prefixes, including when `--full` is selected. Reference intervals are context, not invented native word timestamps. Human verdicts remain pending until reviewed. Preserve corpus license/attribution when sharing exported excerpts. See [SenseVoice boundary findings](archive/stt/stt-sensevoice-boundary-diagnosis.md).
 
 ## Exploratory mixed speech interaction probes
 
+### SenseVoice named candidate and server-only memory acceptance
+
+The newer SenseVoice candidate preserves all-cut overlap: `--candidate-policy relative-minimum8` uses a relative threshold and an eight-second minimum. It is distinct from the legacy forced-only candidate. Run three quality rounds, then the sequential acceptance workflow:
+
 ```bash
-python scripts/verify_speech_interaction.py --report sandbox/tts-output/runs/speech-interaction-all.json
-python scripts/verify_speech_interaction.py --only parallel-two-warm memory-supertonic --report sandbox/tts-output/runs/speech-interaction-supplement.json
+python scripts/validate_speech.py stt-quality --models stt-sensevoice-small-int8 --candidate-policy relative-minimum8 --resume --report sandbox/tts-output/runs/stt-sensevoice-v2-quality.json
+python scripts/validate_speech.py sensevoice-release --quality-report sandbox/tts-output/runs/stt-sensevoice-v2-quality.json --report sandbox/tts-output/runs/stt-sensevoice-v2-release.json --resume
 ```
 
-Requires the project runtime, benchmark dependencies (including psutil), installed Qwen3-ASR, SenseVoice, Whisper and Supertonic assets. Each configuration runs in a new process with an owned ephemeral TCP server and isolated state. It compares serial admission, per-model parallel admission with one instance, lazy second instances, and a prewarmed second ASR instance. Short STT/TTS requests arrive during a 120-second STT request. Separate single-model processes record memory before loading, after short/long requests and after shutdown. It checks response validity, final queue/pool drain and owned server shutdown. Run it separately from other model-backed workloads. Three short observations per task per round are exploratory measurements, not a tail-latency or capacity guarantee. See [results and limitations](stt-interaction-alignment-validation.md).
+The release workflow owns a separate HTTP server process, reports server and client RSS separately, pairs 500 requests at fixed workload-specific rates, compares one instance only for the same-model workload, and runs five lifecycle rounds for each policy before final scoped regression. Lifecycle Python allocation tracing is separate from unprofiled performance runs. Timeout/disconnect coverage must reach native inference and drain before reuse. A failed early-timeout pilot remains failed evidence. Human approval is still pending even when experiment sequencing assumes it passes. See [new candidate evidence and limitations](archive/stt/stt-sensevoice-v2-validation.md). Production settings and public HTTP contracts are unchanged.
+
+```bash
+python scripts/validate_speech.py speech-interaction --report sandbox/tts-output/runs/speech-interaction-all.json
+python scripts/validate_speech.py speech-interaction --only parallel-two-warm memory-supertonic --report sandbox/tts-output/runs/speech-interaction-supplement.json
+```
+
+Requires the project runtime, benchmark dependencies (including psutil), installed Qwen3-ASR, SenseVoice, Whisper and Supertonic assets. Each configuration runs in a new process with an owned ephemeral TCP server and isolated state. It compares serial admission, per-model parallel admission with one instance, lazy second instances, and a prewarmed second ASR instance. Short STT/TTS requests arrive during a 120-second STT request. Separate single-model processes record memory before loading, after short/long requests and after shutdown. It checks response validity, final queue/pool drain and owned server shutdown. Run it separately from other model-backed workloads. Three short observations per task per round are exploratory measurements, not a tail-latency or capacity guarantee. See [results and limitations](archive/stt/stt-interaction-alignment-validation.md).
 
 Install dependencies and models first:
 

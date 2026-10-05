@@ -228,6 +228,7 @@ __marimo__/
 
 # Local experiments and validation workspace
 /sandbox/
+/.impeccable/
 
 # Vendored Qwen3-TTS native build artifacts
 native/qwen3-tts/qwen_tts

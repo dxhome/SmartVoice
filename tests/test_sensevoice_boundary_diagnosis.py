@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import wave
 
-from scripts.diagnose_sensevoice_boundaries import (
+from scripts.validation.diagnose_sensevoice_boundaries import (
     POLICIES, bounded, error_positions, export_clip, review_boundaries, summarize, units,
 )
 

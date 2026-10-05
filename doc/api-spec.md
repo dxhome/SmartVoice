@@ -160,4 +160,4 @@ Long STT inputs use bounded windows declared by the model capability (Whisper Ba
 
 For routed auto-language requests, only recoverable identifier inference failures or unavailable identifier assets permit language fallback. Identifier overload remains HTTP 503, execution timeout remains HTTP 504, and cancellation ends the request. These paths do not begin a fallback STT operation. Transport and model admission capacity remain occupied until already-running native work returns, even if the caller disconnects. Validation-only internal stage measurements add no public response fields or headers.
 
-The shared policy addresses bounded long-input handling, not equal model accuracy. Digital silence may produce an empty result; this is not a general noise-rejection claim. See [validation and rollout decisions](audio-optimization-validation.md).
+The shared policy addresses bounded long-input handling, not equal model accuracy. Digital silence may produce an empty result; this is not a general noise-rejection claim. See [validation and rollout decisions](archive/stt/audio-optimization-validation.md).

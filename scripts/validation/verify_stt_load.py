@@ -16,12 +16,12 @@ import threading
 import time
 import weakref
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT/'src'))
-from scripts.compare_stt_policies import MODELS
-from scripts.stt_validation_common import TraceStore, provenance, TemporaryStorageTrace
-from scripts.verify_speech_interaction import percentiles
-from scripts.verify_stt_candidates import CANDIDATE_MINIMUM
+from scripts.validation.compare_stt_policies import MODELS
+from scripts.validation.stt_validation_common import TraceStore, provenance, TemporaryStorageTrace
+from scripts.validation.verify_speech_interaction import percentiles
+from scripts.validation.verify_stt_candidates import CANDIDATE_MINIMUM
 ASR=MODELS[2];TTS='tts-supertonic-v3-multilingual-int8'
 
 

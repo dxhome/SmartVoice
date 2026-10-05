@@ -137,6 +137,26 @@ class ModelRouter:
         with self._lock:
             return self._config
 
+    def configuration(self) -> dict[str, object]:
+        config = self.snapshot()
+        return {
+            "schema_version": "1.0",
+            "tasks": {
+                task: {language: list(model_ids) for language, model_ids in languages.items()}
+                for task, languages in config.tasks.items()
+            },
+        }
+
+    def update(self, raw: Any) -> dict[str, object]:
+        replacement = _parse_router_config(raw)
+        payload = json.dumps(raw, ensure_ascii=False, indent=2).encode("utf-8") + b"\n"
+        with self._lock:
+            _atomic_write(self.path, payload)
+            self._config = replacement
+            self.last_error = None
+        logger.info("router_config_updated path=%s sha256=%s", self.path.name, replacement.digest)
+        return {"status": "updated", "sha256": replacement.digest}
+
     def reload(self) -> dict[str, object]:
         replacement = self._read_and_validate()
         with self._lock:

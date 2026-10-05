@@ -14,9 +14,9 @@ import wave
 import xml.etree.ElementTree as ET
 import zipfile
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT)); sys.path.insert(0,str(ROOT/'src'))
-from scripts.stt_validation_common import fingerprint
+from scripts.validation.stt_validation_common import fingerprint
 
 
 def fetch(url, path, expected=None):

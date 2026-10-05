@@ -111,4 +111,4 @@ Whisper 的既有成功及失败尝试保存为历史记录，不用于本轮推
 
 本轮建议：保留 SenseVoice 十五秒窗口、全部边界一秒重叠和当前实例/预算。主体处理、异常传播与资源所有权的自动化检查已完成；候选不晋升。后续首先人工核对连续语音边界及拼接中文退化样本，再定位原生 RSS 滞留并开展至少五百请求的较低负载配对确认。Whisper 优化与原问题 MP3 质量验收继续单独列为暂缓/前置条件不足。
 
-运行方法见 [测试说明](testing.md#continuous-speech-acceptance-workflow)。
+运行方法见 [测试说明](../../testing.md#continuous-speech-acceptance-workflow)。

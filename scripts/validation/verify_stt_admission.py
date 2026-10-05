@@ -15,7 +15,7 @@ import sys
 import threading
 import time
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT/'src'))
 import httpx
 import uvicorn
@@ -23,7 +23,7 @@ from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from tests.inference_environment import isolated_runtime
 from tests.stt_regression_audio import build_audio
-from scripts.stt_validation_common import provenance, TemporaryStorageTrace, TraceStore
+from scripts.validation.stt_validation_common import provenance, TemporaryStorageTrace, TraceStore
 
 MODEL='stt-qwen3-asr-600m-int8'
 

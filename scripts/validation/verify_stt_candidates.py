@@ -15,10 +15,11 @@ import threading
 import time
 import wave
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT/'src'))
-from scripts.compare_stt_policies import MODELS, combine, score
-from scripts.stt_validation_common import TraceStore, WindowTrace, check_coverage, fingerprint, provenance
+from scripts.validation.compare_stt_policies import MODELS, combine, score
+from scripts.validation.stt_validation_common import TraceStore, WindowTrace, check_coverage, fingerprint, provenance
+from scripts.validation.stt_window_policies import POLICIES
 
 CANDIDATE_MINIMUM={MODELS[0]:8,MODELS[1]:8,MODELS[2]:2}
 
@@ -43,7 +44,7 @@ def corpus(manifest_path):
     return cases
 
 
-def worker(model,policy,repeat,manifest_path,report_path=None):
+def worker(model,policy,repeat,manifest_path,report_path=None,candidate_policy=None):
     import httpx,psutil,sherpa_onnx,uvicorn
     from smartvoice.app import create_app
     from smartvoice.config.settings import Settings
@@ -51,7 +52,7 @@ def worker(model,policy,repeat,manifest_path,report_path=None):
     from tests.inference_environment import isolated_runtime
     if model==MODELS[1] and sherpa_onnx.__version__!='1.13.8+smartvoice.whisper2':raise RuntimeError('Requires Whisper repair wheel')
     inputs=corpus(manifest_path);source=Settings.from_env()
-    report={'model':model,'policy':policy,'repeat':repeat,'provenance':provenance(source),'pid':os.getpid(),'parent_pid':os.getppid(),'cases':[],'completed':False}
+    report={'model':model,'policy':policy,'candidate_policy':candidate_policy,'repeat':repeat,'provenance':provenance(source),'pid':os.getpid(),'parent_pid':os.getppid(),'cases':[],'completed':False}
     if report_path:report_path.write_text(json.dumps(report,indent=2))
     stop=threading.Event();memory=[];process=psutil.Process()
     def sample_memory():
@@ -64,11 +65,15 @@ def worker(model,policy,repeat,manifest_path,report_path=None):
             def capture(*args,**kwargs):
                 result=native(*args,**kwargs);native_results.append(result);return result
             provider.transcribe=capture
-            report['policy_configuration']={'window_seconds':provider.segment_limits(model)['audio_seconds'], 'minimum_seconds':CANDIDATE_MINIMUM[model] if policy=='candidate' else None,'relative_quiet':policy=='candidate','overlap_on_silence':policy=='current'}
+            named=POLICIES[candidate_policy] if candidate_policy and policy=='candidate' else None
+            minimum=named.minimum_window_seconds if named else CANDIDATE_MINIMUM[model] if policy=='candidate' else None
+            relative=named.relative_quiet if named else policy=='candidate'
+            overlap=named.overlap_on_silence if named else policy=='current'
+            report['policy_configuration']={'window_seconds':provider.segment_limits(model)['audio_seconds'], 'minimum_seconds':minimum,'relative_quiet':relative,'overlap_on_silence':overlap}
             app=create_app(settings,provider);logging.getLogger('smartvoice.api').setLevel(logging.WARNING)
             if policy=='candidate':
                 app.state.transcription_service.audio_input=BoundedAudioInput(settings.max_audio_seconds,
-                    overlap_on_silence=False,minimum_window_seconds=CANDIDATE_MINIMUM[model],relative_quiet=True)
+                    overlap_on_silence=overlap,minimum_window_seconds=minimum,relative_quiet=relative)
             windows=WindowTrace(app.state.transcription_service.audio_input);app.state.transcription_service.audio_input=windows
             trace=TraceStore();app.add_middleware(trace.middleware())
             sock=socket.socket();sock.bind(('127.0.0.1',0))
@@ -139,8 +144,10 @@ def compare(rows, models=MODELS):
     return evaluations
 
 
-def reusable_trial(previous, model, policy, repeat, inputs, settings):
+def reusable_trial(previous, model, policy, repeat, inputs, settings, candidate_policy=None):
     if not previous.get('completed') or (previous.get('model'),previous.get('policy'),previous.get('repeat'))!=(model,policy,repeat):
+        return False
+    if previous.get('candidate_policy')!=candidate_policy:
         return False
     recorded=previous.get('provenance',{})
     current=provenance(settings)
@@ -162,13 +169,14 @@ def main():
     parser.add_argument('--worker',choices=MODELS)
     parser.add_argument('--policy',choices=('current','candidate'))
     parser.add_argument('--repeat',type=int,default=3)
+    parser.add_argument('--candidate-policy',choices=POLICIES,help='Named isolated candidate; omitted preserves legacy candidate')
     args=parser.parse_args()
     if args.repeat<1:parser.error('Positive repeat required')
     args.report.parent.mkdir(parents=True,exist_ok=True)
     if args.worker:
         report={'completed':False,'model':args.worker,'policy':args.policy,'repeat':args.repeat}
         try:
-            report=worker(args.worker,args.policy,args.repeat,args.manifest,args.report)
+            report=worker(args.worker,args.policy,args.repeat,args.manifest,args.report,args.candidate_policy)
         except BaseException as exc:
             if args.report.exists():report=json.loads(args.report.read_text())
             report['failure_type']=type(exc).__name__;raise
@@ -177,7 +185,7 @@ def main():
     inputs=corpus(args.manifest)
     from smartvoice.config.settings import Settings
     source_settings=Settings.from_env()
-    report={'completed':False,'corpus_manifest_sha256':fingerprint(args.manifest),'rounds':[],'normalization':'casefold, remove punctuation; no numeral or script equivalence','human_audit':'pending','tested_models':args.models,'deferred_models':[m for m in MODELS if m not in args.models]}
+    report={'completed':False,'candidate_policy':args.candidate_policy,'corpus_manifest_sha256':fingerprint(args.manifest),'rounds':[],'normalization':'casefold, remove punctuation; no numeral or script equivalence','human_audit':'pending','tested_models':args.models,'deferred_models':[m for m in MODELS if m not in args.models]}
     try:
         for repeat in range(1,args.repeat+1):
             for model in args.models:
@@ -187,13 +195,14 @@ def main():
                     path=args.report.with_name(f'{args.report.stem}-{model}-{policy}-{repeat}.json')
                     if args.resume and path.exists():
                         previous=json.loads(path.read_text())
-                        if reusable_trial(previous,model,policy,repeat,inputs,source_settings):
+                        if reusable_trial(previous,model,policy,repeat,inputs,source_settings,args.candidate_policy):
                             report['rounds'].append(previous)
                             args.report.write_text(json.dumps(report,indent=2))
                             continue
                         archived=path.with_name(path.stem+f'-previous-{int(time.time())}.json')
                         path.rename(archived)
-                    result=subprocess.run([sys.executable,__file__,'--worker',model,'--policy',policy,'--repeat',str(repeat),'--manifest',str(args.manifest),'--report',str(path)],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,timeout=1800)
+                    named_args=['--candidate-policy',args.candidate_policy] if args.candidate_policy else []
+                    result=subprocess.run([sys.executable,__file__,'--worker',model,'--policy',policy,'--repeat',str(repeat),'--manifest',str(args.manifest),'--report',str(path),*named_args],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,timeout=1800)
                     if path.exists():report['rounds'].append(json.loads(path.read_text()))
                     args.report.write_text(json.dumps(report,indent=2))
                     if result.returncode:raise RuntimeError(f'Worker failed: {model}/{policy}/{repeat}: {result.stderr[-600:]}')
