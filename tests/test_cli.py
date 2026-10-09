@@ -52,6 +52,27 @@ class ModelListOutputTests(unittest.TestCase):
         self.assertIn("zh, en", output)
         self.assertNotRegex(output, r"[\u4e00-\u9fff]")
 
+    def test_install_all_includes_every_catalog_model_and_language_detector(self):
+        from smartvoice.services.model_registry import load_catalog
+        specs = load_catalog()
+        entries = [{'id': spec.id, 'status': 'uninstalled', 'installation_method': spec.installation_method} for spec in specs]
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {'SMARTVOICE_HOME': temporary}), patch(
+                'smartvoice.__main__.ModelManagementService') as management, patch(
+                'smartvoice.adapters.storage.converted_model.check_dependencies'), patch(
+                'smartvoice.__main__._refresh_running_model_availability'), patch(
+                'smartvoice.services.spoken_language_identifier.ensure_language_id_model', return_value=temporary) as language_id:
+            service = management.return_value
+            service.catalog.return_value = {'data': entries}
+            service.get_spec.side_effect = lambda mid: next(spec for spec in specs if spec.id == mid)
+            service.install.return_value = temporary
+            with redirect_stdout(io.StringIO()): _models(['install', 'all'])
+            self.assertEqual([call.args[0] for call in service.install.call_args_list], [spec.id for spec in specs])
+            language_id.assert_called_once()
+        output = _format_model_list([{'id': spec.id, 'name': spec.name, 'task': spec.task,
+            'category': spec.category, 'subcategory': spec.subcategory, 'installed': False} for spec in specs])
+        self.assertIn('Streaming (5)', output)
+        for group in ('STT', 'MT', 'CT'): self.assertIn('    ' + group, output)
+
     def test_empty_model_list_has_helpful_message(self):
         self.assertEqual(_format_model_list([]), "The model catalog is empty.")
 

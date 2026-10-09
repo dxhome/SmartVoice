@@ -247,9 +247,11 @@ class RequestContextMiddleware:
 
 def create_app(settings: Settings | None = None, provider=None, *, debug_http: bool = False) -> FastAPI:
     settings = settings or Settings.from_env()
+    from smartvoice.adapters.inference.runtime.compute_budget import ComputeBudget
+    compute_budget = ComputeBudget(settings.streaming_compute_slots)
     model_repository = CatalogModelRepository(settings)
     if provider is None:
-        provider = create_inference_provider(settings, model_repository)
+        provider = create_inference_provider(settings, model_repository, compute_budget=compute_budget if settings.streaming_enabled else None)
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         try:
@@ -258,6 +260,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
                 refresh_models()
             yield
         finally:
+            await application.state.streaming.close()
             application.state.model_jobs.cancel_all()
             if isinstance(application.state.provider, RuntimeLifecycle):
                 application.state.provider.close()
@@ -314,7 +317,17 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
         app.state.model_jobs, model_repository, model_lifecycle,
         on_model_change=refresh_model_availability,
     )
+    from smartvoice.adapters.inference.streaming.factory import StageWorkers
+    from smartvoice.adapters.inference.runtime.stream_profile import Profiler
+    from smartvoice.adapters.inference.runtime.stream_workers import FairGate
+    from smartvoice.adapters.audio.streaming import package_wav
+    from smartvoice.services.streaming.manager import StreamingManager
+    from smartvoice.api.v1.streaming import router as streaming_router
+    app.state.compute_budget = compute_budget
+    app.state.streaming = StreamingManager(settings, model_repository,
+        StageWorkers(settings, compute_budget), Profiler, FairGate, package_wav)
     app.include_router(v1_router)
+    app.include_router(streaming_router)
 
     resource_dir = Path(__file__).resolve().parent / "resources"
     logo_path = resource_dir / "smartvoice-logo.png"
@@ -331,6 +344,10 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     async def smartvoice_favicon() -> FileResponse:
         favicon_path = resource_dir / "smartvoice-favicon.png"
         return FileResponse(favicon_path, media_type="image/png")
+
+    @app.get("/console/streaming", response_class=HTMLResponse, include_in_schema=False)
+    async def streaming_page() -> FileResponse:
+        return FileResponse(Path(__file__).resolve().parent / "web" / "streaming.html", media_type="text/html")
 
     @app.get("/console", response_class=HTMLResponse, include_in_schema=False)
     async def console_page() -> FileResponse:

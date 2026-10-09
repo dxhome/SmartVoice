@@ -53,3 +53,11 @@ All workflows accept their existing runner options after the workflow name. Use 
 - Keep product behavior out of verification scripts. Runners may use installed assets and isolated temporary state, but must not silently change personal configuration or production defaults.
 - Do not commit one-off logs, generated audio, temporary reports, or scratch scripts. Put transient outputs under the ignored `sandbox/` tree; promote only reviewed, reproducible evidence to `doc/archive/` or benchmark records.
 - Update this README and `doc/testing.md` whenever a supported workflow or standard test command changes.
+
+
+## Product streaming preview
+
+`tests/test_streaming.py` covers plan resolution, protocol validation, lifecycle/cancellation, admission, model leases, shared inference scheduling, native worker termination, ordered audio and metric accounting. Run the standard CI suite with `scripts/test.py ci`. Real six-route replay is available through `scripts/validate_speech.py streaming`; see [benchmark procedure](../benchmarks/streaming/README.md). Explicit pinned local bundles can be prepared with `scripts/prepare_streaming_bundle.py`; it never downloads or converts assets. Real model, playback, platform and resource acceptance are separate from fake-stage CI.
+
+
+Streaming deterministic tests: `python -m unittest tests.test_streaming tests.test_streaming_resilience tests.test_streaming_documentation`; see [coverage matrix](../doc/streaming-test-coverage.md). They require no model downloads and do not establish streaming quality/performance acceptance.

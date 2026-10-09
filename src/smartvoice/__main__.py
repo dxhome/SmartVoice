@@ -34,7 +34,7 @@ def _format_model_list(
 
     noun = "model" if len(all_models) == 1 else "models"
     lines = [f"SmartVoice models ({len(all_models)} {noun})"]
-    task_groups = (("transcription", "STT"), ("speech", "TTS"), ("native", "SmartVoice native"))
+    task_groups = (("transcription", "STT"), ("speech", "TTS"), ("streaming", "Streaming"), ("native", "SmartVoice native"))
     for is_installed, state_title in (
         (True, "Installed"),
         (False, "Not installed"),
@@ -49,11 +49,18 @@ def _format_model_list(
             lines.append("  (none)")
             continue
         for task, task_title in task_groups:
-            task_models = [model for model in state_models if model.get("task") == task]
+            task_models = [model for model in state_models if (model.get("category") or {"transcription":"stt","speech":"tts","native":"native"}.get(model.get("task"))) == {"transcription":"stt","speech":"tts"}.get(task,task)]
             if not task_models:
                 continue
             lines.extend(["", f"  {task_title} ({len(task_models)})"])
+            if task == "streaming":
+                stage_order = {"stt": 0, "mt": 1, "ct": 2, "tts": 3}
+                task_models.sort(key=lambda model: (stage_order.get(model.get("subcategory"), 4), str(model.get("id"))))
+            previous_stage = None
             for model in task_models:
+                if task == "streaming" and model.get("subcategory") != previous_stage:
+                    previous_stage = model.get("subcategory")
+                    lines.append(f"    {str(previous_stage).upper()}")
                 languages = ", ".join(str(language) for language in model.get("languages", [])) or "Not specified"
                 name = model.get("name", "Unnamed model")
                 model_id = model.get("id", "Unknown")
@@ -69,6 +76,8 @@ def _format_model_list(
                     status_label = f" | Unavailable ({model.get('availability_reason') or 'The active inference runtime cannot use this model.'})"
                 elif status == "available":
                     status_label = " | Available"
+                    if model.get("streaming") and str(backend) not in ("sherpa-onnx", "qwen3-tts"):
+                        status_label = " | Installed streaming assets; query /v1/audio/stream/capabilities for runtime readiness"
                 else:
                     status_label = " | Not installed"
                 lines.append(f"    - {name} ({model_id}) | {languages} | {backend} | {size_label}{status_label}")
@@ -249,6 +258,7 @@ def _serve(args: list[str]) -> None:
     uvicorn.run(
         create_app(settings=settings, debug_http=parsed.debug), host=settings.server_host, port=settings.server_port,
         log_level=settings.log_level.lower(),
+        **({"ws_max_size": 32768, "ws_max_queue": 8} if settings.streaming_enabled else {}),
     )
 
 
@@ -257,6 +267,7 @@ def _models(args: list[str]) -> None:
     parser.add_argument("--config", type=Path, default=None, help="Optional JSON configuration file")
     subparsers = parser.add_subparsers(dest="action", required=True)
     list_parser = subparsers.add_parser("list", help="List catalog entries and installation state")
+    list_parser.add_argument("--category", choices=("stt", "tts", "streaming"), help="Filter the top-level model category")
     list_parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
     refresh_parser = subparsers.add_parser("refresh", help="Refresh the running service's model availability snapshot")
     refresh_parser.add_argument("--host", default=None, help="Running SmartVoice service bind address")
@@ -338,6 +349,9 @@ def _models(args: list[str]) -> None:
             backend_runtimes = {}
         models = _models_with_availability(catalog_models(settings), backend_runtimes)
         native_models = [_native_model_status(settings, backend_runtimes.get("sherpa-onnx", {}))]
+        if parsed.category:
+            models = [model for model in models if model.get("category") == parsed.category]
+            native_models = []
         if parsed.json:
             print(json.dumps([*models, *native_models], ensure_ascii=False, indent=2))
         else:
@@ -385,6 +399,15 @@ def _models(args: list[str]) -> None:
             parser.error("--source cannot be used with 'install all'; each model uses its catalog source.")
         catalog = model_management.catalog()["data"]
         pending = [model for model in catalog if model.get("status") == "uninstalled"]
+        # Fail before downloading large unrelated assets if conversion cannot run.
+        from smartvoice.adapters.storage.converted_model import check_dependencies
+        try:
+            for model in pending:
+                spec = model_management.get_spec(str(model["id"]))
+                if spec.installation_method == "convert":
+                    check_dependencies(spec.preparation)
+        except SmartVoiceError as exc:
+            parser.error(str(exc))
         invalid = [model for model in catalog if model.get("status") == "invalid"]
         if invalid:
             print(
@@ -407,7 +430,9 @@ def _models(args: list[str]) -> None:
             source_label = parsed.source or "catalog source"
             if parsed.model_id == "all":
                 print(f"\nInstalling {spec.name} ({spec.id})")
-            if spec.file_sources:
+            if spec.installation_method == "convert":
+                print("Pinned source files are downloaded, verified, converted to int8, and checked against catalog output hashes.")
+            elif spec.file_sources:
                 print(f"Model files are fetched from the {source_label}; each file is checked against its catalog SHA-256.")
             else:
                 print(f"The archive is fetched from the {source_label} and checked against its catalog SHA-256.")

@@ -8,6 +8,8 @@ class InstalledModel(TypedDict, total=False):
     id: str
     name: str
     task: str
+    category: str
+    subcategory: str
     languages: list[str]
     backend: str
     installed: bool

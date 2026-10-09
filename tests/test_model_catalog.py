@@ -23,6 +23,82 @@ from smartvoice.services.model_storage import export_model, import_model, instal
 
 
 class ModelCatalogTests(unittest.TestCase):
+    def test_streaming_categories_and_legacy_identifiers(self):
+        specs = load_catalog()
+        streaming = [spec for spec in specs if spec.category == 'streaming']
+        self.assertEqual(len(streaming), 5)
+        self.assertEqual({spec.subcategory for spec in streaming}, {'stt', 'mt', 'ct'})
+        for spec in streaming:
+            self.assertTrue(spec.id.startswith('streaming-' + spec.subcategory + '-'))
+            self.assertEqual(get_model_spec(spec.legacy_ids[0]).id, spec.id)
+        self.assertEqual(get_model_spec('tts-matcha-zh-baker').category, 'tts')
+        self.assertEqual(get_model_spec('stt-sensevoice-small-int8').category, 'stt')
+
+    def test_conversion_install_verifies_source_and_output_before_publishing(self):
+        import tempfile
+        from smartvoice.services.model_storage import model_directory
+        from smartvoice.services.file_integrity import sha256
+        for scenario in ('valid', 'bad_source', 'bad_output', 'cancel'):
+            with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as temporary:
+                settings = Settings(data_dir=Path(temporary))
+                payload = b'fixture-pinned-weight'
+                digest = hashlib.sha256(payload).hexdigest()
+                original = get_model_spec('streaming-mt-opus-zh-en-int8')
+                spec = replace(original, required_files=('ct2/model.bin',), file_sha256={'ct2/model.bin': digest},
+                    preparation={'source_files': {'pytorch_model.bin': {'url': original.source, 'sha256': digest}}, 'versions': {}, 'quantization': 'int8'})
+                cancelled = threading.Event()
+                def download(url, path, progress, cancel_event):
+                    path.write_bytes(b'bad' if scenario == 'bad_source' else payload)
+                    if scenario == 'cancel': cancelled.set()
+                def convert(source, destination, check_cancel):
+                    check_cancel()
+                    self.assertEqual(sha256(source / 'pytorch_model.bin'), digest)
+                    destination.mkdir()
+                    (destination / 'model.bin').write_bytes(b'bad' if scenario == 'bad_output' else payload)
+                with patch('smartvoice.services.model_download.get_model_spec', return_value=spec), patch(
+                    'smartvoice.services.model_storage.get_model_spec', return_value=spec), patch(
+                    'smartvoice.services.model_download._download', side_effect=download), patch(
+                    'smartvoice.adapters.storage.converted_model.check_dependencies'), patch(
+                    'smartvoice.adapters.storage.converted_model.convert', side_effect=convert), patch(
+                    'smartvoice.services.model_download.shutil.disk_usage', return_value=type('Disk', (), {'free': 16 * 1024**3})()):
+                    if scenario == 'valid':
+                        destination = install_model(settings, spec.id, cancel_event=cancelled)
+                        manifest = json.loads((destination / 'smartvoice-model.json').read_text())
+                        self.assertEqual(manifest['id'], spec.id)
+                        self.assertEqual(manifest['file_sha256']['ct2/model.bin'], digest)
+                    else:
+                        with self.assertRaises(ModelDownloadCancelled if scenario == 'cancel' else ValueError):
+                            install_model(settings, spec.id, cancel_event=cancelled)
+                        self.assertFalse(model_directory(settings, spec.id).exists())
+                    self.assertEqual(list(settings.models_dir.glob('.*.tmp')), [])
+
+    def test_legacy_installed_streaming_assets_export_and_import_canonical_id(self):
+        import tempfile
+        from smartvoice.services.model_storage import model_directory
+        from smartvoice.adapters.inference.streaming.assets import model_files
+        with tempfile.TemporaryDirectory() as temporary:
+            settings = Settings(data_dir=Path(temporary) / 'old')
+            spec = get_model_spec('streaming-stt-zipformer-en-int8')
+            payload = b'legacy-fixture'
+            digest = hashlib.sha256(payload).hexdigest()
+            spec = replace(spec, required_files=('model.onnx',), file_sha256={'model.onnx': digest}, required_dirs=())
+            root = settings.models_dir / spec.legacy_ids[0]; root.mkdir(parents=True)
+            (root / 'model.onnx').write_bytes(payload)
+            manifest = dict(schema_version='1.0', id=spec.legacy_ids[0], task=spec.task, source=spec.source,
+                archive_sha256=spec.archive_sha256, files={'model.onnx': 'model.onnx'}, file_sha256={'model.onnx': digest})
+            (root / 'smartvoice-model.json').write_text(json.dumps(manifest))
+            with patch('smartvoice.services.model_storage.get_model_spec', return_value=spec), patch(
+                    'smartvoice.services.model_storage.load_catalog', return_value=[spec]):
+                self.assertEqual(model_directory(settings, spec.id), root)
+                self.assertEqual(installed_models(settings)[0]['id'], spec.id)
+                self.assertEqual(model_files(settings, spec)['model.onnx'], (root / 'model.onnx').resolve())
+                package = Path(temporary) / 'export.zip'
+                export_model(settings, spec.id, package)
+                with zipfile.ZipFile(package) as archive:
+                    self.assertEqual(json.loads(archive.read('model/smartvoice-model.json'))['id'], spec.id)
+                imported = import_model(Settings(data_dir=Path(temporary) / 'new'), package)
+                self.assertEqual(imported.name, spec.id)
+
     def test_transcription_window_policy_is_explicit_and_optional(self):
         self.assertEqual(get_model_spec('stt-whisper-base-multilingual-int8').transcription_segment_seconds, 25)
         self.assertEqual(get_model_spec('stt-sensevoice-small-int8').transcription_segment_seconds, 0)
@@ -38,7 +114,7 @@ class ModelCatalogTests(unittest.TestCase):
 
     def test_model_ids_follow_task_prefix_and_reject_retired_names(self):
         specs = load_catalog()
-        self.assertTrue(all(spec.id.startswith(("stt-", "tts-")) for spec in specs))
+        self.assertTrue(all(spec.id.startswith(("stt-", "tts-", "streaming-")) for spec in specs))
         for retired_id in (
             "whisper-base-multilingual-local", "sensevoice-small-local", "melo-tts-zh-en-local",
             "tts-melo-zh-en",
@@ -51,12 +127,16 @@ class ModelCatalogTests(unittest.TestCase):
 
     def test_catalog_sources_are_fixed_allowlisted_https_urls(self):
         specs = load_catalog()
-        self.assertEqual({spec.task for spec in specs}, {"transcription", "speech"})
+        self.assertEqual({spec.task for spec in specs}, {"transcription", "speech", "translation", "punctuation"})
         self.assertTrue(all(spec.source.startswith((
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/",
             "https://huggingface.co/k2-fsa/sherpa-models/resolve/",
             "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/",
             "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice/resolve/",
+            "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-",
+            "https://huggingface.co/csukuangfj/sherpa-onnx-punct-",
+            "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/",
+            "https://huggingface.co/facebook/m2m100_418M/resolve/",
         )) for spec in specs))
         self.assertIn("ja", get_model_spec("tts-supertonic-v3-multilingual-int8").languages)
         self.assertEqual(get_model_spec("stt-whisper-base-multilingual-int8").model_type, "whisper")

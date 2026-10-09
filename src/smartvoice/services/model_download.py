@@ -166,7 +166,9 @@ def _find_required_paths(root: Path, required: str, *, directory: bool = False) 
 
 def _download_urls(spec, source: str | None) -> list[str]:
     """Resolve catalog-pinned Hugging Face URLs against an explicitly selected base URL."""
-    urls = list(spec.file_sources.values()) if spec.file_sources else [spec.source]
+    urls = ([item["url"] for item in spec.preparation["source_files"].values()]
+            if spec.installation_method == "convert" else
+            list(spec.file_sources.values()) if spec.file_sources else [spec.source])
     urls.extend(metadata["source"] for metadata in (spec.extra_files or {}).values())
     if source is None:
         return urls
@@ -194,10 +196,19 @@ def install_model(
     source: str | None = None,
 ) -> Path:
     spec = get_model_spec(model_id)
+    if spec.installation_method == "import":
+        raise InvalidRequestError(
+            "This converted model requires a verified SmartVoice model bundle. "
+            "Use `python -m smartvoice models import` after explicit offline preparation."
+        )
+    if spec.installation_method == "convert":
+        from smartvoice.adapters.storage.converted_model import check_dependencies
+        check_dependencies(spec.preparation)
     resolved_urls = _download_urls(spec, source)
     settings.models_dir.mkdir(parents=True, exist_ok=True)
     destination = settings.models_dir / spec.id
-    if destination.exists():
+    from smartvoice.services.model_storage import model_directory
+    if model_directory(settings, spec.id).exists() or model_directory(settings, spec.id).is_symlink():
         raise InvalidRequestError(f"Model directory already exists: {destination}")
     free = shutil.disk_usage(settings.models_dir).free
     minimum_free = max(1024 * 1024 * 1024, spec.minimum_free_bytes or 0)
@@ -213,7 +224,33 @@ def install_model(
         extracted = temporary / "extracted"
         extracted.mkdir()
         component_parts: list[Path] = []
-        if spec.file_sources:
+        if spec.installation_method == "convert":
+            from smartvoice.adapters.storage.converted_model import convert
+            source_tree = temporary / "source"
+            source_tree.mkdir()
+            for (filename, metadata), url in zip(spec.preparation["source_files"].items(), resolved_urls):
+                part_path = download_dir / f"{spec.id}-source-{filename}.part"
+                component_parts.append(part_path)
+                if not part_path.is_file() or _sha256(part_path) != metadata["sha256"]:
+                    _download(url, part_path, progress, cancel_event)
+                if _sha256(part_path) != metadata["sha256"]:
+                    part_path.unlink(missing_ok=True)
+                    raise ValueError(f"Source file SHA-256 mismatch for {spec.id}: {filename}")
+                shutil.copyfile(part_path, source_tree / filename)
+            def check_cancel():
+                if cancel_event and cancel_event.is_set():
+                    raise ModelDownloadCancelled("Model conversion was canceled.")
+            check_cancel()
+            convert(source_tree, extracted / "ct2", check_cancel)
+            (extracted / "tokenizer").mkdir()
+            for required in spec.required_files:
+                if required.startswith("tokenizer/"):
+                    shutil.copyfile(source_tree / Path(required).name, extracted / required)
+                check_cancel()
+                if not (extracted / required).is_file() or _sha256(extracted / required) != spec.file_sha256[required]:
+                    raise ValueError(f"Converted model file SHA-256 mismatch for {spec.id}: {required}")
+            archive_digest = None
+        elif spec.file_sources:
             # A previous catalog entry used this path for a non-ONNX archive.
             archive_path.unlink(missing_ok=True)
             for (filename, _), url in zip(spec.file_sources.items(), resolved_urls):
@@ -275,6 +312,8 @@ def install_model(
             "source": spec.source, "download_source": source or "catalog",
             "archive_sha256": archive_digest,
             "hash_scope": (
+                "each source and converted model file verified against catalog-pinned SHA-256"
+                if spec.installation_method == "convert" else
                 "each required model file verified against its SHA-256 pinned in the SmartVoice source catalog"
                 if spec.file_sources else
                 "model archive and auxiliary model files verified against separately pinned SHA-256 values"
@@ -329,7 +368,7 @@ def install_model(
                 spec.id,
                 exc_info=True,
             )
-        if spec.file_sources or spec.extra_files:
+        if spec.file_sources or spec.extra_files or spec.installation_method == "convert":
             for part_path in component_parts:
                 part_path.unlink(missing_ok=True)
         else:

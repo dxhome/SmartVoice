@@ -71,7 +71,7 @@ def _parse_router_config(raw: Any) -> RouterConfig:
                 spec = specs.get(model_id)
                 if spec is None:
                     raise RouterConfigError(f"Unknown model ID {model_id!r} in router configuration.")
-                if spec.task != task:
+                if spec.task != task or spec.category == "streaming":
                     raise RouterConfigError(f"Model {model_id!r} does not support task {task!r}.")
                 if language not in spec.languages:
                     raise RouterConfigError(f"Model {model_id!r} does not declare support for language {language!r}.")

@@ -1,13 +1,13 @@
 # SmartVoice Implementation Plan
 
-**Last reviewed:** 2026-10-03
+**Last reviewed:** 2026-10-09
 
 This plan reflects the current code and product scope. It separates the implemented local-service baseline from the next P1 capability and the P2 verification and expansion work. For architecture principles, implementation summary, and the centralized backend/platform compatibility matrix, see [architecture-guidelines.md](architecture-guidelines.md); for HTTP behavior, see [api-spec.md](api-spec.md); for test commands, see [testing.md](testing.md).
 
 ## Priority Definitions
 
 - **P0 — Current baseline:** The basic local speech service and its architecture are implemented. There are no known uncompleted P0 implementation items in this plan.
-- **P1 — Next product capability:** Streaming STT, translated subtitles, and spoken interpretation.
+- **P1 — Product capability in preview:** Streaming STT, translated subtitles, and spoken interpretation; migration is implemented, formal acceptance remains pending.
 - **P2 — Acceptance and expansion:** Formal quality/performance acceptance, verification of the Windows/Linux model-platform matrix, and remaining platform, runtime, security, packaging, and product extensions.
 
 P2 work is planned but is not a promise that every item will ship in the next release. Confirm platform targets, measurable thresholds, and release scope before starting an item.
@@ -20,9 +20,18 @@ The code is divided into API, application services, domain contracts, ports, and
 
 The regression suite runs functional/API tests and real CPU inference via REST routes. Its routed integration cases exercise service/model discovery, routed and direct STT, Chinese/English speech-language detection, supported input audio formats, invalid audio, routed/direct TTS, automatic TTS language detection, and long-text synthesis when their required models/assets are installed. It also generates a direct smoke test for every catalog model and runs it for each installed model whose runtime is available; absent models are reported as skips. Run `python scripts/test.py ci` for CI and `python scripts/test.py regression` for local regression with SmartVoice installed and any desired models present.
 
-Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Source-install paths and release wheel builds cover Windows x64, macOS Apple Silicon, and Linux x86_64. Linux x86_64 has passed clean installation and model-backed inference validation on Ubuntu 26.04. Other Linux distributions and Linux arm64 are not yet verified. Android is not supported. GPU inference, streaming sessions, remote/LAN access, and a management UI are not part of the current baseline.
+Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Source-install paths and release wheel builds cover Windows x64, macOS Apple Silicon, and Linux x86_64. Linux x86_64 has passed clean installation and model-backed inference validation on Ubuntu 26.04. Other Linux distributions and Linux arm64 are not yet verified. Android is not supported. GPU inference and remote/LAN product access are not part of the accepted baseline. Streaming sessions and a browser file-replay page now exist as an explicitly enabled preview, with separate release gates.
 
 ## P1 — Streaming STT, Translation, and Interpretation
+
+### Product migration checkpoint, 2026-10-09
+
+Implemented in product code: six online routes, `smartvoice.stream.v1` WebSocket/capabilities, browser three-mode file replay, catalog-backed pinned adapters, explicit translation bundle import, immutable session plans, bounded queues/ACKs, shared REST/stream inference admission, owned native-process cancellation, cleanup quarantine and model-use leases. The default is disabled. Product runtime has no dependency on sandbox Python modules or asset paths.
+
+The benchmark entry is `scripts/validate_speech.py streaming`, with pinned corpus/config/code, strict final/audio/skip comparisons, success-rate denominators, first-PCM and annotated-onset percentiles, profiling and optional full-process-tree resources. This is a reproducible evaluation entry, not an assertion that all evaluation categories have passed.
+
+See [interface/setup](streaming.md), [migration evidence and remaining work](streaming-migration.md), and [benchmark procedure](../benchmarks/streaming/README.md). The three performance targets remain source partial P90<1s, target partial P90<2s and bidirectional speech onset TTFO P90<3s. Speech TTFO, current high-risk quality/skip cases, human onset coverage, browser long playback, full repeated corpus, resource capacity and platform packaging remain release gates. No model-quality or audio-success SLA is invented for this checkpoint.
+
 
 ### Goal and modes
 

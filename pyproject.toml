@@ -19,6 +19,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+streaming = ["ctranslate2==4.8.2", "sentencepiece==0.2.2", "websockets>=13,<17"]
+model-preparation = ["ctranslate2==4.8.2", "transformers==4.57.3", "torch==2.14.0", "sentencepiece==0.2.2"]
 dev = [
     "httpx>=0.27,<1.0",
     "httpx2>=2.0.0",

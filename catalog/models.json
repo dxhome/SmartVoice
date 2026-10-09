@@ -39,7 +39,8 @@
       "tokens_file": "base-tokens.txt",
       "license_note": "Whisper is multilingual; review the model license and archive notices before redistribution.",
       "model_type": "whisper",
-      "estimated_size_bytes": 160610247
+      "estimated_size_bytes": 160610247,
+      "category": "stt"
     },
     {
       "id": "stt-sensevoice-small-int8",
@@ -65,7 +66,8 @@
       "tokens_file": "tokens.txt",
       "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution.",
       "model_type": "sense_voice",
-      "estimated_size_bytes": 240507515
+      "estimated_size_bytes": 240507515,
+      "category": "stt"
     },
     {
       "id": "stt-qwen3-asr-600m-int8",
@@ -141,7 +143,8 @@
       "minimum_free_bytes": 2200000000,
       "license_note": "The Qwen3-ASR upstream is Apache-2.0; review the sherpa-onnx conversion notices and derived artifacts before redistribution.",
       "model_type": "qwen3_asr",
-      "estimated_size_bytes": 987016766
+      "estimated_size_bytes": 987016766,
+      "category": "stt"
     },
     {
       "id": "tts-kokoro-multilingual-v1-1-zh-en",
@@ -173,7 +176,15 @@
       "data_dir": "espeak-ng-data",
       "license_note": "Review the source model and voice licenses before use or redistribution.",
       "model_type": "kokoro",
-      "estimated_size_bytes": 426739711
+      "estimated_size_bytes": 426739711,
+      "streaming": {
+        "stage": "tts",
+        "adapter": "sherpa-tts",
+        "resident_mib": 800,
+        "requires_mixed_script_fallback": false,
+        "native_partial": false
+      },
+      "category": "tts"
     },
     {
       "id": "tts-matcha-zh-baker",
@@ -209,7 +220,15 @@
       },
       "license_note": "Review the Matcha checkpoint and Vocos vocoder licenses before use or redistribution.",
       "model_type": "matcha",
-      "estimated_size_bytes": 145678495
+      "estimated_size_bytes": 145678495,
+      "streaming": {
+        "stage": "tts",
+        "adapter": "sherpa-tts",
+        "resident_mib": 1200,
+        "requires_mixed_script_fallback": true,
+        "native_partial": false
+      },
+      "category": "tts"
     },
     {
       "id": "tts-supertonic-v3-multilingual-int8",
@@ -277,7 +296,15 @@
       "model_type": "supertonic",
       "estimated_size_bytes": 145318372,
       "speech_segment_characters": 200,
-      "voice_count": 10
+      "voice_count": 10,
+      "streaming": {
+        "stage": "tts",
+        "adapter": "sherpa-tts",
+        "resident_mib": 1200,
+        "requires_mixed_script_fallback": false,
+        "native_partial": false
+      },
+      "category": "tts"
     },
     {
       "id": "tts-qwen3-0-6b-customvoice",
@@ -344,7 +371,364 @@
       "minimum_free_bytes": 6442450944,
       "license_note": "Qwen3-TTS is Apache-2.0. This 0.6B CustomVoice model includes Qwen3-TTS-Tokenizer-12Hz assets; review upstream terms before redistribution.",
       "model_type": "qwen3_tts",
-      "estimated_size_bytes": 2498385866
+      "estimated_size_bytes": 2498385866,
+      "category": "tts"
+    },
+    {
+      "id": "streaming-stt-paraformer-zh-en-int8",
+      "task": "transcription",
+      "name": "Streaming paraformer",
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "backend": "sherpa-online",
+      "source": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/8e40c43232a1c5c66c82111efc5820d3accca11b/encoder.int8.onnx",
+      "archive_name": "streaming-stt-paraformer-zh-en-int8",
+      "archive_sha256": null,
+      "required_files": [
+        "encoder.int8.onnx",
+        "decoder.int8.onnx",
+        "tokens.txt",
+        "README.md"
+      ],
+      "model_file": "encoder.int8.onnx",
+      "tokens_file": "tokens.txt",
+      "decoder_file": "decoder.int8.onnx",
+      "file_sources": {
+        "encoder.int8.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/8e40c43232a1c5c66c82111efc5820d3accca11b/encoder.int8.onnx",
+        "decoder.int8.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/8e40c43232a1c5c66c82111efc5820d3accca11b/decoder.int8.onnx",
+        "tokens.txt": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/8e40c43232a1c5c66c82111efc5820d3accca11b/tokens.txt",
+        "README.md": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/8e40c43232a1c5c66c82111efc5820d3accca11b/README.md"
+      },
+      "file_sha256": {
+        "encoder.int8.onnx": "81a70226a8934e6ed92aa1d4fc486b428b5398e2f2619ed4897b7294cab90e9a",
+        "decoder.int8.onnx": "f3cca9f77bb9d93c8fcbfb63ae617b6b1ee96818df3aa3b151c40658fe38594f",
+        "tokens.txt": "59aba8873a2ed1e122c25fee421e25f283b63290efbde85c1f01a853d83cb6e6",
+        "README.md": "16b56210f03531d00f5580b060ff6843461e618e5642c070a58df6f0a5c98875"
+      },
+      "license_note": "Pinned sherpa-onnx export; retained upstream model card; review redistribution terms.",
+      "streaming": {
+        "stage": "asr",
+        "adapter": "sherpa-online",
+        "architecture": "paraformer",
+        "input_policy": "none",
+        "joiner_file": null,
+        "native_partial": true,
+        "resident_mib": 300
+      },
+      "legacy_ids": [
+        "stt-streaming-paraformer-zh-en-int8"
+      ],
+      "category": "streaming"
+    },
+    {
+      "id": "streaming-stt-zipformer-en-int8",
+      "task": "transcription",
+      "name": "Streaming zipformer_en",
+      "languages": [
+        "en"
+      ],
+      "backend": "sherpa-online",
+      "source": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/encoder-epoch-99-avg-1-chunk-16-left-64.int8.onnx",
+      "archive_name": "streaming-stt-zipformer-en-int8",
+      "archive_sha256": null,
+      "required_files": [
+        "encoder-epoch-99-avg-1-chunk-16-left-64.int8.onnx",
+        "decoder-epoch-99-avg-1-chunk-16-left-64.onnx",
+        "joiner-epoch-99-avg-1-chunk-16-left-64.int8.onnx",
+        "tokens.txt",
+        "README.md"
+      ],
+      "model_file": "encoder-epoch-99-avg-1-chunk-16-left-64.int8.onnx",
+      "tokens_file": "tokens.txt",
+      "decoder_file": "decoder-epoch-99-avg-1-chunk-16-left-64.onnx",
+      "file_sources": {
+        "encoder-epoch-99-avg-1-chunk-16-left-64.int8.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/encoder-epoch-99-avg-1-chunk-16-left-64.int8.onnx",
+        "decoder-epoch-99-avg-1-chunk-16-left-64.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/decoder-epoch-99-avg-1-chunk-16-left-64.onnx",
+        "joiner-epoch-99-avg-1-chunk-16-left-64.int8.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/joiner-epoch-99-avg-1-chunk-16-left-64.int8.onnx",
+        "tokens.txt": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/tokens.txt",
+        "README.md": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/README.md"
+      },
+      "file_sha256": {
+        "encoder-epoch-99-avg-1-chunk-16-left-64.int8.onnx": "0d072fd4ef956294ba9db9e9a71a541ac70659095ec4934c8453d8b2fe740187",
+        "decoder-epoch-99-avg-1-chunk-16-left-64.onnx": "7bf787f90b194b307e5a4ad6a34fadb4e748304c35f78a8d66358a05b13ee6ef",
+        "joiner-epoch-99-avg-1-chunk-16-left-64.int8.onnx": "d944208d660d67c8d72cd2acaeac971fa5ceb8c80e76c1968148846fedd6e297",
+        "tokens.txt": "49e3c2646595fd907228b3c6787069658f67b17377c60aeb8619c4551b2316fb",
+        "README.md": "c914dd28e23310a6dd345ea10495003d3e4820d2ed987181e4c2d67e501b6b76"
+      },
+      "license_note": "Pinned sherpa-onnx export; retained upstream model card; review redistribution terms.",
+      "streaming": {
+        "stage": "asr",
+        "adapter": "sherpa-online",
+        "architecture": "zipformer2",
+        "input_policy": "gain_v4",
+        "joiner_file": "joiner-epoch-99-avg-1-chunk-16-left-64.int8.onnx",
+        "native_partial": true,
+        "resident_mib": 300
+      },
+      "legacy_ids": [
+        "stt-streaming-zipformer-en-int8"
+      ],
+      "category": "streaming"
+    },
+    {
+      "id": "streaming-ct-transformer-zh-en",
+      "task": "punctuation",
+      "name": "CT-Transformer punctuation",
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "backend": "sherpa-punctuation",
+      "source": "https://huggingface.co/csukuangfj/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/resolve/432aeba669265e7aeb06b9359753419683b38597/model.onnx",
+      "archive_name": "punctuation",
+      "archive_sha256": null,
+      "required_files": [
+        "model.onnx",
+        "README.md"
+      ],
+      "model_file": "model.onnx",
+      "tokens_file": "",
+      "file_sources": {
+        "model.onnx": "https://huggingface.co/csukuangfj/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/resolve/432aeba669265e7aeb06b9359753419683b38597/model.onnx",
+        "README.md": "https://huggingface.co/csukuangfj/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/resolve/432aeba669265e7aeb06b9359753419683b38597/README.md"
+      },
+      "file_sha256": {
+        "model.onnx": "e93593a6dbd69a07f8734ef269dbe861a379755f8d1c8354719432116f2c44bd",
+        "README.md": "3b252c7f6eb20f6985242bc5c4e1f057191bebc303f03f66475af0f543e8530c"
+      },
+      "license_note": "Apache-2.0 declared by upstream ModelScope model card; converted export card has no independent declaration",
+      "streaming": {
+        "stage": "formatting",
+        "adapter": "sherpa-punctuation",
+        "native_partial": false,
+        "resident_mib": 400
+      },
+      "legacy_ids": [
+        "punct-ct-transformer-zh-en"
+      ],
+      "category": "streaming"
+    },
+    {
+      "id": "streaming-mt-opus-zh-en-int8",
+      "task": "translation",
+      "name": "Helsinki-NLP/opus-mt-zh-en CT2 int8",
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "backend": "ctranslate2",
+      "source": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/README.md",
+      "archive_name": "streaming-mt-opus-zh-en-int8",
+      "archive_sha256": null,
+      "required_files": [
+        "tokenizer/README.md",
+        "tokenizer/source.spm",
+        "tokenizer/target.spm",
+        "tokenizer/vocab.json",
+        "ct2/config.json",
+        "ct2/model.bin",
+        "ct2/shared_vocabulary.json"
+      ],
+      "model_file": "ct2/model.bin",
+      "tokens_file": "",
+      "file_sha256": {
+        "tokenizer/README.md": "7f4b7f90672cd55b85b213bbe21f4b2d0c92327e885734b7e86b019feb145a6b",
+        "tokenizer/source.spm": "e27a3a1b539f4959ec72ea60e453f49156289f95d4e6000b29332efc45616203",
+        "tokenizer/target.spm": "6a881f4717cd7265f53fea54fd3dc689c767c05338fac7a4590f3088cb2d7855",
+        "tokenizer/vocab.json": "c0f79ee4c413ccb24cd808a0c727eec85b2130f23c82802cc1caeb07b5f0d458",
+        "ct2/config.json": "8f6496adfc930cbfecbe8281112197705c488fab47d34b4829b06d7f478909af",
+        "ct2/model.bin": "e4955858cae9542bef37424a9b79720e3db2f32501fe62264c0cd3eac6319777",
+        "ct2/shared_vocabulary.json": "acbf13516c56af2bb78ebdb770c2e4648fd8232ddd17af75298119cbfa7ee33d"
+      },
+      "installation_method": "convert",
+      "license_note": "CC BY 4.0; OPUS-MT, University of Helsinki; Tiedemann and Thottingal (2020); local conversion pinned to CTranslate2 4.8.2.",
+      "streaming": {
+        "stage": "translation",
+        "adapter": "ctranslate2",
+        "family": "opus",
+        "pairs": [
+          [
+            "zh",
+            "en"
+          ]
+        ],
+        "native_partial": false,
+        "source_preview": true,
+        "draft_interval_seconds": 1.8,
+        "draft_min_chars": 4,
+        "draft_stable_seconds": 0.4,
+        "resident_mib": 450,
+        "policy": {
+          "source_language": "zh",
+          "target_language": "en",
+          "context_segments": 0,
+          "beam_size": 4,
+          "max_source_chars": 512,
+          "max_source_tokens": 256,
+          "max_target_tokens": 128,
+          "intra_threads": 1,
+          "inter_threads": 1
+        }
+      },
+      "legacy_ids": [
+        "mt-opus-zh-en-int8"
+      ],
+      "preparation": {
+        "source_files": {
+          "README.md": {
+            "url": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/README.md",
+            "sha256": "7f4b7f90672cd55b85b213bbe21f4b2d0c92327e885734b7e86b019feb145a6b"
+          },
+          "config.json": {
+            "url": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/config.json",
+            "sha256": "d84104da12fa90da59acf5f0ed30428e43cc92574ad4b9dfa88f29eeeb2b0eb0"
+          },
+          "generation_config.json": {
+            "url": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/generation_config.json",
+            "sha256": "81f06422302b9f4666f20c6f20f43b904e38ccce9326a208f82ff97c2c9699e5"
+          },
+          "source.spm": {
+            "url": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/source.spm",
+            "sha256": "e27a3a1b539f4959ec72ea60e453f49156289f95d4e6000b29332efc45616203"
+          },
+          "target.spm": {
+            "url": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/target.spm",
+            "sha256": "6a881f4717cd7265f53fea54fd3dc689c767c05338fac7a4590f3088cb2d7855"
+          },
+          "tokenizer_config.json": {
+            "url": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/tokenizer_config.json",
+            "sha256": "53cc7a6f05224f287476af4798d96b1b85da2edae60257e58633f092c7b5b823"
+          },
+          "vocab.json": {
+            "url": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/vocab.json",
+            "sha256": "c0f79ee4c413ccb24cd808a0c727eec85b2130f23c82802cc1caeb07b5f0d458"
+          },
+          "pytorch_model.bin": {
+            "url": "https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/pytorch_model.bin",
+            "sha256": "9d8ceb91d103ef89400c9d9d62328b4858743cf8924878aee3b8afc594242ce0"
+          }
+        },
+        "versions": {
+          "ctranslate2": "4.8.2",
+          "transformers": "4.57.3",
+          "torch": "2.14.0",
+          "sentencepiece": "0.2.2"
+        },
+        "quantization": "int8"
+      },
+      "category": "streaming",
+      "minimum_free_bytes": 4294967296
+    },
+    {
+      "id": "streaming-mt-m2m100-zh-en-int8",
+      "task": "translation",
+      "name": "facebook/m2m100_418M CT2 int8",
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "backend": "ctranslate2",
+      "source": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/README.md",
+      "archive_name": "streaming-mt-m2m100-zh-en-int8",
+      "archive_sha256": null,
+      "required_files": [
+        "tokenizer/README.md",
+        "tokenizer/sentencepiece.bpe.model",
+        "tokenizer/vocab.json",
+        "ct2/config.json",
+        "ct2/model.bin",
+        "ct2/shared_vocabulary.json"
+      ],
+      "model_file": "ct2/model.bin",
+      "tokens_file": "",
+      "file_sha256": {
+        "tokenizer/README.md": "1fd660f130aedc5ecf1796b47ab47d43d3c4b36541f5387b7adb3df75cb5dfdb",
+        "tokenizer/sentencepiece.bpe.model": "d8f7c76ed2a5e0822be39f0a4f95a55eb19c78f4593ce609e2edbc2aea4d380a",
+        "tokenizer/vocab.json": "b6e77e474aeea8f441363aca7614317c06381f3eacfe10fb9856d5081d1074cc",
+        "ct2/config.json": "8f6496adfc930cbfecbe8281112197705c488fab47d34b4829b06d7f478909af",
+        "ct2/model.bin": "137949450f9cf691f3c92084f14123e82d05ecb23ac3cd688308ce1a95214572",
+        "ct2/shared_vocabulary.json": "7eb5d0ff184c6095c7c10f9911c0aea492250abd12854f9c3d787c64b1c6397e"
+      },
+      "installation_method": "convert",
+      "license_note": "MIT; M2M-100, Facebook AI; Fan et al. (2020); local conversion pinned to CTranslate2 4.8.2.",
+      "streaming": {
+        "stage": "translation",
+        "adapter": "ctranslate2",
+        "family": "m2m100",
+        "pairs": [
+          [
+            "en",
+            "zh"
+          ]
+        ],
+        "native_partial": false,
+        "source_preview": true,
+        "draft_interval_seconds": 3.0,
+        "draft_min_chars": 6,
+        "draft_stable_seconds": 0.2,
+        "resident_mib": 1100,
+        "policy": {
+          "source_language": "zh",
+          "target_language": "en",
+          "context_segments": 0,
+          "beam_size": 4,
+          "max_source_chars": 512,
+          "max_source_tokens": 256,
+          "max_target_tokens": 128,
+          "intra_threads": 1,
+          "inter_threads": 1
+        }
+      },
+      "legacy_ids": [
+        "mt-m2m100-zh-en-int8"
+      ],
+      "preparation": {
+        "source_files": {
+          "README.md": {
+            "url": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/README.md",
+            "sha256": "1fd660f130aedc5ecf1796b47ab47d43d3c4b36541f5387b7adb3df75cb5dfdb"
+          },
+          "config.json": {
+            "url": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/config.json",
+            "sha256": "df0ae43e4e4b0d7e3c97b7f447857a70ef6b6a2aa1f145cedbcc730d95f67134"
+          },
+          "generation_config.json": {
+            "url": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/generation_config.json",
+            "sha256": "aed76366507333ddbb8bd49960f23c82fe6446b3319a46a54befdb45324ccf61"
+          },
+          "sentencepiece.bpe.model": {
+            "url": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/sentencepiece.bpe.model",
+            "sha256": "d8f7c76ed2a5e0822be39f0a4f95a55eb19c78f4593ce609e2edbc2aea4d380a"
+          },
+          "special_tokens_map.json": {
+            "url": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/special_tokens_map.json",
+            "sha256": "c1a4f86c3874d279ae1b2a05162858db5dd6c61665d84223ed886cbcff08fda6"
+          },
+          "tokenizer_config.json": {
+            "url": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/tokenizer_config.json",
+            "sha256": "a53e6aa83da0b82565ed90c3849056307a9453843322ac5b8439ec4b9497fe48"
+          },
+          "vocab.json": {
+            "url": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/vocab.json",
+            "sha256": "b6e77e474aeea8f441363aca7614317c06381f3eacfe10fb9856d5081d1074cc"
+          },
+          "pytorch_model.bin": {
+            "url": "https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/pytorch_model.bin",
+            "sha256": "d907ea45e4e4b9db163382a6674f6218b3c59566fe06d77f4055c208b4e87ed1"
+          }
+        },
+        "versions": {
+          "ctranslate2": "4.8.2",
+          "transformers": "4.57.3",
+          "torch": "2.14.0",
+          "sentencepiece": "0.2.2"
+        },
+        "quantization": "int8"
+      },
+      "category": "streaming",
+      "minimum_free_bytes": 4294967296
     }
   ]
 }

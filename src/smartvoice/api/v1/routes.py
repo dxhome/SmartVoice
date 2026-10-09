@@ -16,7 +16,7 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from smartvoice.domain.errors import (
-    AudioTooLargeError, InvalidRequestError, PayloadTooLargeError, UnsupportedFeatureError,
+    SmartVoiceError, AudioTooLargeError, InvalidRequestError, PayloadTooLargeError, UnsupportedFeatureError,
 )
 from smartvoice.services.model_router import ROUTER_MODEL_IDS
 from smartvoice.services.model_catalog_constants import MAX_ARCHIVE_BYTES
@@ -131,22 +131,45 @@ async def capabilities(
 async def runtime(request: Request) -> dict[str, object]:
     result = get_provider(request).runtime()
     result["router"] = request.app.state.model_router.public_status(get_provider(request).installed_models())
+    result['streaming'] = {'enabled': request.app.state.settings.streaming_enabled,
+        'active_sessions': len(request.app.state.streaming.active),
+        'estimated_resident_mib': request.app.state.streaming.resident,
+        'shared_compute': request.app.state.compute_budget.snapshot(),
+        'resource_scope': 'estimated streaming model admission; does not measure total process-tree RSS'}
     return result
 
 
 @router.get("/models", tags=["models"])
-async def models(request: Request) -> dict[str, object]:
+async def models(
+    request: Request,
+    category: Literal["stt", "tts", "streaming"] | None = Query(default=None),
+) -> dict[str, object]:
     available = _available_models_for_api(request)
+    # Streaming stages are not REST inference providers. Publish verified assets
+    # separately without claiming that their session runtime is ready.
+    known = {model["id"] for model in available}
+    available += [
+        {**model, "availability": "runtime_check_required", "runtime_readiness_url": "/v1/audio/stream/capabilities"}
+        for model in request.app.state.model_repository.installed_models()
+        if model.get("category") == "streaming" and model["id"] not in known
+    ]
+    available = [
+        {**model, "category": model.get("category") or {"transcription": "stt", "speech": "tts"}.get(model.get("task"))}
+        for model in available
+    ]
+    if category is not None:
+        available = [model for model in available if model.get("category") == category]
     data = [_openai_model_object(model) for model in available]
     available_tasks = [
         task for task in ("transcription", "speech")
-        if any(model.get("task") == task for model in available)
+        if any(model.get("task") == task and model.get("category") != "streaming" for model in available)
     ]
     if available_tasks:
         data.insert(0, _virtual_model_object(ROUTER_MODEL_IDS["transcription"], available_tasks))
-    task_order = {"transcription": 0, "speech": 1}
-    data[1:] = sorted(data[1:], key=lambda model: (
-        task_order.get(str(model.get("task")), 2),
+    task_order = {"stt": 0, "tts": 1, "streaming": 2}
+    offset = 1 if available_tasks else 0
+    data[offset:] = sorted(data[offset:], key=lambda model: (
+        task_order.get(str(model.get("category")), 3),
         str(model.get("name") or model["id"]).casefold(),
         str(model["id"]).casefold(),
     ))
@@ -194,6 +217,17 @@ async def retrieve_model(request: Request, model_id: str) -> dict[str, object]:
         None,
     )
     if model is None:
+        try:
+            spec = request.app.state.model_repository.get_spec(model_id)
+        except SmartVoiceError:
+            spec = None
+        if spec is not None and spec.category == "streaming":
+            model = next((item for item in request.app.state.model_repository.installed_models()
+                          if item.get("id") == spec.id), None)
+            if model is not None:
+                model = {**model, "availability": "runtime_check_required",
+                         "runtime_readiness_url": "/v1/audio/stream/capabilities"}
+    if model is None:
         raise HTTPException(status_code=404, detail=f"Model {model_id!r} is not installed or unavailable for inference.")
     return _openai_model_object(model)
 
@@ -228,14 +262,15 @@ async def reload_router(request: Request) -> dict[str, object]:
 @router.get("/catalog", tags=["models"])
 async def catalog(
     request: Request,
-    task: Literal["transcription", "speech"] | None = Query(
+    category: Literal["stt", "tts", "streaming"] | None = Query(default=None),
+    task: Literal["transcription", "speech", "translation", "punctuation"] | None = Query(
         default=None,
-        description="Filter catalog models by task. Use transcription for STT or speech for TTS.",
+        description="Filter installed/catalog tasks, including streaming translation and punctuation.",
     ),
 ) -> dict[str, object]:
-    if task not in {None, "transcription", "speech"}:
+    if task not in {None, "transcription", "speech", "translation", "punctuation"}:
         raise UnsupportedFeatureError(f"Task {task!r} is not supported.")
-    return request.app.state.model_management.catalog(task)
+    return request.app.state.model_management.catalog(task, category)
 
 
 @router.post("/models/{model_id}/download", status_code=202, tags=["models"])

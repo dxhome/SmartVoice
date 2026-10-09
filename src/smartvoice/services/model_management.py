@@ -34,10 +34,12 @@ class ModelManagementService:
             if callable(invalidate):
                 invalidate()
 
-    def catalog(self, task: str | None = None) -> dict[str, object]:
+    def catalog(self, task: str | None = None, category: str | None = None) -> dict[str, object]:
         entries = list(self.model_repository.catalog_models())
         if task is not None:
             entries = [model for model in entries if model.get("task") == task]
+        if category is not None:
+            entries = [model for model in entries if model.get("category") == category]
         return {"data": entries, "storage": self.model_repository.storage_summary()}
 
     def get_spec(self, model_id: str):
@@ -55,7 +57,11 @@ class ModelManagementService:
         return destination
 
     def start_download(self, model_id: str) -> dict[str, object]:
-        return self.jobs.start_download(self.model_repository.get_spec(model_id).id)
+        from smartvoice.domain.errors import InvalidRequestError
+        spec=self.model_repository.get_spec(model_id)
+        if spec.installation_method=='import':
+            raise InvalidRequestError('This model requires an explicitly imported verified bundle.')
+        return self.jobs.start_download(spec.id)
 
     def get_job(self, job_id: str) -> dict[str, object]:
         return self.jobs.get(job_id)

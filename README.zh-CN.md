@@ -25,7 +25,9 @@ SmartVoice 是面向开发者的本地语音转文字（STT）和文字转语音
 - **一个 API 同时支持 STT 和 TTS：** 通过统一的音频 API 接入兼容的智能体和应用。
 - **自由选择和迁移模型：** 只安装需要的模型，可直接指定模型，也可导出模型包以便离线传输。
 
-**当前范围：** 支持 CPU 推理；暂不支持 GPU 推理、流式处理、打包安装程序和 Android。安装或更新模型需要从配置的数据源下载文件。服务默认绑定到 `127.0.0.1`；对外开放网络时没有 API 身份验证，因此请仅在可信网络中使用并配置防火墙访问限制。
+**流式预览：** 通过版本化 WebSocket 和浏览器页面提供中文/英文原文字幕、中英双向译文字幕及译文语音，通过 `SMARTVOICE_STREAMING_ENABLED=true` 显式启用；浏览器入口 `/console/streaming`，实时接口 `WS /v1/audio/stream`，能力查询 `GET /v1/audio/stream/capabilities`。当前实测平台为 macOS arm64；参阅[启用与接口契约](doc/streaming.md)及[迁移证据和剩余验收](doc/streaming-migration.md)。
+
+**当前范围：** 支持 CPU 推理；暂不支持 GPU 推理、打包安装程序和 Android。安装或更新模型需要从配置的数据源下载文件。服务默认绑定到 `127.0.0.1`；对外开放网络时没有 API 身份验证，因此请仅在可信网络中使用并配置防火墙访问限制。
 
 ## 功能
 
@@ -38,7 +40,7 @@ SmartVoice 是面向开发者的本地语音转文字（STT）和文字转语音
 | 智能路由 | 根据任务和语言，按可编辑的优先级列表选择已安装模型；`smartvoice-auto` 同时适用于 STT 和 TTS |
 | API | OpenAPI 文档、语音转录、语音合成、模型目录和运行状态 |
 | 模型管理 | 安装、卸载、离线导入/导出和可续传下载 |
-| 暂不支持 | GPU 推理、流式处理、Linux/Windows ARM64、Intel macOS、Android、HTTPS、打包安装程序、MCP |
+| 暂不支持 | GPU 推理、Linux/Windows ARM64、Intel macOS、Android、HTTPS、打包安装程序、MCP |
 
 架构原则、实现概览、各推理后端的操作系统/架构/设备支持矩阵，以及模型安装状态和推理可用状态的区别，请参阅[架构总结与指南](doc/architecture-guidelines.md)。
 
@@ -271,7 +273,9 @@ TTS 默认返回单声道 MP3（96 kbps）；如需 WAV，请设置 `"response_f
 
 ## 管理模型
 
-CLI 支持 `models list`、`refresh`、`install`、`uninstall`、`export` 和 `import`。`models list` 先按安装状态分组，再按 STT、TTS 和 SmartVoice native 分类；每个模型都会显示可用状态，不可用时还会显示原因。可用性检查会同时验证模型文件完整性和当前推理运行时/设备。运行中的服务在进程范围内维护一份模型可用性快照：服务启动时初始化，并在模型管理操作后更新。如果模型文件是在服务外部修改的，可运行 `python -m smartvoice models refresh` 或调用 `POST /v1/models/refresh` 更新快照。作为后备机制，服务每 10 分钟检查一次，并在后台刷新，同时继续使用最近一次成功的快照。TTL 刷新失败后，会分别在 5、10 和 15 秒后重试；重试三次仍失败后，将等待手动刷新或模型管理操作触发恢复扫描。可通过 `model_availability_ttl_seconds` 或 `SMARTVOICE_MODEL_AVAILABILITY_TTL_SECONDS` 配置检查间隔。运行 `python -m smartvoice models install all` 可安装目录中尚未安装的所有模型以及 Whisper Tiny 语言检测器。模型按目录配置的数据源顺序下载；发现已有模型目录无效时会跳过并提示修复方法。安装所有模型可能需要数 GiB 磁盘空间。Windows x64 上只有构建了原生运行时后才能使用 Qwen3-TTS，详情请参阅[在 Windows 上构建 Qwen3-TTS 运行时](#在-windows-上构建-qwen3-tts-运行时)。也可以通过 API 下载任务安装模型。导出的模型包可传到离线机器并导入。服务正在使用某个模型时，不能卸载该模型。
+CLI 支持 `models list`、`refresh`、`install`、`uninstall`、`export` 和 `import`。`models list` 先按安装状态分组，再按 STT、TTS、Streaming（STT/MT/CT 子类）和 SmartVoice native 分类；每个模型都会显示可用状态，不可用时还会显示原因。可用性检查会同时验证模型文件完整性和当前推理运行时/设备。运行中的服务在进程范围内维护一份模型可用性快照：服务启动时初始化，并在模型管理操作后更新。如果模型文件是在服务外部修改的，可运行 `python -m smartvoice models refresh` 或调用 `POST /v1/models/refresh` 更新快照。作为后备机制，服务每 10 分钟检查一次，并在后台刷新，同时继续使用最近一次成功的快照。TTL 刷新失败后，会分别在 5、10 和 15 秒后重试；重试三次仍失败后，将等待手动刷新或模型管理操作触发恢复扫描。可通过 `model_availability_ttl_seconds` 或 `SMARTVOICE_MODEL_AVAILABILITY_TTL_SECONDS` 配置检查间隔。运行 `python -m smartvoice models install all` 可安装目录中尚未安装的所有模型以及 Whisper Tiny 语言检测器。模型按目录配置的数据源顺序下载；发现已有模型目录无效时会跳过并提示修复方法。安装所有模型可能需要数 GiB 磁盘空间。Windows x64 上只有构建了原生运行时后才能使用 Qwen3-TTS，详情请参阅[在 Windows 上构建 Qwen3-TTS 运行时](#在-windows-上构建-qwen3-tts-运行时)。也可以通过 API 下载任务安装模型。导出的模型包可传到离线机器并导入。服务正在使用某个模型时，不能卸载该模型。
+
+流式专用模型使用 `streaming-stt-*`、`streaming-mt-*`、`streaming-ct-*` ID，共用 TTS 的 ID 保持不变。可用 `models list --category streaming` 过滤 CLI；`GET /v1/models?category=streaming` 查询已验证安装资产，`GET /v1/catalog?category=streaming` 查询全部目录条目。`install all` 包含翻译模型，需先运行 `python -m pip install -e '.[streaming,model-preparation]'` 安装转换依赖；翻译模型在安装阶段校验源文件、离线转换并验证固定产物，推理阶段不会转换。旧流式 ID 和安装目录继续兼容。详见[安装与就绪检查](doc/streaming.md)。
 
 使用 `python -m smartvoice models install <model-id>` 安装模型。默认情况下，SmartVoice 使用模型目录中指定的数据源。对于 Hugging Face 模型，可以通过 `--source` 传入兼容的镜像基础 URL 来更换数据源，例如：
 
@@ -312,7 +316,7 @@ python -m smartvoice models uninstall stt-sensevoice-small-int8
                   平台诊断适配器
 ```
 
-调用方使用有版本控制的 API 和能力接口；推理细节封装在提供器和仓库接口之后。源码部署支持 Windows x64、macOS Apple Silicon 和 Linux x86_64 上的 CPU 推理。Qwen3-TTS 在这三个平台上均通过原生 C INT8 适配器运行；Linux 源码部署按上文说明链接到系统 OpenBLAS。SmartVoice 暂不提供 GPU 推理后端、流式处理和 Android 运行时。详细矩阵和模型可用性说明请参阅[架构总结与指南](doc/architecture-guidelines.md)。
+调用方使用有版本控制的 API 和能力接口；推理细节封装在提供器和仓库接口之后。源码部署支持 Windows x64、macOS Apple Silicon 和 Linux x86_64 上的 CPU 推理。Qwen3-TTS 在这三个平台上均通过原生 C INT8 适配器运行；Linux 源码部署按上文说明链接到系统 OpenBLAS。SmartVoice 暂不提供 GPU 推理后端和 Android 运行时。详细矩阵和模型可用性说明请参阅[架构总结与指南](doc/architecture-guidelines.md)。
 
 ## 开发
 

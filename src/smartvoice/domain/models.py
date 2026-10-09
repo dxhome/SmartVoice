@@ -34,3 +34,12 @@ class ModelSpec:
     rule_fsts: str | None = None
     speech_segment_characters: int = 0
     transcription_segment_seconds: int = 0
+    streaming: dict[str, object] | None = None
+    installation_method: str = "download"
+    category: str = ""
+    legacy_ids: tuple[str, ...] = ()
+    preparation: dict[str, object] | None = None
+
+    @property
+    def subcategory(self) -> str:
+        return {"transcription": "stt", "speech": "tts", "translation": "mt", "punctuation": "ct"}[self.task]

@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 COMMANDS = {
+    "streaming": ("validation/verify_streaming.py", "Six-route streaming quality, first-output latency and optional process-tree resources"),
     "stt-http": ("validation/verify_stt_http.py", "Real TCP HTTP transcription/synthesis and MP3 checks"),
     "stt-admission": ("validation/verify_stt_admission.py", "Queue admission, overload, timeout, and recovery checks"),
     "stt-policy": ("validation/compare_stt_policies.py", "Language, cache, window, and overlap comparisons"),

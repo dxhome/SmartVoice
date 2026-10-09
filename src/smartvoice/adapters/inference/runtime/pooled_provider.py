@@ -1,4 +1,5 @@
 """Provider facade: task translation stays in existing native adapters."""
+from contextlib import nullcontext
 import threading
 import time
 from dataclasses import replace
@@ -7,7 +8,8 @@ from smartvoice.adapters.inference.runtime.elastic_pool import ElasticRuntimePoo
 
 
 class PooledInferenceProvider:
-    def __init__(self, metadata, factory, settings, *, shared_backend=False):
+    def __init__(self, metadata, factory, settings, *, shared_backend=False, compute_budget=None):
+        self.compute_budget = compute_budget
         self.metadata = metadata
         self.settings = settings
         self.shared_backend = shared_backend
@@ -60,12 +62,20 @@ class PooledInferenceProvider:
     def _key(self, model_id):
         return "backend" if self.shared_backend else model_id
 
+    def _run(self, key, operation):
+        # Pool waiting owns no global permit. Only the native finite operation does.
+        def admitted(runtime):
+            with (self.compute_budget.permit(timeout=self.settings.inference_queue_timeout_seconds)
+                  if self.compute_budget else nullcontext()):
+                return operation(runtime)
+        return self.pool.run(key, admitted)
+
     def transcribe(self, audio, language="auto", model_id=None):
-        result, wait = self.pool.run(self._key(model_id), lambda runtime: runtime.transcribe(audio, language, model_id))
+        result, wait = self._run(self._key(model_id), lambda runtime: runtime.transcribe(audio, language, model_id))
         return {**result, "runtime_wait_seconds": result.get("runtime_wait_seconds", 0.0) + wait}
 
     def synthesize(self, text, voice="default", speed=1.0, model_id=None, language="auto"):
-        result, wait = self.pool.run(self._key(model_id), lambda runtime: runtime.synthesize(text, voice, speed, model_id, language))
+        result, wait = self._run(self._key(model_id), lambda runtime: runtime.synthesize(text, voice, speed, model_id, language))
         return replace(result, runtime_wait_seconds=result.runtime_wait_seconds + wait)
 
     def is_model_loaded(self, model_id):
@@ -94,7 +104,7 @@ class PooledSherpaProvider(PooledInferenceProvider):
     backend = "sherpa-onnx"
 
     def identify_language(self, audio):
-        result, wait = self.pool.run("language-identification", lambda runtime: runtime.identify_language(audio))
+        result, wait = self._run("language-identification", lambda runtime: runtime.identify_language(audio))
         return {**result, "runtime_wait_seconds": result.get("runtime_wait_seconds", 0.0) + wait}
 
     def language_identification_available(self):

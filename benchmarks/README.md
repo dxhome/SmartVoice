@@ -165,3 +165,8 @@ The custom-corpus report is aggregated and does not include audio paths, referen
 4. Run `smoke`, inspect quality and artifact output, then run `standard` before publishing the model's result report.
 
 The dataset adapter currently targets FLEURS. Supporting a different dataset family requires adding an adapter under `benchmarks/`, not changing the inference API or application source.
+
+
+## Streaming preview evaluation
+
+The independent streaming entry is `python scripts/validate_speech.py streaming --help`. See [streaming benchmark procedure and known limitations](streaming/README.md), [product session contract](../doc/streaming.md), and [deterministic coverage matrix](../doc/streaming-test-coverage.md). This entry reports six streaming routes separately from one-shot model comparison. It currently requires caller-provided pinned audio/onset/baseline assets; the documented fixtures are local sandbox assets. Full asset migration, runner guard fixes and formal streaming acceptance remain deferred.

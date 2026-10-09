@@ -18,7 +18,14 @@ def load_catalog() -> list[ModelSpec]:
     specs = []
     for item in raw["models"]:
         model_id = item["id"]
-        expected_prefix = "stt" if item["task"] == "transcription" else "tts" if item["task"] == "speech" else None
+        category = item.get("category", {"transcription": "stt", "speech": "tts"}.get(item["task"]))
+        if category not in ("stt", "tts", "streaming") or (category != "streaming" and category != {"transcription": "stt", "speech": "tts"}.get(item["task"])):
+            raise RuntimeError(f"Invalid model category for {model_id}")
+        expected_prefix = {"transcription": "stt", "speech": "tts", "translation": "mt", "punctuation": "punct"}.get(item["task"])
+        if item.get("category") == "streaming":
+            expected_prefix = "streaming-" + {"transcription": "stt", "speech": "tts", "translation": "mt", "punctuation": "ct"}[item["task"]]
+            if not item.get("streaming"):
+                raise RuntimeError(f"Streaming model lacks stage capabilities: {model_id}")
         if not MODEL_ID_PATTERN.fullmatch(model_id) or not expected_prefix or not model_id.startswith(f"{expected_prefix}-"):
             raise RuntimeError(f"Invalid canonical model ID {model_id!r}; expected the {expected_prefix or 'stt/tts'}-... format")
         source = item["source"]
@@ -28,6 +35,12 @@ def load_catalog() -> list[ModelSpec]:
             "https://huggingface.co/k2-fsa/sherpa-models/resolve/6eed21873e424aa3b01b52c767d9d3bd3cca94d8/",
             "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/",
             qwen_tts_source_prefix,
+            'https://huggingface.co/Helsinki-NLP/opus-mt-zh-en/resolve/cf109095479db38d6df799875e34039d4938aaa6/',
+            'https://huggingface.co/csukuangfj/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/resolve/432aeba669265e7aeb06b9359753419683b38597/',
+            'https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/8e40c43232a1c5c66c82111efc5820d3accca11b/',
+            'https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/',
+            'https://huggingface.co/facebook/m2m100_418M/resolve/55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636/',
+
         )
         qwen_source_prefix = "https://huggingface.co/csukuangfj2/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/resolve/68818b2313fe77bd06f6a7c5068ff3ef59d02b8a/"
         allowed_file_prefixes = (*allowed_source_prefixes, qwen_source_prefix)
@@ -59,6 +72,41 @@ def load_catalog() -> list[ModelSpec]:
         if (type(characters) is not int or not (characters == 0 or 40 <= characters <= 400)
                 or (characters and item["task"] != "speech")):
             raise RuntimeError(f"Invalid segment policy for {model_id}")
+        installation_method = item.get("installation_method", "download")
+        if installation_method not in ("download", "import", "convert"):
+            raise RuntimeError(f"Invalid installation method for {model_id}")
+        capability = item.get("streaming")
+        if capability is not None:
+            if (not isinstance(capability, dict) or capability.get("stage") not in ("asr", "formatting", "translation", "tts")
+                    or not isinstance(capability.get("adapter"), str)
+                    or type(capability.get("resident_mib")) is not int or capability["resident_mib"] <= 0):
+                raise RuntimeError(f"Invalid streaming capability for {model_id}")
+        if capability is not None:
+            expected_stage={"transcription":"asr","speech":"tts","translation":"translation","punctuation":"formatting"}[item["task"]]
+            if capability['stage']!=expected_stage:
+                raise RuntimeError(f"Streaming stage/task mismatch for {model_id}")
+            if expected_stage=='asr' and (type(capability.get('native_partial')) is not bool or capability.get('input_policy') not in ('none','gain_v4')):
+                raise RuntimeError(f"Invalid ASR input/partial capability for {model_id}")
+            if expected_stage=='translation':
+                pairs=capability.get('pairs')
+                if not isinstance(pairs,list) or not pairs or any(not isinstance(pair,list) or len(pair)!=2 or any(lang not in item['languages'] for lang in pair) for pair in pairs):
+                    raise RuntimeError(f"Invalid translation directions for {model_id}")
+                policy=capability.get('policy',{})
+                if any(type(policy.get(key)) is not int or policy[key]<=0 for key in ('beam_size','max_source_chars','max_source_tokens','max_target_tokens')):
+                    raise RuntimeError(f"Invalid bounded translation policy for {model_id}")
+        if installation_method in ("import", "convert") and set(file_sha256 or {}) != set(item["required_files"]):
+            raise RuntimeError(f"Imported model files must all have pinned hashes: {model_id}")
+        if installation_method == "convert":
+            preparation = item.get("preparation", {})
+            sources = preparation.get("source_files", {})
+            if (item["backend"] != "ctranslate2" or preparation.get("quantization") != "int8"
+                    or set(preparation.get("versions", {})) != {"ctranslate2", "transformers", "torch", "sentencepiece"}
+                    or not sources or any(
+                        not re.fullmatch(r"[a-zA-Z0-9_.-]+", name)
+                        or metadata.get("url") != source.rsplit('/', 1)[0] + '/' + name
+                        or not re.fullmatch(r"[a-f0-9]{64}", metadata.get("sha256", ""))
+                        for name, metadata in sources.items())):
+                raise RuntimeError(f"Invalid conversion preparation for {model_id}")
         specs.append(ModelSpec(
             id=item["id"], task=item["task"], name=item["name"],
             languages=tuple(item["languages"]), backend=item["backend"],
@@ -78,10 +126,20 @@ def load_catalog() -> list[ModelSpec]:
             rule_fsts=item.get("rule_fsts"),
             speech_segment_characters=item.get("speech_segment_characters", 0),
             transcription_segment_seconds=seconds,
+            streaming=item.get("streaming"),
+            installation_method=item.get("installation_method", "download"),
+            category=item.get("category", {"transcription":"stt", "speech":"tts"}.get(item["task"], "streaming")),
+            legacy_ids=tuple(item.get("legacy_ids", ())),
+            preparation=item.get("preparation"),
         ))
     identifiers = [spec.id for spec in specs]
     if len(identifiers) != len(set(identifiers)):
         raise RuntimeError("Canonical model IDs must be unique")
+    aliases = [alias for spec in specs for alias in spec.legacy_ids]
+    if any(not isinstance(alias, str) or not MODEL_ID_PATTERN.fullmatch(alias) for alias in aliases):
+        raise RuntimeError("Invalid legacy model ID")
+    if len(aliases) != len(set(aliases)) or set(aliases) & set(identifiers):
+        raise RuntimeError("Legacy model IDs must be unique and distinct from canonical IDs")
     return specs
 
 
@@ -98,6 +156,6 @@ def supported_language_codes(task: str | None = None) -> frozenset[str]:
 
 def get_model_spec(model_id: str) -> ModelSpec:
     for spec in load_catalog():
-        if model_id == spec.id:
+        if model_id == spec.id or model_id in spec.legacy_ids:
             return spec
     raise UnsupportedFeatureError(f"Model ID {model_id!r} is not supported by this SmartVoice release.")

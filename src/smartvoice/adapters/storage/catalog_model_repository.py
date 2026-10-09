@@ -3,6 +3,7 @@
 from pathlib import Path
 import copy
 import threading
+from contextlib import contextmanager
 from typing import Sequence
 
 from smartvoice.config.settings import Settings
@@ -28,6 +29,29 @@ class CatalogModelRepository(ModelRepository):
         self._installed_models_lock = threading.RLock()
         self._installed_models_snapshot: tuple[InstalledModel, ...] | None = None
         self._installed_models_stale = False
+        self._model_users: dict[str, int] = {}
+
+    @contextmanager
+    def hold_models(self, model_ids):
+        """Pin verified files for a live session; removal uses the same lock."""
+        from smartvoice.domain.errors import InvalidRequestError
+        model_ids = tuple(dict.fromkeys(model_ids))
+        with self._installed_models_lock:
+            installed = {model["id"] for model in self.installed_models()}
+            if any(model_id not in installed for model_id in model_ids):
+                raise InvalidRequestError("The complete streaming model chain is not installed.")
+            for model_id in model_ids:
+                self._model_users[model_id] = self._model_users.get(model_id, 0) + 1
+        try:
+            yield
+        finally:
+            with self._installed_models_lock:
+                for model_id in model_ids:
+                    remaining = self._model_users[model_id] - 1
+                    if remaining:
+                        self._model_users[model_id] = remaining
+                    else:
+                        self._model_users.pop(model_id)
 
     def get_spec(self, model_id: str) -> ModelSpec:
         return get_model_spec(model_id)
@@ -75,8 +99,9 @@ class CatalogModelRepository(ModelRepository):
         return result
 
     def uninstall_model(self, model_id: str, *, loaded: bool = False) -> int:
-        result = uninstall_model(self.settings, model_id, loaded=loaded)
-        self.invalidate_installed_models()
+        with self._installed_models_lock:
+            result = uninstall_model(self.settings, model_id, loaded=loaded or bool(self._model_users.get(model_id)))
+            self.invalidate_installed_models()
         return result
 
     def export_model(self, model_id: str, destination: Path) -> Path:

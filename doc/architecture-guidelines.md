@@ -151,7 +151,7 @@ These criteria are goals, not a claim that every change can remain fully local. 
 
 ## Part II — Current Architecture and Platform Compatibility
 
-**Implementation snapshot last reviewed:** 2026-10-04
+**Implementation snapshot last reviewed:** 2026-10-09
 
 ### Functional Layered Architecture
 
@@ -423,3 +423,25 @@ Existing input/output duration defaults are preserved. Internal WAV and final re
 ### Whisper native decoding repair
 
 The published sherpa-onnx 1.13.8 package loses UTF-8 characters split across byte-level tokens and limits decoding to six tokens per second. A scoped native patch and explicit build script are provided for the local Whisper repair; they do not run at service startup. Only the macOS Apple Silicon / Python 3.11 repair wheel has been verified. This is an exception to the usual prebuilt dependency path, not a claim that the base PyPI package contains the repair. See [Whisper repair validation](archive/stt/whisper-chinese-decoding-fix.md) for pinned source, installation, measurements, and limitations.
+
+
+### Streaming preview — implementation update, 2026-10-09
+
+The opt-in `/v1/audio/stream` contract supports explicit zh/en original subtitles and both zh↔en translated subtitle/speech routes. `/v1/audio/stream/capabilities` resolves model/runtime availability before audio capture. `/console/streaming` is a file replay client; live PCM producers may use the same protocol.
+
+Transport validates messages and serializes events. `services/streaming` owns immutable plans, lifecycle, semantic commitment, bounded queues and stage coordination. `domain` owns framework-independent records and text rules; `ports/streaming.py` defines stage/worker/resource interfaces. Inference, installed assets, process ownership, PCM preprocessing and WAV encoding stay in adapters. The composition root injects them. Model selection and declared capabilities reside in mirrored catalog/resource data; core flows do not branch on model names.
+
+ASR is genuinely online. Translation uses replaceable bounded drafts and committed complete units; TTS synthesizes bounded committed text chunks. This does not imply native streaming translation or native streaming TTS. Model adapters remain responsible for tokenizer, runtime and model-specific audio/text conventions.
+
+Dedicated per-session native workers can be terminated on deadline/cancellation, and retain admission/model leases until process exit is confirmed. Failed cleanup quarantines capacity. This differs from legacy REST's shared native worker threads, which cannot be forcibly interrupted. Streaming and REST share finite compute admission when streaming is enabled. Queues, ACK windows, input duration, initialization and native calls are bounded. Estimated model memory admission is not a hard process RSS limit.
+
+Streaming is preview status, disabled by default. Six-route macOS arm64 smoke evidence does not establish multi-platform support, quality acceptance, P90 targets or concurrency capacity. See [contract](streaming.md), [migration status](streaming-migration.md), and [benchmark procedure](../benchmarks/streaming/README.md).
+
+
+### Model management categories and preparation (2026-10-09)
+
+Model task and management category are separate metadata. The STT/TTS/Streaming categories do not change stage task contracts. Streaming-only IDs follow `streaming-stt-*`, `streaming-mt-*`, `streaming-ct-*`; shared TTS stays under TTS with explicit streaming capabilities. Catalog validation checks category/prefix consistency. Discovery and plans return canonical IDs; storage can resolve old pinned model manifests/directories and normalize exported/imported bundles without rewriting existing assets. Offline REST routing excludes streaming-only assets.
+
+Installation supports downloaded assets and catalog-defined conversion preparation. Pinned upstream metadata and expected converted-file hashes live in mirrored catalog data. A storage adapter executes local CTranslate2 conversion in an owned offline child, bounds its lifetime and stops it on cancellation; the installer verifies source/output hashes before atomic publication. The `model-preparation` extra supplies exact conversion dependencies. Model installation never installs Python packages implicitly; startup/session execution never downloads or converts. `models install all` includes all catalog models and checks conversion prerequisites before downloads. `/v1/models?category=streaming` reports installed verified assets with readiness-check metadata; runtime plans remain negotiated through `/v1/audio/stream/capabilities`.
+
+The Sherpa labels distinguish adapter contracts, not three native libraries: `sherpa-onnx` is the existing offline recognition/synthesis provider; `sherpa-online` constructs `OnlineRecognizer` and maintains incremental ASR state; `sherpa-punctuation` wraps `OfflinePunctuation` for bounded text snapshots. All use the `sherpa_onnx` package. Punctuation snapshot processing is not native streaming inference.

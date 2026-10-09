@@ -293,7 +293,12 @@ class CompositeInferenceProvider:
         )
 
     def is_model_loaded(self, model_id: str) -> bool:
-        provider = self._provider_for_model(model_id)
+        spec = self.model_repository.get_spec(model_id)
+        provider = self.providers.get(spec.backend)
+        # A catalog stage without a one-shot provider is protected by repository
+        # session-use leases rather than an unrelated REST runtime pool.
+        if provider is None:
+            return False
         return provider.is_model_loaded(model_id) if isinstance(provider, ModelLifecycle) else False
 
     def close(self) -> None:

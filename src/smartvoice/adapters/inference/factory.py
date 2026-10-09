@@ -9,6 +9,7 @@ from smartvoice.ports.model_repository import ModelRepository
 def create_inference_provider(
     settings: Settings,
     model_repository: ModelRepository | None = None,
+    *, compute_budget=None,
 ) -> CompositeInferenceProvider:
     """Build the standard adapter set while keeping backend wiring in one place."""
     repository = model_repository or CatalogModelRepository(settings)
@@ -33,8 +34,8 @@ def create_inference_provider(
     qwen = QwenTTSProvider(settings, repository)
     return CompositeInferenceProvider(
         {
-            "sherpa-onnx": PooledSherpaProvider(metadata, create_sherpa, settings),
-            "qwen-tts": PooledInferenceProvider(qwen, lambda seed: qwen, settings, shared_backend=True),
+            "sherpa-onnx": PooledSherpaProvider(metadata, create_sherpa, settings, compute_budget=compute_budget),
+            "qwen-tts": PooledInferenceProvider(qwen, lambda seed: qwen, settings, shared_backend=True, compute_budget=compute_budget),
         },
         repository,
         model_availability_ttl_seconds=settings.model_availability_ttl_seconds,

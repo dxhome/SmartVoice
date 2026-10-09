@@ -27,7 +27,14 @@ from smartvoice.services.model_local_state import load_state as load_local_model
 def model_directory(settings: Settings, model_id: str) -> Path:
     """Return the install directory for a canonical catalog model ID."""
     spec = get_model_spec(model_id)
-    return settings.models_dir / spec.id
+    canonical = settings.models_dir / spec.id
+    if canonical.exists() or canonical.is_symlink():
+        return canonical
+    for legacy in spec.legacy_ids:
+        candidate = settings.models_dir / legacy
+        if candidate.exists() or candidate.is_symlink():
+            return candidate
+    return canonical
 
 
 def installed_models(
@@ -61,7 +68,7 @@ def installed_models(
             manifest_stat = manifest_path.stat()
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             valid = (
-                manifest.get("id") == spec.id
+                manifest.get("id") in (spec.id, *spec.legacy_ids)
                 and manifest.get("task") == spec.task
                 and manifest.get("archive_sha256") == spec.archive_sha256
                 and root.resolve().is_relative_to(settings.models_dir.resolve())
@@ -158,6 +165,7 @@ def installed_models(
                 "id": spec.id,
                 "name": spec.name,
                 "task": spec.task,
+                "category": spec.category, "subcategory": spec.subcategory,
                 "languages": list(spec.languages),
                 "backend": spec.backend,
                 "archive_sha256": manifest.get("archive_sha256"),
@@ -212,11 +220,14 @@ def catalog_models(
     }
     output = [{
         "id": spec.id, "name": spec.name, "task": spec.task,
+        "category": spec.category, "subcategory": spec.subcategory,
         "languages": list(spec.languages), "backend": spec.backend,
         "source": spec.source, "installed": spec.id in installed_by_id,
         "status": "installed" if spec.id in installed_by_id else (
             "invalid" if model_directory(settings, spec.id).exists() else "uninstalled"
         ),
+        "streaming": spec.streaming,
+        "installation_method": spec.installation_method,
         "archive_name": spec.archive_name,
         "archive_sha256": spec.archive_sha256,
         "installed_size_bytes": installed_by_id.get(spec.id, {}).get("installed_size_bytes"),
@@ -271,7 +282,7 @@ def uninstall_model(settings: Settings, model_id: str, *, loaded: bool = False) 
 
 def export_model(settings: Settings, model_id: str, destination: Path) -> Path:
     spec = get_model_spec(model_id)
-    source = settings.models_dir / spec.id
+    source = model_directory(settings, spec.id)
     if source.is_symlink() or not source.resolve().is_relative_to(settings.models_dir.resolve()):
         raise InvalidRequestError("The installed model path is not a regular directory inside the model directory.")
     if spec.id not in {str(item["id"]) for item in installed_models(settings)}:
@@ -283,7 +294,12 @@ def export_model(settings: Settings, model_id: str, destination: Path) -> Path:
         for path in source.rglob("*"):
             if path.is_file() and not path.is_symlink():
                 package_path = Path("model") / path.relative_to(source)
-                archive.write(path, package_path)
+                if path.name == "smartvoice-model.json" and path.parent == source:
+                    manifest = json.loads(path.read_text())
+                    manifest["id"] = spec.id
+                    archive.writestr(str(package_path), json.dumps(manifest, ensure_ascii=False))
+                else:
+                    archive.write(path, package_path)
     return destination
 
 
@@ -360,6 +376,8 @@ def import_model(settings: Settings, archive_path: Path) -> Path:
         if model_directory(settings, model_id).exists():
             raise InvalidRequestError(f"Model directory already exists: {destination}")
         destination.parent.mkdir(parents=True, exist_ok=True)
+        manifest["id"] = spec.id
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
         os.replace(model_root, destination)
         try:
             cache_verified_files(

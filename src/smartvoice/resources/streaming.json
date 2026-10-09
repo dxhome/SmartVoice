@@ -1,0 +1,44 @@
+{
+  "schema": "smartvoice.streaming.config.v1",
+  "defaults": {
+    "asr": {
+      "zh": "streaming-stt-paraformer-zh-en-int8",
+      "en": "streaming-stt-zipformer-en-int8"
+    },
+    "formatting": "streaming-ct-transformer-zh-en",
+    "translation": {
+      "zh:en": "streaming-mt-opus-zh-en-int8",
+      "en:zh": "streaming-mt-m2m100-zh-en-int8"
+    },
+    "tts": {
+      "en": "tts-supertonic-v3-multilingual-int8",
+      "zh": "tts-matcha-zh-baker"
+    }
+  },
+  "text_policy": {
+    "format_interval_seconds": 0.35,
+    "draft_interval_seconds": 1.0,
+    "stable_seconds": 0.4,
+    "stable_updates": 2,
+    "min_draft_chars": 6,
+    "max_unit_chars": 192,
+    "max_wait_seconds": 4.0,
+    "forced_wait_seconds": 14.0,
+    "context_chars": 32,
+    "max_total_chars": 512
+  },
+  "tts": {
+    "en": {
+      "speed": 1.1,
+      "speaker_id": 0,
+      "max_chunk_chars": 100
+    },
+    "zh": {
+      "speed": 1.0,
+      "speaker_id": 0,
+      "max_chunk_chars": 20,
+      "fallback_model_id": "tts-kokoro-multilingual-v1-1-zh-en",
+      "fallback_speaker_id": 3
+    }
+  }
+}

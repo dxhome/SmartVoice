@@ -205,6 +205,28 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["available_models"], ["another-asr", "another-tts"])
 
+    def test_streaming_model_category_discovery_and_runtime_readiness(self):
+        from smartvoice.services.model_registry import load_catalog
+        specs = [spec for spec in load_catalog() if spec.category == 'streaming']
+        installed = [{'id': spec.id, 'name': spec.name, 'task': spec.task, 'category': spec.category,
+                      'subcategory': spec.subcategory, 'backend': spec.backend, 'installed': True} for spec in specs]
+        with self.make_client() as client, patch.object(client.app.state.model_repository, 'installed_models', return_value=installed):
+            listing = client.get('/v1/models?category=streaming')
+            self.assertEqual(listing.status_code, 200)
+            models = listing.json()['data']
+            self.assertEqual({item['id'] for item in models}, {spec.id for spec in specs})
+            self.assertTrue(all(item['availability'] == 'runtime_check_required' for item in models))
+            self.assertTrue(all(item['runtime_readiness_url'] == '/v1/audio/stream/capabilities' for item in models))
+            self.assertNotIn('smartvoice-auto', [item['id'] for item in models])
+            catalog = client.get('/v1/catalog?category=streaming').json()['data']
+            self.assertEqual({item['id'] for item in catalog}, {spec.id for spec in specs})
+            legacy = client.get('/v1/models/' + specs[0].legacy_ids[0])
+            self.assertEqual(legacy.json()['id'], specs[0].id)
+            for category, task in (('stt', 'transcription'), ('tts', 'speech')):
+                items = client.get('/v1/models?category=' + category).json()['data']
+                self.assertTrue(all(item.get('virtual') or item['task'] == task for item in items))
+            self.assertEqual(client.get('/v1/models?category=bogus').status_code, 501)
+
     def test_catalog_reports_installed_state_and_storage(self):
         with self.make_client() as client:
             response = client.get("/v1/catalog")
@@ -234,14 +256,14 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(all(item["task"] == "speech" for item in catalog.json()["data"]))
         self.assertIn("available_disk_bytes", catalog.json()["storage"])
         self.assertEqual(capabilities.json()["tasks"], ["transcription"])
-        self.assertNotIn("parameters", schema["paths"]["/v1/models"]["get"])
+        self.assertEqual(schema["paths"]["/v1/models"]["get"]["parameters"][0]["name"], "category")
         for path in ("/v1/catalog", "/v1/capabilities"):
             parameters = schema["paths"][path]["get"]["parameters"]
             task = next(parameter for parameter in parameters if parameter["name"] == "task")
             enum_schema = next(
                 option for option in task["schema"]["anyOf"] if "enum" in option
             )
-            self.assertEqual(enum_schema["enum"], ["transcription", "speech"])
+            self.assertEqual(enum_schema["enum"], ["transcription", "speech", "translation", "punctuation"] if path == "/v1/catalog" else ["transcription", "speech"])
 
     def test_model_endpoints_omit_models_without_an_available_inference_backend(self):
         qwen_model = {
