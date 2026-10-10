@@ -25,12 +25,13 @@ class Hypothesis:
     end_sample: int
     final: bool
     reason: str|None=None
+    context_version: int=0
 
     @classmethod
     def from_adapter(cls, row: Mapping, language: str):
         return cls(row['type'],row.get('utterance_id',0),row.get('revision',0),row.get('text',''),
                    row.get('language',language),row.get('start_sample',0),row.get('end_sample',0),
-                   row.get('final',row['type']=='source_final'),row.get('reason'))
+                   row.get('final',row['type']=='source_final'),row.get('reason'),row.get('context_version',0))
 
     def event(self):
         row=asdict(self);row['type']=row.pop('kind');return row

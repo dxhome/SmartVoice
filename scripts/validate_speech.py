@@ -15,6 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 COMMANDS = {
     "streaming": ("validation/verify_streaming.py", "Six-route streaming quality, first-output latency and optional process-tree resources"),
+    "streaming-capacity": ("validation/verify_streaming_capacity.py", "Open-loop fixed-arrival streaming capacity with CPU/RSS and sessions-per-core metrics"),
+    "streaming-capacity-matrix": ("validation/verify_streaming_capacity_matrix.py", "Launch isolated configurations for max_sessions 2/4/8/16 and compare concurrent output against a frozen baseline"),
+    "streaming-stability": ("validation/verify_streaming_stability.py", "Repeated sessions, long audio, and owned-server exit/resource cleanup probes"),
     "stt-http": ("validation/verify_stt_http.py", "Real TCP HTTP transcription/synthesis and MP3 checks"),
     "stt-admission": ("validation/verify_stt_admission.py", "Queue admission, overload, timeout, and recovery checks"),
     "stt-policy": ("validation/compare_stt_policies.py", "Language, cache, window, and overlap comparisons"),

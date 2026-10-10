@@ -14,6 +14,7 @@ class SpeechPipeline:
         self.adapter = None
         self.queue = asyncio.Queue(maxsize=4)
         self.pending_chars = 0
+        self.pending_changed = asyncio.Event()
         self.sequence = 0
         self.ledger = {}
         self.changed = asyncio.Event()
@@ -34,7 +35,12 @@ class SpeechPipeline:
         if self.task and self.task.done(): self.task.result()
 
     async def submit(self, unit, event):
-        if unit.incomplete or event.get('quality_issues'):
+        # At explicit end-of-input there can be no continuation to complete a
+        # semantic tail. Speak the committed tail as heard; keep the boundary
+        # uncertainty observable on the audio event. In-session forced cuts
+        # remain unsafe and are still skipped until a complete prefix exists.
+        terminal_tail = unit.incomplete and unit.reason == 'finish'
+        if (unit.incomplete and not terminal_tail) or event.get('quality_issues'):
             reason = 'incomplete' if unit.incomplete else 'quality_issues'
             self.skipped[reason] = self.skipped.get(reason, 0) + 1
             await self.owner.emit(dict(type='audio_skipped', unit_id=unit.unit_id,
@@ -43,14 +49,25 @@ class SpeechPipeline:
         target = CommittedTarget(self.owner.id, event['translation_id'], unit.unit_id,
             event['revision'], self.owner.plan.target_language, event['text'], unit.refs,
             source_language=self.owner.plan.source_language, source_unit_revision=unit.revision,
-            boundary_reason=unit.reason)
-        if self.pending_chars + len(target.text) > 512:
-            raise StageError('tts_overload', 'Pending synthesis text exceeds budget')
+            boundary_reason=unit.reason, incomplete=unit.incomplete)
+        if len(target.text) > 512:
+            raise StageError('tts_overload', 'A single synthesis segment exceeds the text budget', stage='tts')
+        began = time.monotonic()
+        while self.pending_chars + len(target.text) > 512:
+            if self.owner.stop.is_set(): raise asyncio.CancelledError()
+            self.pending_changed.clear()
+            if self.pending_chars + len(target.text) <= 512: break
+            if time.monotonic() - began > 30:
+                raise StageError('tts_overload', 'Synthesis queue remained full for 30 seconds', stage='tts')
+            try: await asyncio.wait_for(self.pending_changed.wait(), .1)
+            except TimeoutError: pass
+        self.owner.profiler.add('tts.pending_backpressure_wait', time.monotonic() - began)
         self.pending_chars += len(target.text)
         try:
             await asyncio.wait_for(self.queue.put(target), 30)
         except BaseException:
             self.pending_chars -= len(target.text)
+            self.pending_changed.set()
             raise
 
     async def wait_capacity(self, seconds):
@@ -91,6 +108,7 @@ class SpeechPipeline:
                         revision=target.revision, language=target.language, text=text,
                         target_text_start=start, target_text_end=end, refs=[asdict(ref) for ref in target.refs],
                         source_unit_revision=target.source_unit_revision, chunk_index=index, chunk_count=len(parts),
+                        source_unit_incomplete=target.incomplete,
                         sample_rate=audio.sample_rate, channels=1, encoding='wav',
                         duration_seconds=duration, synthesis_model_id=audio.profile,
                         audio=payload, committed=True, synthesis_seconds=time.monotonic()-queued)
@@ -101,6 +119,7 @@ class SpeechPipeline:
                     self.confirm_delivery(self.owner.last_ack)
             finally:
                 self.pending_chars -= len(target.text)
+                self.pending_changed.set()
 
     def confirm_delivery(self, sequence):
         if self.owner.plan.output_consumption != 'delivery': return

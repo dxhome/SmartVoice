@@ -1,5 +1,6 @@
 """Resolve complete, immutable session plans from declared model capabilities."""
 from dataclasses import dataclass
+from .workflows import WORKFLOWS
 import json
 import math
 from smartvoice.domain.streaming import StageError
@@ -40,20 +41,23 @@ class ProcessingPlan:
     glossary: tuple=()
     include_source_text: bool=True
     output_consumption: str='delivery'
-    decoder: str='beam'
+    decoder: str='greedy_search'
+    context_terms: tuple=()
     @property
     def model_ids(self):
         return tuple(x for x in (self.asr_model_id,self.formatting_model_id,self.translation_model_id,self.tts_model_id,self.tts_fallback_model_id) if x)
     def public(self):
         return {'mode':self.public_mode,'source_language':self.source_language,'target_language':self.target_language,
-                'models':{'asr':self.asr_model_id,'formatting':self.formatting_model_id,'translation':self.translation_model_id,'tts':self.tts_model_id},
+                'models':{'asr':self.asr_model_id,'formatting':self.formatting_model_id,'translation':self.translation_model_id,'tts':self.tts_model_id,'tts_fallback':self.tts_fallback_model_id},
                 'strategy':'online','native_asr_partial':True,'native_translation_streaming':False,'native_tts_streaming':False,
                 'input_policy':self.input_policy,'tts_speed':self.tts_speed,'output_consumption':self.output_consumption,
+                'workflow_stages':list(WORKFLOWS[self.mode].stages),
+                'context':{'recent_sentences':3,'max_recent_chars':512,'max_terms':64,'versioned':True},
                 'commitment':'acoustic-confirmed semantic units; drafts can be replaced; committed text is immutable'}
 
 def resolve(config, repository, threads=1):
     required={'type','protocol','mode','source_language','audio'}
-    optional={'target_language','models','include_source_text','output_consumption','glossary','ack_window'}
+    optional={'target_language','models','include_source_text','output_consumption','glossary','ack_window','context'}
     if not isinstance(config,dict) or not required<=config.keys() or config.keys()-required-optional:
         raise StageError('invalid_config','Unexpected or missing session fields')
     if config['type']!='configure' or config['protocol']!='smartvoice.stream.v1':
@@ -107,6 +111,13 @@ def resolve(config, repository, threads=1):
         resident += (spec.streaming or {}).get('resident_mib',800)
     from smartvoice.domain.translation_policy import validate_glossary
     glossary=validate_glossary(config.get('glossary'))
+    context=config.get('context',{})
+    if not isinstance(context,dict) or context.keys()-{'terms'}:
+        raise StageError('invalid_config','Context accepts an explicit terms list')
+    terms=context.get('terms',[])
+    if not isinstance(terms,list) or len(terms)>64 or any(not isinstance(t,str) or not t.strip() or len(t)>64 or any(ord(c)<32 for c in t) for t in terms):
+        raise StageError('invalid_config','Expected at most 64 nonempty context terms of at most 64 characters')
+    terms=tuple(dict.fromkeys(t.strip() for t in terms))
     ack=config.get('ack_window',16)
     source=config.get('include_source_text',True);consumption=config.get('output_consumption','delivery')
     if type(ack) is not int or not 1<=ack<=32 or type(source) is not bool or consumption not in ('delivery','playback'):
@@ -120,5 +131,5 @@ def resolve(config, repository, threads=1):
     plan=ProcessingPlan(mode,public_mode,lang,target,ids['asr'],ids['formatting'],ids['translation'],ids['tts'],threads,
         input_policy=specs['asr'].streaming.get('input_policy','none'),text_policy=tuple(text.items()),translation_policy=tuple(policy.items()),
         draft_interval_seconds=mt.get('draft_interval_seconds',1.8),tts_speed=tts.get('speed',1.0),tts_chunk_chars=tts.get('max_chunk_chars',100),
-        tts_speaker_id=tts.get('speaker_id',0),tts_fallback_model_id=fallback,tts_fallback_speaker_id=tts.get('fallback_speaker_id',3),glossary=glossary,include_source_text=source,output_consumption=consumption)
+        tts_speaker_id=tts.get('speaker_id',0),tts_fallback_model_id=fallback,tts_fallback_speaker_id=tts.get('fallback_speaker_id',3),glossary=glossary,context_terms=terms,include_source_text=source,output_consumption=consumption)
     return plan,specs,resident

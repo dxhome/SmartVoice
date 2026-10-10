@@ -1,0 +1,322 @@
+{
+  "schema": "smartvoice.stream.quality-anchor-import.v1",
+  "source_sha256": "bac8902fe285f76f463226fce7e478d755726d73d43916f65cb951f92feb965e",
+  "source_path": "sandbox/streaming/reports/pre-s4-known-quality-failures.json",
+  "review_status": "agent_inspection, not independent bilingual human review",
+  "quality_accepted": false,
+  "data": {
+    "review_kind": "agent_inspection, not independent bilingual human review",
+    "quality_accepted": false,
+    "cases": [
+      {
+        "case": "zh_04_clean",
+        "partition": "new_confirmation",
+        "variant": "clean",
+        "language": "zh",
+        "reference": "桥下垂直净空 15 米。该项目于 2011 年 8 月完工，但直到 2017 年 3 月才开始通车。",
+        "target_reference": "The vertical clearance under the bridge is 15 meters. Construction was completed in August 2011, it didn't open to traffic until March 2017.",
+        "source": "桥下垂直净空十五米该项目于二零一一年八月完工但直到二零一七年三月才开始通车",
+        "units": [
+          {
+            "unit_id": 0,
+            "revision": 1,
+            "raw_text": "桥下垂直净空十五米该项目于二零一一年八月完工但直到二零一七年三月才开始通车",
+            "text": "桥下垂直净空十五米，该项目于二零一一年八月完工，但直到二零一七年三月才开始通车。",
+            "language": "zh",
+            "committed": true,
+            "refs": [
+              {
+                "utterance_id": 0,
+                "revision": 15,
+                "event_sequence": 14,
+                "text_start": 0,
+                "text_end": 37,
+                "start_sample": 0,
+                "end_sample": 148800
+              }
+            ],
+            "reason": "semantic_final",
+            "incomplete": false,
+            "type": "source_unit_final",
+            "final": true,
+            "start_sample": 0,
+            "end_sample": 148800
+          }
+        ],
+        "targets": {
+          "opus_mt_zh_en": [
+            "The project was completed in August 2001 but did not begin until March 2007 when the vertical air was 15 metres below the bridge."
+          ],
+          "m2m100_zh_en": [
+            "The bridge is 15 meters underlying, and the project was completed in August of 2001, but only began to operate in March of 2017."
+          ]
+        },
+        "source_error_rate": 0.32432432432432434,
+        "finding": "Correctly recognized spoken 2011/2017 dates become wrong MT years. Number normalization remains a separate unimplemented policy.",
+        "status": "needs_independent_review_and_targeted_fix"
+      },
+      {
+        "case": "zh_02_clean",
+        "partition": "new_confirmation",
+        "variant": "clean",
+        "language": "zh",
+        "reference": "毋庸置疑的是，如果你会讲一门罗曼语，那么学习葡萄牙语会更加容易。",
+        "target_reference": "Needless to say, if you know a Romance language, it will be easier for you to learn Portuguese.",
+        "source": "毋庸置疑的是如果你会讲一门罗曼语那么学习葡萄牙语会更加容易",
+        "units": [
+          {
+            "unit_id": 0,
+            "revision": 1,
+            "raw_text": "毋庸置疑的是如果你会讲一门罗曼语那么学习葡萄牙语会更加容易",
+            "text": "毋庸置疑的是，如果你会讲一门罗曼语，那么学习葡萄牙语会更加容易。",
+            "language": "zh",
+            "committed": true,
+            "refs": [
+              {
+                "utterance_id": 0,
+                "revision": 11,
+                "event_sequence": 10,
+                "text_start": 0,
+                "text_end": 29,
+                "start_sample": 0,
+                "end_sample": 125440
+              }
+            ],
+            "reason": "semantic_final",
+            "incomplete": false,
+            "type": "source_unit_final",
+            "final": true,
+            "start_sample": 0,
+            "end_sample": 125440
+          }
+        ],
+        "targets": {
+          "opus_mt_zh_en": [
+            "There is no doubt that it would be easier to learn Portuguese if you could speak a Roman."
+          ],
+          "m2m100_zh_en": [
+            "There is no doubt that if you speak a Romanian language, it will be easier to learn Portuguese."
+          ]
+        },
+        "source_error_rate": 0.0,
+        "finding": "Romance language becomes Roman/Romanian despite correct recognized source.",
+        "status": "needs_independent_review_and_targeted_fix"
+      },
+      {
+        "case": "zh_03_clean",
+        "partition": "new_confirmation",
+        "variant": "clean",
+        "language": "zh",
+        "reference": "“莱顿 (Layton) 在与首相会面期间要求修改保守党的环境法案，他要求‘彻底重写’保守党的环境法案。”",
+        "target_reference": "Layton had asked for changes to the conservatives' environmental bill during the meeting with the PM, asking for a \"thorough and complete rewriting\" of the Conservative party's environmental bill.",
+        "source": "来顿在在与首相会面期间要求修改保守党的环境方案他要求彻底重写保守党的环境法案",
+        "units": [
+          {
+            "unit_id": 0,
+            "revision": 1,
+            "raw_text": "来顿在在与首相会面期间要求修改保守党的环境方案",
+            "text": "来顿在在与首相会面期间，要求修改保守党的环境方案。",
+            "language": "zh",
+            "committed": true,
+            "refs": [
+              {
+                "utterance_id": 0,
+                "revision": 10,
+                "event_sequence": 9,
+                "text_start": 0,
+                "text_end": 23,
+                "start_sample": 0,
+                "end_sample": 115840
+              }
+            ],
+            "reason": "semantic_final",
+            "incomplete": false,
+            "type": "source_unit_final",
+            "final": true,
+            "start_sample": 0,
+            "end_sample": 115840
+          },
+          {
+            "unit_id": 1,
+            "revision": 1,
+            "raw_text": "他要求彻底重写保守党的环境法案",
+            "text": "他要求彻底重写保守党的环境法案。",
+            "language": "zh",
+            "committed": true,
+            "refs": [
+              {
+                "utterance_id": 1,
+                "revision": 7,
+                "event_sequence": 17,
+                "text_start": 0,
+                "text_end": 15,
+                "start_sample": 115840,
+                "end_sample": 183040
+              }
+            ],
+            "reason": "semantic_final",
+            "incomplete": false,
+            "type": "source_unit_final",
+            "final": true,
+            "start_sample": 115840,
+            "end_sample": 183040
+          }
+        ],
+        "targets": {
+          "opus_mt_zh_en": [
+            "During a meeting with the Prime Minister, Leiden called for a revision of the environmental programme of the Conservative Party.",
+            "He called for a complete rewriting of the Conservative Environmental Bill."
+          ],
+          "m2m100_zh_en": [
+            "During the meeting with the Prime Minister, Lieton called for a change in the Conservative Party’s environmental plan.",
+            "He called for a complete rewrite of the Conservative Party Environmental Act."
+          ]
+        },
+        "source_error_rate": 0.18604651162790697,
+        "finding": "ASR damages Layton and bill/programme; both MT profiles produce wrong named entities.",
+        "status": "needs_independent_review_and_targeted_fix"
+      },
+      {
+        "case": "zh_06_clean",
+        "partition": "new_confirmation",
+        "variant": "clean",
+        "language": "zh",
+        "reference": "特朗普与土耳其总统雷杰普·塔伊普·埃尔多安（Recep Tayyip Erdoğan）通话后发表了声明。",
+        "target_reference": "The announcement was made after Trump had a phone conversation with Turkish President Recep Tayyip Erdoğan.",
+        "source": "特朗普与土耳其总统雷杰普塔伊普埃尔多安通话后发表了声",
+        "units": [
+          {
+            "unit_id": 0,
+            "revision": 1,
+            "raw_text": "特朗普与土耳其总统雷杰普塔伊普埃尔多安通话后发表了声",
+            "text": "特朗普与土耳其总统雷杰普塔伊普埃尔多安通话后发表了声。",
+            "language": "zh",
+            "committed": true,
+            "refs": [
+              {
+                "utterance_id": 0,
+                "revision": 12,
+                "event_sequence": 11,
+                "text_start": 0,
+                "text_end": 26,
+                "start_sample": 0,
+                "end_sample": 125440
+              }
+            ],
+            "reason": "semantic_final",
+            "incomplete": false,
+            "type": "source_unit_final",
+            "final": true,
+            "start_sample": 0,
+            "end_sample": 125440
+          }
+        ],
+        "targets": {
+          "opus_mt_zh_en": [
+            "Trump made a statement following a conversation with Turkish President Receptai Puerdoan."
+          ],
+          "m2m100_zh_en": [
+            "Trump spoke after a conversation with Turkish President Recep Tayyip Erdogan."
+          ]
+        },
+        "source_error_rate": 0.4222222222222222,
+        "finding": "ASR drops end of statement; OPUS damages Erdogan name; inspect greedy meaning change.",
+        "status": "needs_independent_review_and_targeted_fix"
+      },
+      {
+        "case": "zh_07_clean",
+        "partition": "new_confirmation",
+        "variant": "clean",
+        "language": "zh",
+        "reference": "罗兰多·门多萨 (Rolando Mendoza) 架起他的 M16 步枪对游客扫射。",
+        "target_reference": "Rolando Mendoza fired his M16 rifle at the tourists.",
+        "source": "罗兰多门多萨驾起他的 m 十六步枪队游客扫射",
+        "units": [
+          {
+            "unit_id": 0,
+            "revision": 1,
+            "raw_text": "罗兰多门多萨驾起他的 m 十六步枪队游客扫射",
+            "text": "罗兰多门多萨驾起他的m十六步枪队游客扫射。",
+            "language": "zh",
+            "committed": true,
+            "refs": [
+              {
+                "utterance_id": 0,
+                "revision": 9,
+                "event_sequence": 8,
+                "text_start": 0,
+                "text_end": 22,
+                "start_sample": 0,
+                "end_sample": 106240
+              }
+            ],
+            "reason": "semantic_final",
+            "incomplete": false,
+            "type": "source_unit_final",
+            "final": true,
+            "start_sample": 0,
+            "end_sample": 106240
+          }
+        ],
+        "targets": {
+          "opus_mt_zh_en": [
+            "Rolando Mendosa strafed the tourists with his M16."
+          ],
+          "m2m100_zh_en": [
+            "Roland Mendoza led up his m16 pistol squad shooting tourists."
+          ]
+        },
+        "source_error_rate": 0.5294117647058824,
+        "finding": "ASR names/weapon phrasing impaired; M2M changes rifle to pistol squad; greedy meaning also needs review.",
+        "status": "needs_independent_review_and_targeted_fix"
+      },
+      {
+        "case": "zh_02_clean",
+        "partition": "existing_regression",
+        "variant": "clean",
+        "language": "zh",
+        "reference": "这并不是告别这是一个篇章的结束也是新篇章的开始",
+        "target_reference": "\"This is not going to be goodbye. This is the closing of one chapter and the opening of a new one.\"",
+        "source": "这并不是告别这是一个篇章的结束也是新篇章的开始",
+        "units": [
+          {
+            "unit_id": 0,
+            "revision": 1,
+            "raw_text": "这并不是告别这是一个篇章的结束也是新篇章的开始",
+            "text": "这并不是告别，这是一个篇章的结束，也是新篇章的开始。",
+            "language": "zh",
+            "committed": true,
+            "refs": [
+              {
+                "utterance_id": 0,
+                "revision": 9,
+                "event_sequence": 8,
+                "text_start": 0,
+                "text_end": 23,
+                "start_sample": 0,
+                "end_sample": 106240
+              }
+            ],
+            "reason": "semantic_final",
+            "incomplete": false,
+            "type": "source_unit_final",
+            "final": true,
+            "start_sample": 0,
+            "end_sample": 106240
+          }
+        ],
+        "targets": {
+          "opus_mt_zh_en": [
+            "This is not a farewell; it is the end of a chapter and the beginning of a new one."
+          ],
+          "m2m100_zh_en": [
+            "This is not the end of a chapter, it is the beginning of a new chapter."
+          ]
+        },
+        "source_error_rate": 0.0,
+        "finding": "Real punctuation improves OPUS no-farewell negation, while M2M still changes clause relation.",
+        "status": "needs_independent_review_and_targeted_fix"
+      }
+    ]
+  }
+}

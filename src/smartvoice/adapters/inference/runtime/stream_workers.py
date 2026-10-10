@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 import multiprocessing
 import time
 from smartvoice.domain.streaming import StageError
@@ -107,6 +108,9 @@ class ProcessAffinityWorker:
             exc.stage=exc.stage or self.name
             raise
         except asyncio.CancelledError:raise
+        except BrokenProcessPool as exc:
+            await self.aclose()
+            raise StageError('worker_lost','Owned native worker exited unexpectedly',self.name) from exc
         except Exception as exc:raise StageError(self.name+'_failure',type(exc).__name__) from exc
         finally:
             if future and future.done() and not future.cancelled() and future.exception() is None:

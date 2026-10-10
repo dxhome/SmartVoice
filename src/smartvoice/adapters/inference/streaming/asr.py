@@ -8,19 +8,25 @@ RATE=16000
 class OnlineASR:
     partial_support = True
 
-    def __init__(self,settings,spec,plan):
+    def __init__(self,settings,spec,plan,recognizer=None):
         import sherpa_onnx
         from .assets import model_files
-        files=model_files(settings,spec);cap=spec.streaming
-        kwargs=dict(tokens=str(files[spec.tokens_file]),encoder=str(files[spec.model_file]),decoder=str(files[spec.decoder_file]),
-            num_threads=plan.asr_threads,enable_endpoint_detection=True,rule1_min_trailing_silence=2.4,
-            rule2_min_trailing_silence=0.8,rule3_min_utterance_length=10.0)
-        if cap['architecture']=='paraformer':self.recognizer=sherpa_onnx.OnlineRecognizer.from_paraformer(**kwargs)
-        else:self.recognizer=sherpa_onnx.OnlineRecognizer.from_transducer(**kwargs,joiner=str(files[cap['joiner_file']]),model_type=cap['architecture'])
+        if recognizer is None:
+            files=model_files(settings,spec);cap=spec.streaming
+            kwargs=dict(tokens=str(files[spec.tokens_file]),encoder=str(files[spec.model_file]),decoder=str(files[spec.decoder_file]),
+                num_threads=plan.asr_threads,enable_endpoint_detection=True,rule1_min_trailing_silence=2.4,
+                rule2_min_trailing_silence=0.8,rule3_min_utterance_length=10.0)
+            if cap['architecture']=='paraformer':self.recognizer=sherpa_onnx.OnlineRecognizer.from_paraformer(**kwargs)
+            else:self.recognizer=sherpa_onnx.OnlineRecognizer.from_transducer(**kwargs,joiner=str(files[cap['joiner_file']]),model_type=cap['architecture'])
+        else:
+            self.recognizer=recognizer
         language=plan.source_language
         self.gain=CausalGain(plan.input_policy)
         self.stream = self.recognizer.create_stream()
         self.language, self.total, self.start, self.utterance, self.revision = language, 0, 0, 0, 0
+        self.context_version = 0
+        self.context_snapshot = None
+        self.pending_context = None
         self.last = ''
         self.received = 0
         self.pending_pcm = b''
@@ -30,7 +36,7 @@ class OnlineASR:
         self.revision += 1
         return {'type': kind, 'utterance_id': self.utterance, 'revision': self.revision,
                 'text': text, 'language': self.language, 'start_sample': self.start,
-                'end_sample': self.total, 'final': kind == 'source_final', 'reason': reason}
+                'end_sample': self.total, 'final': kind == 'source_final', 'reason': reason, 'context_version': self.context_version}
 
     def _decode(self, endpoint=True):
         while self.recognizer.is_ready(self.stream):
@@ -53,7 +59,23 @@ class OnlineASR:
         self.start, self.revision, self.last = self.total, 0, ''
         return events
 
+    context_support = {"recent_text": False, "hotwords": False, "native_stream_state": True}
+
+    def update_context(self, snapshot):
+        # Current greedy adapters do not accept transcript prompts or hotwords.
+        # Record a version at acoustic boundaries without altering recognition.
+        self.pending_context = snapshot
+
+    def release_stream(self):
+        self.pending_pcm = b''
+        self.stream = None
+        self.recognizer = None
+
     def accept(self, samples):
+        if self.total == self.start and self.pending_context is not None:
+            self.context_snapshot = self.pending_context
+            self.context_version = self.context_snapshot.version
+            self.pending_context = None
         self.total += len(samples)
         with span('asr.accept_waveform'):self.stream.accept_waveform(RATE, samples)
         return self._decode()

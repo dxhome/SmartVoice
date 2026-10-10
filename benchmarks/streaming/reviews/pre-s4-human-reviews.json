@@ -1,0 +1,220 @@
+{
+  "schema": "smartvoice.stream.human-review-import.v1",
+  "source": "sandbox/streaming/runs/pre-s4-human-reviews.json",
+  "source_sha256": "b11c0d4bf9748af2eaefde2b112fc9213ba1433e59b5e9d9a748915c0ad42183",
+  "review_stage": "S5",
+  "status": "submitted_historical_reviews; preserve ratings without reinterpretation",
+  "quality_accepted_count": 0,
+  "record_count": 11,
+  "records": [
+    {
+      "case": "zh_00_clean",
+      "partition": "quality_policy_new_confirmation",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "pass"
+      },
+      "speech_onset_seconds": 0,
+      "speech_end_seconds": 10.88,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:34:26.385008+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "zh_04_clean",
+      "partition": "new_confirmation",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "needs_work"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 9.27,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:54:23.233559+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "zh_02_clean",
+      "partition": "new_confirmation",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "pass"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 7.25,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:54:58.828995+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "zh_03_clean",
+      "partition": "new_confirmation",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "pass"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 11.32,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:55:35.776945+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "zh_06_clean",
+      "partition": "new_confirmation",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "needs_work",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "needs_work"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 7.96,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:55:51.679566+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "zh_07_clean",
+      "partition": "new_confirmation",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "needs_work"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 6.58,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:56:19.320442+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "zh_02_clean",
+      "partition": "existing_regression",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "pass"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 6.69,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:56:33.392345+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "zh_00_clean",
+      "partition": "existing_regression",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "needs_work",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "needs_work"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 9.53,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:57:03.691505+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "en_00_clean",
+      "partition": "new_confirmation",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "needs_work"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 14.58,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:57:25.227764+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "zh_03_clean",
+      "partition": "streaming_zh_en",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "pass"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 6.77,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:57:49.655227+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "en_00_clean",
+      "partition": "streaming_en_zh",
+      "reviewer": "dxhome",
+      "ratings": {
+        "punctuation": "pass",
+        "negation": "pass",
+        "entities_numbers": "pass",
+        "meaning": "pass",
+        "draft_quality": "needs_work"
+      },
+      "speech_onset_seconds": null,
+      "speech_end_seconds": 8.36,
+      "clause_boundaries_seconds": [],
+      "notes": "",
+      "submitted_at": "2026-10-05T06:58:27.426021+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    }
+  ]
+}

@@ -58,26 +58,32 @@ class Settings:
     inference_queue_timeout_seconds: float = 60.0
     inference_execution_timeout_seconds: float = 600.0
 
-    streaming_enabled: bool = False
-    streaming_max_sessions: int = 1
+    streaming_max_sessions: int = 2
     streaming_memory_mib: int = 4096
     streaming_compute_slots: int = 2
-    streaming_idle_seconds: float = 10.0
-    streaming_lifetime_seconds: float = 300.0
+    streaming_idle_seconds: float = 60.0
+    streaming_lifetime_seconds: float = 0.0
+    streaming_max_audio_seconds: float = 0.0
+    streaming_max_model_workers: int = 8
+    streaming_max_pending_jobs: int = 32
+    streaming_worker_idle_seconds: float = 60.0
     streaming_native_seconds: float = 15.0
     streaming_initialization_seconds: float = 30.0
     streaming_cancel_grace_seconds: float = 1.0
 
     def __post_init__(self):
-        if type(self.streaming_enabled) is not bool:
-            raise ValueError("streaming_enabled must be boolean")
-        for key in ("streaming_max_sessions", "streaming_memory_mib", "streaming_compute_slots"):
+        for key in ("streaming_max_sessions", "streaming_memory_mib", "streaming_compute_slots", "streaming_max_model_workers", "streaming_max_pending_jobs"):
             if type(getattr(self, key)) is not int or getattr(self, key) <= 0:
                 raise ValueError(f"{key} must be a positive integer")
-        for key in ("streaming_idle_seconds", "streaming_lifetime_seconds", "streaming_native_seconds", "streaming_initialization_seconds", "streaming_cancel_grace_seconds"):
+        for key in ("streaming_idle_seconds", "streaming_worker_idle_seconds", "streaming_native_seconds", "streaming_initialization_seconds", "streaming_cancel_grace_seconds"):
             value = getattr(self, key)
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{key} must be finite and positive")
+
+        for key in ("streaming_lifetime_seconds", "streaming_max_audio_seconds"):
+            value = getattr(self, key)
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"{key} must be finite and nonnegative; 0 disables the limit")
 
         if self.tts_mp3_bitrate not in {64000, 96000, 128000}:
             raise ValueError("tts_mp3_bitrate must be 64000, 96000 or 128000")
@@ -124,6 +130,8 @@ class Settings:
             config = json.loads(selected_config.read_text(encoding="utf-8"))
             if not isinstance(config, dict):
                 raise ValueError("SmartVoice configuration must be a JSON object")
+            # Older user configs may still contain this now-obsolete feature flag.
+            config.pop("streaming_enabled", None)
             allowed = {field.name for field in fields(cls)}
             unknown = sorted(set(config) - allowed)
             if unknown:
@@ -133,20 +141,16 @@ class Settings:
             value = os.environ.get(env_name, config.get(key, default))
             return cast(value)
 
-        def boolean(value):
-            if type(value) is bool: return value
-            if isinstance(value, str) and value.lower() in {"true", "false", "1", "0"}:
-                return value.lower() in {"true", "1"}
-            raise ValueError("Expected a boolean setting")
-
         settings = cls(
             data_dir=(data_dir_override or Path(setting("data_dir", "SMARTVOICE_HOME", default_data_dir(), Path))).expanduser().resolve(),
             **{key: setting(key, "SMARTVOICE_" + key.upper(), getattr(cls(initial_data_dir), key), cast)
-               for key, cast in {"streaming_enabled": boolean, "streaming_max_sessions": int,
+               for key, cast in {"streaming_max_sessions": int,
                  "streaming_memory_mib": int, "streaming_compute_slots": int,
                  "streaming_idle_seconds": float, "streaming_lifetime_seconds": float,
                  "streaming_native_seconds": float, "streaming_initialization_seconds": float,
-                 "streaming_cancel_grace_seconds": float}.items()},
+                 "streaming_cancel_grace_seconds": float, "streaming_max_audio_seconds": float,
+                 "streaming_max_model_workers": int, "streaming_max_pending_jobs": int,
+                 "streaming_worker_idle_seconds": float}.items()},
             server_host=setting("server_host", "SMARTVOICE_HOST", "127.0.0.1", str),
             server_port=setting("server_port", "SMARTVOICE_PORT", 8000, int),
             log_level=setting("log_level", "SMARTVOICE_LOG_LEVEL", "INFO", str).upper(),

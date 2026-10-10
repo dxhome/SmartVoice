@@ -56,7 +56,8 @@ class IncrementalPipeline:
             await self.target_event(unit,'',retracted=True)
         if len(self.latest)>128:
             for key in sorted(self.latest)[:-128]:
-                if key in self.committed or (self.translator is None and self.latest[key].committed):self.latest.pop(key,None);self.target_revisions.pop(key,None)
+                if key in self.committed or (self.translator is None and self.latest[key].committed):self.latest.pop(key,None);self.target_revisions.pop(key,None);self.committed.discard(key)
+        if unit.committed:self.owner.context.commit(unit.unit_id,unit.text)
         event=await self.owner.emit(unit.event())
         if not self.translator:return
         if unit.committed:

@@ -63,6 +63,7 @@ class TextCoordinator:
             self.stability=[(old[i][0]+1,old[i][1]) if i<len(common) and i<len(old) else (1,now) for i in range(len(text))]
             self.common=common;self.previous=text;self.current=event
         elif event['type']=='source_final':
+            self.consumed_lexical.pop(event.get('utterance_id'),None)
             self.pending.append(event);self.current=None;self.stability=[];self.previous=self.common='';self.agreements=0
             if self.pending_since is None:self.pending_since=now
         if len(self.raw_text())>self.policy['max_total_chars']:

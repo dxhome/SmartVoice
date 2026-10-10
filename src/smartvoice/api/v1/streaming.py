@@ -3,6 +3,7 @@ import asyncio
 import json
 from urllib.parse import urlsplit
 from fastapi import APIRouter, Request, WebSocket
+from starlette.concurrency import run_in_threadpool
 from starlette.websockets import WebSocketDisconnect
 from smartvoice.domain.streaming import StageError
 
@@ -10,7 +11,7 @@ router=APIRouter(prefix='/v1')
 
 @router.get('/audio/stream/capabilities',tags=['streaming'])
 async def capabilities(request: Request):
-    return request.app.state.streaming.capabilities()
+    return await run_in_threadpool(request.app.state.streaming.capabilities)
 
 @router.websocket('/audio/stream')
 async def stream(websocket: WebSocket):
@@ -29,6 +30,10 @@ async def stream(websocket: WebSocket):
         while not session.done.is_set():
             message=await websocket.receive()
             if message['type']=='websocket.disconnect':raise WebSocketDisconnect()
+            # The processing task may have failed while a real-time audio frame was
+            # already in flight. Drain that race without replacing the original error
+            # with a secondary "session is no longer open" protocol failure.
+            if session.stop.is_set() or session.done.is_set():return
             if message.get('bytes') is not None:
                 await session.push_audio(message['bytes']);continue
             raw=message.get('text','')
@@ -37,11 +42,12 @@ async def stream(websocket: WebSocket):
             except ValueError as exc: raise StageError('invalid_message','Expected a JSON control object') from exc
             if not isinstance(row,dict): raise StageError('invalid_message','Expected an object')
             kind=row.get('type')
-            fields={'ack':{'type','event_sequence'},'finish':{'type'},'cancel':{'type'},
+            fields={'ack':{'type','event_sequence'},'finish':{'type'},'cancel':{'type'},'heartbeat':{'type'},
                     'audio_started':{'type','audio_sequence'},'audio_played':{'type','audio_sequence'}}
             if not isinstance(kind,str) or kind not in fields or row.keys()!=fields[kind]:
                 raise StageError('invalid_message','Unexpected control fields')
-            if kind=='ack': session.acknowledge(row['event_sequence'])
+            if kind=='heartbeat': session.heartbeat()
+            elif kind=='ack': session.acknowledge(row['event_sequence'])
             elif kind=='finish': await session.finish_input()
             elif kind=='cancel': await session.cancel('client_canceled');return
             else:

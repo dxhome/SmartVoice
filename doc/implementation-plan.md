@@ -20,7 +20,7 @@ The code is divided into API, application services, domain contracts, ports, and
 
 The regression suite runs functional/API tests and real CPU inference via REST routes. Its routed integration cases exercise service/model discovery, routed and direct STT, Chinese/English speech-language detection, supported input audio formats, invalid audio, routed/direct TTS, automatic TTS language detection, and long-text synthesis when their required models/assets are installed. It also generates a direct smoke test for every catalog model and runs it for each installed model whose runtime is available; absent models are reported as skips. Run `python scripts/test.py ci` for CI and `python scripts/test.py regression` for local regression with SmartVoice installed and any desired models present.
 
-Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Source-install paths and release wheel builds cover Windows x64, macOS Apple Silicon, and Linux x86_64. Linux x86_64 has passed clean installation and model-backed inference validation on Ubuntu 26.04. Other Linux distributions and Linux arm64 are not yet verified. Android is not supported. GPU inference and remote/LAN product access are not part of the accepted baseline. Streaming sessions and a browser file-replay page now exist as an explicitly enabled preview, with separate release gates.
+Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Source-install paths and release wheel builds cover Windows x64, macOS Apple Silicon, and Linux x86_64. Linux x86_64 has passed clean installation and model-backed inference validation on Ubuntu 26.04. Other Linux distributions and Linux arm64 are not yet verified. Android is not supported. GPU inference and remote/LAN product access are not part of the accepted baseline. Streaming sessions and a browser file-replay page are available by default as a preview, with separate release gates.
 
 ## P1 — Streaming STT, Translation, and Interpretation
 
@@ -481,6 +481,8 @@ Record model/source revisions, hashes, corpus version, normalization rules, hard
 For every release candidate, retain the CI suite, full regression results, distribution build checks, supported platform/model matrix, quality report, and any known limitations. A timeout must not release runtime capacity while native inference is still running.
 
 ## Completed Work and Historical Notes
+
+- 流式长会话与共享 worker 改造：默认取消墙钟/累计音频硬上限，增加心跳、模型级共享池、独立会话句柄、有界私有上下文及场景工作流。实现边界、配置和待验收项见 [streaming-shared-workers.md](streaming-shared-workers.md)。当前 greedy ASR 不支持历史文本偏置；跨连接恢复和原生状态迁移仍是后续能力，不应按已实现验收。
 
 - The core domain/ports/adapters boundaries, application-level STT/TTS services, REST API, CLI, model repository/lifecycle, and static language-aware router are implemented.
 - The prior router design questions and prototype JSON are superseded by the current implementation and are not open tasks. Routing uses the versioned JSON configuration, `smartvoice-auto`, direct model IDs, explicit/automatic language handling, ordered installed candidates, and hot reload.

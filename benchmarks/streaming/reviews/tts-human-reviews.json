@@ -1,0 +1,194 @@
+{
+  "schema": "smartvoice.stream.tts-human-review-import.v1",
+  "source": "sandbox/streaming/runs/tts-human-reviews.json",
+  "source_sha256": "eeb86fef92ec74f42ca58691e543d3b6368d411f5e72d77d401fd3bcecf13625",
+  "review_stage": "S5",
+  "status": "submitted_historical_blind_ab_reviews; A/B stimuli mapping not present in this record",
+  "record_count": 8,
+  "records": [
+    {
+      "case": "welcome",
+      "reviewer": "dxhome",
+      "ratings": {
+        "A": {
+          "intelligibility": 3,
+          "pronunciation": 2,
+          "prosody": 3,
+          "pauses": 3
+        },
+        "B": {
+          "intelligibility": 5,
+          "pronunciation": 4,
+          "prosody": 4,
+          "pauses": 4
+        }
+      },
+      "preference": "B",
+      "notes": "",
+      "submitted_at": "2026-10-05T08:15:32.745933+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "route",
+      "reviewer": "dxhome",
+      "ratings": {
+        "A": {
+          "intelligibility": 4,
+          "pronunciation": 4,
+          "prosody": 4,
+          "pauses": 4
+        },
+        "B": {
+          "intelligibility": 4,
+          "pronunciation": 2,
+          "prosody": 2,
+          "pauses": 3
+        }
+      },
+      "preference": "A",
+      "notes": "",
+      "submitted_at": "2026-10-05T08:16:04.637453+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "notice",
+      "reviewer": "dxhome",
+      "ratings": {
+        "A": {
+          "intelligibility": 3,
+          "pronunciation": 3,
+          "prosody": 2,
+          "pauses": 2
+        },
+        "B": {
+          "intelligibility": 4,
+          "pronunciation": 4,
+          "prosody": 4,
+          "pauses": 3
+        }
+      },
+      "preference": "B",
+      "notes": "",
+      "submitted_at": "2026-10-05T08:16:39.004755+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "year",
+      "reviewer": "dxhome",
+      "ratings": {
+        "A": {
+          "intelligibility": 4,
+          "pronunciation": 4,
+          "prosody": 4,
+          "pauses": 4
+        },
+        "B": {
+          "intelligibility": 4,
+          "pronunciation": 2,
+          "prosody": 1,
+          "pauses": 2
+        }
+      },
+      "preference": "A",
+      "notes": "",
+      "submitted_at": "2026-10-05T08:17:13.361895+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "names",
+      "reviewer": "dxhome",
+      "ratings": {
+        "A": {
+          "intelligibility": 3,
+          "pronunciation": 2,
+          "prosody": 1,
+          "pauses": 2
+        },
+        "B": {
+          "intelligibility": 4,
+          "pronunciation": 4,
+          "prosody": 4,
+          "pauses": 3
+        }
+      },
+      "preference": "B",
+      "notes": "",
+      "submitted_at": "2026-10-05T08:17:42.939954+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "list",
+      "reviewer": "dxhome",
+      "ratings": {
+        "A": {
+          "intelligibility": 4,
+          "pronunciation": 4,
+          "prosody": 4,
+          "pauses": 4
+        },
+        "B": {
+          "intelligibility": 3,
+          "pronunciation": 2,
+          "prosody": 2,
+          "pauses": 3
+        }
+      },
+      "preference": "A",
+      "notes": "",
+      "submitted_at": "2026-10-05T08:18:08.267562+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "long",
+      "reviewer": "dxhome",
+      "ratings": {
+        "A": {
+          "intelligibility": 3,
+          "pronunciation": 2,
+          "prosody": 2,
+          "pauses": 2
+        },
+        "B": {
+          "intelligibility": 3,
+          "pronunciation": 4,
+          "prosody": 4,
+          "pauses": 2
+        }
+      },
+      "preference": "B",
+      "notes": "",
+      "submitted_at": "2026-10-05T08:18:48.476996+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    },
+    {
+      "case": "question",
+      "reviewer": "dxhome",
+      "ratings": {
+        "A": {
+          "intelligibility": 4,
+          "pronunciation": 4,
+          "prosody": 4,
+          "pauses": 3
+        },
+        "B": {
+          "intelligibility": 4,
+          "pronunciation": 2,
+          "prosody": 2,
+          "pauses": 1
+        }
+      },
+      "preference": "A",
+      "notes": "",
+      "submitted_at": "2026-10-05T08:19:15.293289+00:00",
+      "review_kind": "human_submitted",
+      "quality_accepted": false
+    }
+  ]
+}

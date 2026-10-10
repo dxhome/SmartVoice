@@ -1,10 +1,10 @@
-# 流式处理预览：启用与接口
+# 流式处理预览：接口与安装
 
-## 范围与启用
+## 范围与可用性
 
-提供三种模式：`transcription`（原文字幕）、`translated_subtitles`（译文字幕）、`spoken_interpretation`（译文语音）。源语言必须指定 `zh` 或 `en`；翻译目标必须是另一个语言。默认禁用，当前验证平台为 macOS arm64。既有一次性接口保持原语义，在线 ASR 模型不能作为一次性 ASR 使用。
+提供三种模式：`transcription`（原文字幕）、`translated_subtitles`（译文字幕）、`spoken_interpretation`（译文语音）。源语言必须指定 `zh` 或 `en`；翻译目标必须是另一个语言。WebSocket、能力查询和浏览器入口默认可用；当前验证平台为 macOS arm64。既有一次性接口保持原语义，在线 ASR 模型不能作为一次性 ASR 使用。
 
-安装项目的 `streaming` 额外依赖，在配置中设置 `streaming_enabled: true`，或启动前设置 `SMARTVOICE_STREAMING_ENABLED=true`。使用正常 `smartvoice --port 8766` 入口；若直接启动 Uvicorn，配置 `--ws-max-size 32768 --ws-max-queue 8`。服务启动和会话创建不会下载模型。
+使用正常 `smartvoice --port 8766` 入口即可访问流式功能，不需要启用配置或环境变量。若直接启动 Uvicorn，配置 `--ws-max-size 32768 --ws-max-queue 8`。旧版 `smartvoice.json` 中的 `streaming_enabled` 项会被忽略。服务启动和会话创建不会下载模型。WebSocket 服务端依赖随基础包安装。翻译阶段需要 CTranslate2 和 SentencePiece，使用项目的 `streaming` extra 安装；模型离线转换还需要 `model-preparation` extra。
 
 中文在线 ASR 使用 Paraformer，英文使用 Zipformer English；标点使用 CT-Transformer。中→英使用 OPUS-MT，英→中使用 M2M100。英文语音为 Supertonic 3，中文为 Matcha；中文中的拉丁词读音需要声明的 Kokoro 回退资产。依赖、资产和语言方向须在收音前验证。
 
@@ -12,17 +12,16 @@
 
 所有目录模型均支持 `models install MODEL_ID`，`models install all` 包含流式模型及语言检测器。翻译模型在安装阶段下载固定源文件、校验 SHA-256、离线转换到 int8，再核对固定产物 SHA-256；需安装 `model-preparation` extra。缺少或版本不匹配时明确报错，全量安装在开始下载前检查这些依赖。启动/推理不下载或转换模型。已有旧 ID、目录和离线包可继续识别；列表和处理计划统一返回新 ID，新安装/导出使用新命名。
 
-访问 `/console/streaming` 选择三个场景、语言和音频文件。页面支持实时重放、修订字幕、按顺序播放译文语音和动态首输出指标；当前没有麦克风采集 UI。SDK 可发送实时 PCM。先查询 `GET /v1/audio/stream/capabilities`；`enabled` 与每条链路的 `available` 都需要成立，会话仍受即时容量限制。
+访问 `/console/streaming` 选择三个场景、语言和音频文件。页面支持实时重放、修订字幕、按顺序播放译文语音和动态首输出指标；当前没有麦克风采集 UI。SDK 可发送实时 PCM。先查询 `GET /v1/audio/stream/capabilities`；兼容字段 `enabled` 固定为 `true`，还需确认所选链路的 `available`，并考虑即时容量限制。
 
 ## 最小安装与启动流程
 
 在项目根目录、已创建的 Python 虚拟环境中执行：
 
 ```sh
-python -m pip install -e '.[streaming]'
+python -m pip install -e .
 # 使用独立数据目录；安装、导入、启动都使用同一个 SMARTVOICE_HOME。
 export SMARTVOICE_HOME="$PWD/.smartvoice-dev/streaming"
-export SMARTVOICE_STREAMING_ENABLED=true
 python -m smartvoice models list
 python -m smartvoice models install streaming-stt-paraformer-zh-en-int8
 python -m smartvoice models install streaming-stt-zipformer-en-int8
@@ -56,7 +55,7 @@ python -m smartvoice --host 127.0.0.1 --port 8766
 curl http://127.0.0.1:8766/v1/audio/stream/capabilities
 ```
 
-检查顶层 `enabled`、所需链路的 `available` 和 `missing_models`。`available` 不代表质量已验收，也不保证当前还有空闲会话容量。
+检查所需链路的 `available` 和 `missing_models`。`available` 不代表质量已验收，也不保证当前还有空闲会话容量。
 
 | 模式 | configure.mode | 输入源语言 | 目标语言 | 额外阶段 |
 |---|---|---|---|---|
@@ -78,13 +77,25 @@ curl http://127.0.0.1:8766/v1/audio/stream/capabilities
 
 `audio_segment` 是 JSON 描述符，紧接一条二进制 WAV；两条消息共同构成该音频块。校验 `audio_bytes`、`audio_sequence` 和目标文本区间，严格按序解码/播放。不能等整段输入结束才播放。`audio_skipped` 明确报告未播出的原因；客户端不能把它视为成功音频。TTS 只消费已提交且质量策略允许的文本。
 
+用户明确结束输入时，最后一个已提交译文即使源句边界仍标为不完整，也会作为终端尾句播报，并在 `audio_segment.source_unit_incomplete=true` 中保留该事实。会话中途由 ASR 强制切分产生的不完整片段仍等待可确认的完整前缀；无法确认时发送 `audio_skipped(reason=incomplete)`，不会提前合成半句。任何翻译质量问题仍按原策略跳过。
+
 对非终止 JSON 事件发送 `{"type":"ack","event_sequence":N}`；音频在接收完整二进制块后 ACK。`delivery` 模式仅确认消费；`playback` 模式还需按块顺序发送 `audio_started` 和 `audio_played`（字段 `audio_sequence`），用于播放积压控制。投递 ACK 不等于播放结束，定时调度也不等于物理可听时间。
 
-成功、部分完成、无音频、无语音或取消以一个 `session_complete` 终止；失败以一个 `error` 终止（含 code、stage/诊断信息）。错误与 complete 不应同时出现。客户端应读取 terminal.status，而不是仅凭连接关闭判断成功。当前 error 事件不附带阶段 profiling；失败 profiling 为暂缓补齐项。规范错误涵盖 invalid_config、invalid_message、unsupported_language_pair、model_unavailable、session_overload、memory_admission、scheduler_overload 及阶段超时/执行失败。
+成功、部分完成、无音频、无语音或取消以一个 `session_complete` 终止；失败以一个 `error` 终止（含 code、stage/诊断信息）。错误与 complete 不应同时出现。客户端应读取 terminal.status，而不是仅凭连接关闭判断成功。阶段失败 error 事件包含已收集的 profiling、首输出和事件计数；建会话前的协议错误没有阶段 profiling。规范错误涵盖 invalid_config、invalid_message、unsupported_language_pair、model_unavailable、session_overload、memory_admission、scheduler_overload 及阶段超时/执行失败。
 
 ## 容错、资源与计时
 
-默认会话上限 1，估算模型内存预算 4096MiB，共享推理许可 2；初始化 30s、原生调用 15s、空闲输入 10s、会话墙钟 300s。墙钟包括初始化和排空，不能保证接受完整 300s 文件后还能播完。队列、音频积压和输出 ACK 均有限额；慢消费者可能超时退出。断线、取消或关服清理独占进程；若无法证明资源释放，保留容量和模型占用，重启后恢复。内存预算是准入估算，不是 RSS 硬限制。
+默认会话上限 2、模型驻留预算 4096MiB、共享推理许可 2。连接数与执行中的推理任务分别受限：同模型、同线程配置复用一个原生进程，不会为每个会话重新加载模型；在线 ASR stream、前处理和动态上下文仍由每个会话独立持有。默认最多 8 个模型 worker，每个 worker 最多 32 个等待任务；缓存的模型在无会话使用 60 秒后回收，预算不足时先回收空闲模型。模型预算是准入估算，不是 RSS 硬限制。
+
+初始化限时 30s、单次原生调用 15s。`streaming_lifetime_seconds=0` 默认不设会话墙钟上限；`streaming_max_audio_seconds=0` 默认不设累计音频上限，两者独立配置。设置有限时长仍可用于受控部署。空闲连接默认 60s 内必须收到 PCM 或 `{"type":"heartbeat"}`，推荐每 20s 发送一次；客户端即使暂停收音也应继续心跳。服务在 `session_ready.heartbeat_interval_seconds` 返回建议间隔。浏览器已自动发送心跳，后台被系统暂停仍可能超过空闲期限。
+
+取消或正常结束仅释放当前会话句柄，健康模型可继续供其他会话使用。挂起的原生调用超过取消宽限时将关闭该模型 worker；同一 worker 的其他会话会收到 `worker_lost`，不能承诺进程崩溃只影响一个会话。关服等待会话和共享进程回收。输入、输出、待翻译字符、待合成字符、播放积压、ACK、上下文及诊断历史均有上限；延长允许会话时长不会按时长预分配音频或模型。
+
+### 私有动态上下文
+
+configure 可增加 `"context":{"terms":["SmartVoice","GPU"]}`，最多 64 个词，每项最多 64 字符。上下文只收录已提交原文，保留最近 3 个语义单元且总计不超过 512 字符。重复出现的缩略词候选有数量和 5 分钟有效期限制；不将未确认 partial 或译文反向写入源语上下文。每次提交递增版本，在 ASR 自然分段边界采用新的快照，识别事件携带 `context_version`。
+
+当前默认 Paraformer/Zipformer greedy 适配器只支持原生声学 stream 状态，不支持历史文本提示或热词偏置。`session_ready.context_capabilities` 明确返回 `recent_text=false, hotwords=false, native_stream_state=true`。因此 `context` 是有界接口与状态基础，当前不承诺降低 WER；接入支持 prompt/hotwords 的适配器时才能在相同契约下使用这些内容。
 
 浏览器 Origin 必须与服务同源；SDK 可不提供 Origin。默认仅回环，当前没有 API 认证。默认诊断不保存音频/原文/译文，评测输出含文本和语料引用须由使用者管理。
 

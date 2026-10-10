@@ -20,13 +20,16 @@
   "max_tts_internal_bytes": 33554432,
   "max_tts_json_bytes": 65536,
   "tts_mp3_bitrate": 96000,
-  "streaming_enabled": false,
-  "streaming_max_sessions": 1,
+  "streaming_max_sessions": 2,
   "streaming_memory_mib": 4096,
   "streaming_compute_slots": 2,
-  "streaming_idle_seconds": 10,
-  "streaming_lifetime_seconds": 300,
+  "streaming_idle_seconds": 60,
+  "streaming_lifetime_seconds": 0,
   "streaming_native_seconds": 15,
   "streaming_initialization_seconds": 30,
-  "streaming_cancel_grace_seconds": 1
+  "streaming_cancel_grace_seconds": 1,
+  "streaming_max_audio_seconds": 0,
+  "streaming_max_model_workers": 8,
+  "streaming_max_pending_jobs": 32,
+  "streaming_worker_idle_seconds": 60
 }

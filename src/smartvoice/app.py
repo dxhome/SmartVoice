@@ -251,7 +251,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     compute_budget = ComputeBudget(settings.streaming_compute_slots)
     model_repository = CatalogModelRepository(settings)
     if provider is None:
-        provider = create_inference_provider(settings, model_repository, compute_budget=compute_budget if settings.streaming_enabled else None)
+        provider = create_inference_provider(settings, model_repository, compute_budget=compute_budget)
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         try:
@@ -325,7 +325,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     from smartvoice.api.v1.streaming import router as streaming_router
     app.state.compute_budget = compute_budget
     app.state.streaming = StreamingManager(settings, model_repository,
-        StageWorkers(settings, compute_budget), Profiler, FairGate, package_wav)
+        StageWorkers(settings, compute_budget, model_repository), Profiler, FairGate, package_wav)
     app.include_router(v1_router)
     app.include_router(streaming_router)
 

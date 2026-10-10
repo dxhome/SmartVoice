@@ -258,7 +258,7 @@ def _serve(args: list[str]) -> None:
     uvicorn.run(
         create_app(settings=settings, debug_http=parsed.debug), host=settings.server_host, port=settings.server_port,
         log_level=settings.log_level.lower(),
-        **({"ws_max_size": 32768, "ws_max_queue": 8} if settings.streaming_enabled else {}),
+        ws_max_size=32768, ws_max_queue=8,
     )
 
 

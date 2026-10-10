@@ -53,6 +53,22 @@ class Translator:
     def close(self): pass
 
 
+class TerminalIncompleteASR:
+    """Returns a semantically open final only when input is explicitly finished."""
+    def __init__(self, language): self.language = language
+    def push_audio(self, block): return []
+    def finish(self):
+        return [Hypothesis('source_final', 1, 1, '这项政策并不', self.language,
+                           0, 16000, True, 'end_of_input')]
+    def close(self): pass
+
+
+class TerminalTailTranslator:
+    def __init__(self, target): self.target = target
+    def translate(self, text): return TranslationResult('This policy is not.' if self.target == 'en' else '这项政策并不。')
+    def close(self): pass
+
+
 class ControlledWorker(FakeWorker):
     def __init__(self, owner, name): super().__init__(owner); self.name = name
     async def construct(self, factory, deadline=None):
@@ -81,7 +97,7 @@ class ControlledWorkers(FakeWorkers):
 
 def settings(**changes):
     return Settings(data_dir=Path('.smartvoice-dev') / ('stream-resilience-' + uuid.uuid4().hex),
-                    streaming_enabled=True, **changes)
+                    **changes)
 
 
 def manager(workers=None, **changes):
@@ -102,6 +118,18 @@ async def collect(session, events, milestones=None, playback=True):
 
 
 class SustainedStreamingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_heartbeat_keeps_silent_connection_alive_without_audio_cap(self):
+        instance,_,_=manager(streaming_lifetime_seconds=0,streaming_idle_seconds=.06)
+        self.addAsyncCleanup(instance.close)
+        session=instance.open(configuration())
+        events=[];consumer=asyncio.create_task(collect(session,events))
+        await session.ready.wait()
+        for _ in range(12):
+            session.heartbeat();await asyncio.sleep(.02)
+        self.assertFalse(session.done.is_set())
+        await session.finish_input()
+        self.assertEqual((await consumer)['status'],'no_speech')
+
     async def exercise(self, mode, language, count):
         instance, repo, workers = manager()
         session = instance.open(configuration(mode, language, 'playback' if mode == 'spoken_interpretation' else 'delivery'))
@@ -140,6 +168,8 @@ class SustainedStreamingTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(session.speech.last_played, count)
             self.assertFalse(session.speech.ledger)
         self.assertLessEqual(len(session.pipeline.latest), 128)
+        self.assertLessEqual(len(session.pipeline.committed),128)
+        self.assertLessEqual(len(session.context.seen),128)
         self.assertEqual(repo.users, 0); self.assertFalse(instance.active)
         self.assertTrue(all(w.closed for w in workers.created))
 
@@ -148,9 +178,9 @@ class SustainedStreamingTests(unittest.IsolatedAsyncioTestCase):
             for language in ('zh', 'en'):
                 with self.subTest(mode=mode, language=language): await self.exercise(mode, language, 3)
 
-    async def test_long_logical_input_evicts_history_and_drains_both_speech_directions(self):
+    async def test_hour_logical_input_evicts_history_and_drains_both_speech_directions(self):
         for language in ('zh', 'en'):
-            with self.subTest(language=language): await self.exercise('spoken_interpretation', language, 140)
+            with self.subTest(language=language): await self.exercise('spoken_interpretation', language, 3600)
 
     async def test_cancel_during_initialization_and_reopen(self):
         for stage in ('asr', 'translation', 'formatting', 'tts'):
@@ -210,7 +240,9 @@ class SustainedStreamingTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(StageError, 'full'): await session.push_audio(b'\0\0')
         await session.cancel(); self.assertEqual(repo.users, 0)
         session = instance.open(configuration()); await session.ready.wait()
-        session.samples = int(16000 * instance.settings.streaming_lifetime_seconds)
+        from dataclasses import replace as replace_settings
+        session.settings=replace_settings(session.settings,streaming_max_audio_seconds=300)
+        session.samples = int(16000 * session.settings.streaming_max_audio_seconds)
         with self.assertRaisesRegex(StageError, 'duration'): await session.push_audio(b'\0\0')
         await session.cancel(); await instance.close()
 
@@ -325,10 +357,11 @@ class AdditionalBoundaryTests(unittest.IsolatedAsyncioTestCase):
             await speech.submit(unit, dict(translation_id='t', revision=1, text='字' * 513))
         self.assertEqual(speech.pending_chars, 0); await speech.worker.aclose()
 
-    async def test_incomplete_or_quality_issue_is_observable_skip_without_synthesis(self):
+    async def test_forced_incomplete_is_skipped_but_terminal_tail_is_spoken(self):
         emitted = []
         async def emit(row): emitted.append(row); return row
-        owner = SimpleNamespace(workers=ControlledWorkers(), profiler=Profiler(), emit=emit)
+        owner = SimpleNamespace(workers=ControlledWorkers(), profiler=Profiler(), emit=emit,
+                                id='fixture', plan=SimpleNamespace(target_language='zh', source_language='en'))
         speech = SpeechPipeline(owner, package_wav)
         unit = TextUnit(1, 1, 'provided by', 'provided by', 'en', True,
                         (SourceRef(1, 1, 1, 0, 11, 0, 16000),), 'forced_length', incomplete=True)
@@ -338,7 +371,49 @@ class AdditionalBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([e['reason'] for e in emitted], ['incomplete', 'quality_issues'])
         self.assertTrue(all(e['type'] == 'audio_skipped' for e in emitted))
         self.assertTrue(speech.queue.empty()); self.assertEqual(speech.sequence, 0)
+        terminal_tail = replace(unit, unit_id=2, reason='finish')
+        await speech.submit(terminal_tail, {**event, 'translation_id': 't2'})
+        queued = speech.queue.get_nowait()
+        self.assertEqual(queued.translation_id, 't2')
+        self.assertTrue(queued.incomplete)
+        self.assertEqual(queued.boundary_reason, 'finish')
         await speech.worker.aclose()
+
+    async def test_terminal_incomplete_source_tail_reaches_audio_and_completes_session(self):
+        workers = ControlledWorkers(); base_binding = workers.binding
+        def binding(spec, plan):
+            stage = (spec.streaming or {}).get('stage', 'tts')
+            if stage == 'asr': return lambda: TerminalIncompleteASR(plan.source_language)
+            if stage == 'translation': return lambda: TerminalTailTranslator(plan.target_language)
+            return base_binding(spec, plan)
+        workers.binding = binding
+        instance, repo, _ = manager(workers)
+        session = instance.open(configuration('spoken_interpretation', 'zh', 'playback'))
+        events = []; consumer = asyncio.create_task(collect(session, events))
+        self.addAsyncCleanup(instance.close)
+        await asyncio.wait_for(session.ready.wait(), 2)
+        await session.push_audio(b'\0\0' * 16000)
+        await session.finish_input()
+        terminal = await asyncio.wait_for(consumer, 3)
+
+        self.assertEqual(terminal['type'], 'session_complete', terminal)
+        self.assertEqual(terminal['status'], 'complete', terminal)
+        source = next(e for e in events if e['type'] == 'source_final')
+        source_unit = next(e for e in events if e['type'] == 'source_unit_final')
+        target = next(e for e in events if e['type'] == 'target_final')
+        audio = next(e for e in events if e['type'] == 'audio_segment')
+        self.assertEqual(source['text'], '这项政策并不')
+        self.assertEqual(target['text'], 'This policy is not.')
+        self.assertTrue(source_unit['incomplete'])
+        self.assertEqual(source_unit['reason'], 'finish')
+        self.assertTrue(audio['source_unit_incomplete'])
+        self.assertEqual(audio['translation_id'], target['translation_id'])
+        self.assertEqual(audio['text'], target['text'])
+        with wave.open(io.BytesIO(audio['audio']), 'rb') as wav:
+            self.assertGreater(wav.getnframes(), 0)
+        self.assertFalse(any(e['type'] == 'audio_skipped' for e in events))
+        self.assertEqual(session.speech.last_played, 1)
+        self.assertEqual(repo.users, 0); self.assertFalse(instance.active)
 
     async def test_silence_quality_skips_and_invalid_pcm_terminal_status(self):
         class Silence(SegmentASR):

@@ -1,0 +1,1229 @@
+{
+  "schema": "smartvoice.stream.product-quality-review-packet.v1",
+  "status": "pending_human_review",
+  "quality_accepted": false,
+  "instructions": "Review the current product outputs against the source audio and references. Null ratings are not passes. Target references are comparison aids, not exact string requirements. Do not treat the mechanical first-round baseline or prior sandbox ratings as acceptance.",
+  "source_product_report": ".smartvoice-dev/streaming-product/quality90-product-run-2026-10-09.json",
+  "source_product_report_sha256": "e880fb82fbc17b46ec2785f4e7a1780652be286eb6884184cf94be5af17f427e",
+  "quality_corpus_revision": "fleurs-quality-90-v1",
+  "quality_corpus_manifest_sha256": "5f8460f106ce8a7c6c0095bb78d14dc31823a1716f623acb19e1c21fa4edc0ee",
+  "human_review_stage": "S5",
+  "record_count": 22,
+  "records": [
+    {
+      "case": "zh_00_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__zh_00_clean.wav",
+      "audio_sha256": "5b0dff8a6d0c95d2451b3a573ecb6e6908df2c859f2f2a7d5d3276513e24be16",
+      "source_reference": "遗憾的是，研究车流很困难，因为不能对驾驶员的行为进行百分之百确定的预测。",
+      "target_reference": "Unfortunately, studying traffic flow is difficult because driver behavior cannot be predicted with one-hundred percent certainty.",
+      "source_final_text": "遗憾的是研究车流很困难因为不能对驾驶员的行为进行百分之百确定的预",
+      "source_unit_finals": [
+        {
+          "text": "遗憾的是，研究车流很困难，因为不能对驾驶员的行为进行百分之百确定的预。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 11,
+              "event_sequence": 25,
+              "text_start": 0,
+              "text_end": 32,
+              "start_sample": 0,
+              "end_sample": 144640
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Unfortunately, it was difficult to study traffic flows, since the driver ' s behaviour could not be predicted by 100 per cent."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_01_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__zh_01_clean.wav",
+      "audio_sha256": "f479ed887dfdf728e77167dd1a7eeb3772c592620690f7dd245d1d0e3077b841",
+      "source_reference": "搅动两种干粉使其混合，然后用干净的湿手把它们揉成一个球。",
+      "target_reference": "Swirl the two dry powders together and then, with clean wet hands, squeeze them into a ball.",
+      "source_final_text": "搅动两种干粉使其混合然后用干净的湿手把它们揉成一个球",
+      "source_unit_finals": [
+        {
+          "text": "搅动两种干粉，使其混合，然后用干净的湿手把它们揉成一个球。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 10,
+              "event_sequence": 23,
+              "text_start": 0,
+              "text_end": 26,
+              "start_sample": 0,
+              "end_sample": 115840
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Mobilize the two dry powders and mix them together, then rub them into a ball with clean wet hands."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_02_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__zh_02_clean.wav",
+      "audio_sha256": "13eba8d8f285eaa51c76ac0122acf091fafbba18b1808224ae77e5ff4eb6d06a",
+      "source_reference": "毋庸置疑的是，如果你会讲一门罗曼语，那么学习葡萄牙语会更加容易。",
+      "target_reference": "Needless to say, if you know a Romance language, it will be easier for you to learn Portuguese.",
+      "source_final_text": "毋庸置疑的是如果你会讲一门罗曼语那么学习葡萄牙语会更加容易",
+      "source_unit_finals": [
+        {
+          "text": "毋庸置疑的是，如果你会讲一门罗曼语，那么学习葡萄牙语会更加容易。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 11,
+              "event_sequence": 25,
+              "text_start": 0,
+              "text_end": 29,
+              "start_sample": 0,
+              "end_sample": 125440
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Needless to say, it would be easier to learn Portuguese if you were to speak a Romance language."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_03_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__zh_03_clean.wav",
+      "audio_sha256": "76d51d31f24e1e23221c5dcc90cadf9db5859ae5395bb4bbacbfa1dafc4313ea",
+      "source_reference": "“莱顿 (Layton) 在与首相会面期间要求修改保守党的环境法案，他要求‘彻底重写’保守党的环境法案。”",
+      "target_reference": "Layton had asked for changes to the conservatives' environmental bill during the meeting with the PM, asking for a \"thorough and complete rewriting\" of the Conservative party's environmental bill.",
+      "source_final_text": "来顿在在与首相会面期间要求修改保守党的环境方案他要求彻底重写保守党的环境法案",
+      "source_unit_finals": [
+        {
+          "text": "来顿在在与首相会面期间，要求修改保守党的环境方案。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 10,
+              "event_sequence": 22,
+              "text_start": 0,
+              "text_end": 23,
+              "start_sample": 0,
+              "end_sample": 115840
+            }
+          ]
+        },
+        {
+          "text": "他要求彻底重写保守党的环境法案。",
+          "refs": [
+            {
+              "utterance_id": 1,
+              "revision": 7,
+              "event_sequence": 41,
+              "text_start": 0,
+              "text_end": 15,
+              "start_sample": 115840,
+              "end_sample": 183040
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "During a meeting with the Prime Minister, Leiden called for a revision of the environmental programme of the Conservative Party.",
+        "He called for a complete rewriting of the Conservative Environmental Bill."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_04_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__zh_04_clean.wav",
+      "audio_sha256": "e5f02329f19e3f12853daaca7f7aafc61aefc5e4d6961fa2791026e42f7a89b6",
+      "source_reference": "桥下垂直净空 15 米。该项目于 2011 年 8 月完工，但直到 2017 年 3 月才开始通车。",
+      "target_reference": "The vertical clearance under the bridge is 15 meters. Construction was completed in August 2011, it didn't open to traffic until March 2017.",
+      "source_final_text": "桥下垂直净空十五米该项目于二零一一年八月完工但直到二零一七年三月才开始通车",
+      "source_unit_finals": [
+        {
+          "text": "桥下垂直净空十五米。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 15,
+              "event_sequence": 34,
+              "text_start": 0,
+              "text_end": 9,
+              "start_sample": 0,
+              "end_sample": 148800
+            }
+          ]
+        },
+        {
+          "text": "该项目于二零一一年八月完工，但直到二零一七年三月才开始通车。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 15,
+              "event_sequence": 34,
+              "text_start": 9,
+              "text_end": 37,
+              "start_sample": 0,
+              "end_sample": 148800
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "15 meters below the bridge vertical clearance.",
+        "The project was completed in August 2011, but did not start until March 2017."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_05_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__zh_05_clean.wav",
+      "audio_sha256": "dbea080b30c8d4ab779200925b8db38c6d78cd421b9034c82fd887322ca9da56",
+      "source_reference": "地壳近侧厚约 70 公里，远侧厚约 100 公里。",
+      "target_reference": "The crust is about 70 km thick on the near side and 100 km thick on the far side.",
+      "source_final_text": "地壳进侧后约七十公里远侧后约一百公里",
+      "source_unit_finals": [
+        {
+          "text": "地壳进侧后约七十公里，远侧后约一百公里。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 8,
+              "event_sequence": 18,
+              "text_start": 0,
+              "text_end": 18,
+              "start_sample": 0,
+              "end_sample": 79680
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "About 70 kilometres from the outer side and about 100 kilometres from the outer side of the crust."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_06_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__zh_06_clean.wav",
+      "audio_sha256": "93578fa7cdc39a1081914a688bc2be5a5c1da64549414d99a6f28c9fca05ebcd",
+      "source_reference": "特朗普与土耳其总统雷杰普·塔伊普·埃尔多安（Recep Tayyip Erdoğan）通话后发表了声明。",
+      "target_reference": "The announcement was made after Trump had a phone conversation with Turkish President Recep Tayyip Erdoğan.",
+      "source_final_text": "特朗普与土耳其总统雷杰普塔伊普埃尔多安通话后发表了声",
+      "source_unit_finals": [
+        {
+          "text": "特朗普与土耳其总统雷杰普塔伊普埃尔多安通话后发表了声。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 12,
+              "event_sequence": 27,
+              "text_start": 0,
+              "text_end": 26,
+              "start_sample": 0,
+              "end_sample": 125440
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Trump made a statement following a conversation with Turkish President Receptai Puerdoan."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_07_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__zh_07_clean.wav",
+      "audio_sha256": "3125a9f894328bb81ad5aca97b7c468043bb55d836e2f18e4f85011de23f3a0c",
+      "source_reference": "罗兰多·门多萨 (Rolando Mendoza) 架起他的 M16 步枪对游客扫射。",
+      "target_reference": "Rolando Mendoza fired his M16 rifle at the tourists.",
+      "source_final_text": "罗兰多门多萨驾起他的 m 十六步枪队游客扫射",
+      "source_unit_finals": [
+        {
+          "text": "罗兰多门多萨驾起他的m十六步枪队游客扫射。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 9,
+              "event_sequence": 20,
+              "text_start": 0,
+              "text_end": 22,
+              "start_sample": 0,
+              "end_sample": 106240
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Rolando Mendosa swept his M16 tourists."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "en_00_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "en",
+      "source_language": "en",
+      "target_language": "zh",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__en_00_clean.wav",
+      "audio_sha256": "10d2cb088f299c6d3824ee6d7d19d109e232de9d05360800214903e90496198f",
+      "source_reference": "All things considered, we should not be surprised if our own ancestors solved their \"protein problem\" in somewhat the same way that chimps on the savanna do today.",
+      "target_reference": null,
+      "source_final_text": "ALL THESE CONSIDERED WE SHOULD NOT BE SURPRISED IF OUR OWN ANCESTORS SOLVED THEIR PROTEIN PROBLEM IN SOMEWHAT THE SAME WAY THAT CHINTZ ON THE SAVANNA DUE TO DAY",
+      "source_unit_finals": [
+        {
+          "text": "All these considered, we should not be surprised if our own ancestors solved their protein problem in somewhat the same way that chintz on the savanna due to day.",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 24,
+              "event_sequence": 40,
+              "text_start": 0,
+              "text_end": 122,
+              "start_sample": 0,
+              "end_sample": 166400
+            },
+            {
+              "utterance_id": 1,
+              "revision": 10,
+              "event_sequence": 58,
+              "text_start": 0,
+              "text_end": 37,
+              "start_sample": 166400,
+              "end_sample": 238080
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "考虑到这一切,我们不应该感到惊讶,如果我们的祖先解决了他们的蛋白质问题,在某种程度上相同的方式,因为白天在沙瓦纳上<unk>。"
+      ],
+      "models": {
+        "asr": "streaming-stt-zipformer-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-m2m100-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "missing; assess against source meaning and record an independent translation reference"
+    },
+    {
+      "case": "en_01_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "en",
+      "source_language": "en",
+      "target_language": "zh",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__en_01_clean.wav",
+      "audio_sha256": "49e12ac878054aa6aa703c32661e8ff23c4be6dbc86609dc682229428140f838",
+      "source_reference": "Most of the buildings on the edges of the complex have been rebuilt in order to give tourists a better idea of how they originally appeared.",
+      "target_reference": null,
+      "source_final_text": "MOST OF THE BUILDINGS ON THE EDGE OF THE COMPLEX HAVE BEEN REBUILT IN ORDER TO GIVE TOURISTS TO BETTER IDEA OF HOW THEY ARE ORIGINALLY APPEARED",
+      "source_unit_finals": [
+        {
+          "text": "Most of the buildings on the edge of the complex have been rebuilt in order to give tourists to better idea of how they are originally appeared.",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 23,
+              "event_sequence": 37,
+              "text_start": 0,
+              "text_end": 143,
+              "start_sample": 0,
+              "end_sample": 137280
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "该综合体边缘的大部分建筑已被重建,以便让游客更好地了解它们最初是如何出现的。"
+      ],
+      "models": {
+        "asr": "streaming-stt-zipformer-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-m2m100-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "missing; assess against source meaning and record an independent translation reference"
+    },
+    {
+      "case": "en_02_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "en",
+      "source_language": "en",
+      "target_language": "zh",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__en_02_clean.wav",
+      "audio_sha256": "59c9e3cb4db1d4656e792294afec938f864c2e562c503325928e356b2c7ebcd6",
+      "source_reference": "The disease is carried by pigs, which then migrates to humans through mosquitos.",
+      "target_reference": null,
+      "source_final_text": "THE DISEASE IS CARRIED BY PIGS WHICH THEN MIGRATES TO HUMANS THROUGH MOSQUITOES",
+      "source_unit_finals": [
+        {
+          "text": "The disease is carried by pigs, which then migrates to humans through mosquitoes.",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 15,
+              "event_sequence": 24,
+              "text_start": 0,
+              "text_end": 79,
+              "start_sample": 0,
+              "end_sample": 86400
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "该疾病由猪携带,然后通过蚊子迁移到人类。"
+      ],
+      "models": {
+        "asr": "streaming-stt-zipformer-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-m2m100-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "missing; assess against source meaning and record an independent translation reference"
+    },
+    {
+      "case": "en_03_clean",
+      "partition": "new_confirmation",
+      "variant": "clean",
+      "language": "en",
+      "source_language": "en",
+      "target_language": "zh",
+      "audio_path": "data/fleurs/quality/new_confirmation/new_confirmation__en_03_clean.wav",
+      "audio_sha256": "97069e188013d22adf362e298a24c436b214830cb109cda965aabba433ba56d6",
+      "source_reference": "The Schengen zone, however, works somewhat like one country in this respect.",
+      "target_reference": null,
+      "source_final_text": "THE SHING ZONE HOWEVER WERE SOMEWHAT LIKE ONE COUNTRY IN THIS RESPECT",
+      "source_unit_finals": [
+        {
+          "text": "The shing zone, however, were somewhat like one country in this respect.",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 12,
+              "event_sequence": 19,
+              "text_start": 0,
+              "text_end": 69,
+              "start_sample": 0,
+              "end_sample": 72960
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "然而,在这种情况下,雪区有点像一个国家。"
+      ],
+      "models": {
+        "asr": "streaming-stt-zipformer-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-m2m100-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "missing; assess against source meaning and record an independent translation reference"
+    },
+    {
+      "case": "zh_00_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_00_clean.wav",
+      "audio_sha256": "1871c798034bc4cd068ba195080be216b31c483e1842eb64debe71e15365ab4e",
+      "source_reference": "昨天马尔泰利在由9名成员组成的新临时选举委员会cep中宣誓就职",
+      "target_reference": "Martelly swore in a new Provisional Electoral Council (CEP) of nine members yesterday.",
+      "source_final_text": "昨天马尔泰利在有九名成员组成的新零时全体委员会 c e p 中宣指示救",
+      "source_unit_finals": [
+        {
+          "text": "昨天，马尔泰利在有九名成员组成的新零时全体委员会c e p中宣指示救。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 14,
+              "event_sequence": 32,
+              "text_start": 0,
+              "text_end": 35,
+              "start_sample": 0,
+              "end_sample": 154240
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Yesterday, Martelly issued a message of relief in the Committee of the Whole of the New Zero with nine members c e p."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_01_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_01_clean.wav",
+      "audio_sha256": "4dad5494e3bf76f24428a5eb226a32e2ace6f63a17736ad92089dac21c842812",
+      "source_reference": "例如世界上最常见的静态图像摄影格式是35mm格式这是胶片电影时代末期占主导地位的电影尺寸",
+      "target_reference": "For example, the most common still image photography format in the world is 35mm, which was the dominant film size at the close of the analog film era.",
+      "source_final_text": "例如世界上最常见的静态图像摄影格式是三十五毫米格式这是胶片电影时代末期占主导地位的电影尺寸",
+      "source_unit_finals": [
+        {
+          "text": "例如，世界上最常见的静态图像，摄影格式是三十五毫米格式。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 15,
+              "event_sequence": 34,
+              "text_start": 0,
+              "text_end": 25,
+              "start_sample": 0,
+              "end_sample": 163840
+            }
+          ]
+        },
+        {
+          "text": "这是胶片电影时代末期占主导地位的电影尺寸。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 15,
+              "event_sequence": 34,
+              "text_start": 25,
+              "text_end": 45,
+              "start_sample": 0,
+              "end_sample": 163840
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "For example, the most common static image in the world is in a photo format of 35 mm.",
+        "This is the dominant movie size at the end of the film age."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_02_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_02_clean.wav",
+      "audio_sha256": "75cd95e20fd66ae458b777f1fdde2050166360563c46e71de98246d6cc895354",
+      "source_reference": "这并不是告别这是一个篇章的结束也是新篇章的开始",
+      "target_reference": "\"This is not going to be goodbye. This is the closing of one chapter and the opening of a new one.\"",
+      "source_final_text": "这并不是告别这是一个篇章的结束也是新篇章的开始",
+      "source_unit_finals": [
+        {
+          "text": "这并不是告别。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 9,
+              "event_sequence": 20,
+              "text_start": 0,
+              "text_end": 6,
+              "start_sample": 0,
+              "end_sample": 106240
+            }
+          ]
+        },
+        {
+          "text": "这是一个篇章的结束，也是新篇章的开始。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 9,
+              "event_sequence": 20,
+              "text_start": 6,
+              "text_end": 23,
+              "start_sample": 0,
+              "end_sample": 106240
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "This is not goodbye.",
+        "This is the end of a chapter and the beginning of a new one."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_03_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_03_clean.wav",
+      "audio_sha256": "651f44f850abbcc3919f44dda93810abce360152309b418088db4b142c9872ff",
+      "source_reference": "同理男士也必须穿着长裤遮住膝盖",
+      "target_reference": "Along the same line, men are required to wear trousers covering the knees.",
+      "source_final_text": "同理男士也必须穿着长裤遮住膝盖",
+      "source_unit_finals": [
+        {
+          "text": "同理，男士也必须穿着长裤遮住膝盖。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 7,
+              "event_sequence": 16,
+              "text_start": 0,
+              "text_end": 15,
+              "start_sample": 0,
+              "end_sample": 106240
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "By the same token, men must also wear long pants to cover their knees."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_04_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_04_clean.wav",
+      "audio_sha256": "9c2a708f4b0f5879fd3a1d876271ba513918e4fca399c5911fc946690101d1e8",
+      "source_reference": "重返家园的冲击比文化冲击来得更快蜜月期更短持续时间更长也可能更严重",
+      "target_reference": "Re-entry shock comes on sooner than culture shock (there's less of a honeymoon phase), lasts longer, and can be more severe.",
+      "source_final_text": "重返家园的冲击比文化冲击来得更快灭区更短短持续时更更长也可更更重",
+      "source_unit_finals": [
+        {
+          "text": "重返家园的冲击，比文化冲击来得更快，灭区更短短，持续时更更长，也可更更重。",
+          "refs": [
+            {
+              "utterance_id": 1,
+              "revision": 15,
+              "event_sequence": 35,
+              "text_start": 0,
+              "text_end": 32,
+              "start_sample": 48640,
+              "end_sample": 192640
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "The impact of return is faster than that of culture, shorter, longer and heavier than that of destruction."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_05_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_05_clean.wav",
+      "audio_sha256": "153ed22b6400bd96ae2a0e8d3a2b3dd257b45565aa060df4bd8e98967341ac28",
+      "source_reference": "上周日本经济产业省meti宣布苹果公司向该部门通报另外34起过热造成的事故尽管该公司称这些事故并不严重",
+      "target_reference": "Last week, METI announced that Apple had informed it of 34 additional overheating incidents, which the company called \"non-serious.\"",
+      "source_final_text": "上周日本经济产业省 m e t i 宣布苹果公司向该部门通报另外三十四起扩热造成的事故尽管该公司称这些事故并不严",
+      "source_unit_finals": [
+        {
+          "text": "上周，日本经济产业省m e t i宣布，苹果公司向该部门通报另外三十四起扩热造成的事故。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 17,
+              "event_sequence": 37,
+              "text_start": 0,
+              "text_end": 43,
+              "start_sample": 0,
+              "end_sample": 163840
+            }
+          ]
+        },
+        {
+          "text": "尽管该公司称这些事故并不严。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 17,
+              "event_sequence": 37,
+              "text_start": 43,
+              "text_end": 45,
+              "start_sample": 0,
+              "end_sample": 163840
+            },
+            {
+              "utterance_id": 1,
+              "revision": 5,
+              "event_sequence": 51,
+              "text_start": 0,
+              "text_end": 11,
+              "start_sample": 163840,
+              "end_sample": 210240
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Last week, the Ministry of Economy, Trade and Industry of Japan m e t i announced that Apple had informed the sector of an additional 34 incidents resulting from the expansion of heat.",
+        "Despite the company ' s assertion that the incidents were not serious."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_06_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_06_clean.wav",
+      "audio_sha256": "ace7659e7272ead5f3d85bb663536761c9f0ad81e2b541cdf8218a5a2ce0a6c3",
+      "source_reference": "完成的工作大多是理论性的但编写程序的目的是为了模拟对人马座星系的观测",
+      "target_reference": "The work done was mostly theoretical, but the program was written to simulate observations made of the Sagittarius galaxy.",
+      "source_final_text": "完成了工作大多是理论性的但编写程序的目的是为了模拟对人马做星系的观测",
+      "source_unit_finals": [
+        {
+          "text": "完成了工作大多是理论性的，但编写程序的目的是为了模拟对人马做星系的观测。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 13,
+              "event_sequence": 29,
+              "text_start": 0,
+              "text_end": 34,
+              "start_sample": 0,
+              "end_sample": 133440
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Most of the work was done theoretically, but the process was designed to simulate observations of galaxies in human horses."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_07_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_07_clean.wav",
+      "audio_sha256": "a69b1f5369febb54854050f7b4d1551ff0187e3cb7c64932f99e28edb2cefb15",
+      "source_reference": "在欧洲历史上的这段时期已然富有而强大起来的天主教会受到了密切监督",
+      "target_reference": "During this period of European history, the Catholic Church, which had become rich and powerful, came under scrutiny.",
+      "source_final_text": "在欧洲历史上的这段时期依然富有而强大起来的天主教会受到了密切监督",
+      "source_unit_finals": [
+        {
+          "text": "在欧洲历史上的这段时期，依然富有而强大起来的天主教会受到了密切监督。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 12,
+              "event_sequence": 27,
+              "text_start": 0,
+              "text_end": 32,
+              "start_sample": 0,
+              "end_sample": 119040
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "During this period of European history, the Church, which is still rich and strong, has been closely monitored."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_08_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_08_clean.wav",
+      "audio_sha256": "a950a000fa1425fece8ce09d89e3f8cc54fe634123ea1a39cefb94b7d111c769",
+      "source_reference": "这里几乎都是沙滩游泳很安全大部分地方都有新西兰圣诞树的树荫",
+      "target_reference": "They are almost all sandy beaches with safe swimming, and most have shade provided by pohutukawa trees.",
+      "source_final_text": "这里几乎都是沙滩游泳很安全大部分地方都有新西兰圣诞树的树荫",
+      "source_unit_finals": [
+        {
+          "text": "这里几乎都是沙滩游泳很安全，大部分地方都有新西兰圣诞树的树荫。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 10,
+              "event_sequence": 23,
+              "text_start": 0,
+              "text_end": 29,
+              "start_sample": 0,
+              "end_sample": 109440
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "Almost all of this is beach-swaming safe, mostly with the shades of New Zealand Christmas trees."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    },
+    {
+      "case": "zh_09_clean",
+      "partition": "existing_regression",
+      "variant": "clean",
+      "language": "zh",
+      "source_language": "zh",
+      "target_language": "en",
+      "audio_path": "data/fleurs/quality/existing_regression/existing_regression__zh_09_clean.wav",
+      "audio_sha256": "ce42331ce346e17c548037a75de2910a432ab492c578b84148367edbede71b00",
+      "source_reference": "罗斯贝数越小恒星在磁场倒转方面就越不活跃",
+      "target_reference": "The smaller the Rossby number, the less active the star with respect to magnetic reversals.",
+      "source_final_text": "罗丝倍数越小恒星在磁场倒转方面就越不活跃",
+      "source_unit_finals": [
+        {
+          "text": "罗丝倍数越小，恒星在磁场倒转方面就越不活跃。",
+          "refs": [
+            {
+              "utterance_id": 0,
+              "revision": 9,
+              "event_sequence": 20,
+              "text_start": 0,
+              "text_end": 20,
+              "start_sample": 0,
+              "end_sample": 96640
+            }
+          ]
+        }
+      ],
+      "target_final_texts": [
+        "The smaller the Rose multipliers, the less active the star is in reverse magnetic field."
+      ],
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      },
+      "review_priority_reason": null,
+      "ratings": {
+        "source_accuracy": null,
+        "names_numbers_negation": null,
+        "segmentation_punctuation": null,
+        "target_meaning": null,
+        "target_names_numbers_negation": null,
+        "target_fluency": null
+      },
+      "notes": "",
+      "review_status": "pending",
+      "quality_accepted": false,
+      "target_reference_status": "available"
+    }
+  ]
+}

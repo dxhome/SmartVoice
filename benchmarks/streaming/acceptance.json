@@ -1,0 +1,87 @@
+{
+  "schema": "smartvoice.stream.acceptance.v1",
+  "revision": "product-streaming-p0-v1",
+  "percentile_method": "nearest_rank",
+  "sample_scope": {
+    "minimum_sessions_per_route": 30,
+    "failures_remain_in_success_denominators": true,
+    "clean_fixture_full_audio_success_required": true
+  },
+  "latency_targets": {
+    "source_partial": {
+      "limit_seconds": 1.0,
+      "comparison": "strict_less_than",
+      "clock": "first_pcm_send"
+    },
+    "target_partial": {
+      "limit_seconds": 2.0,
+      "comparison": "strict_less_than",
+      "clock": "first_pcm_send"
+    },
+    "speech_ttfo": {
+      "limit_seconds": 3.0,
+      "comparison": "strict_less_than",
+      "clock": "human_annotated_speech_onset",
+      "vad_substitute_is_diagnostic_only": true
+    }
+  },
+  "speech_audio_success": {
+    "metric": "full_audio_success_rate",
+    "clean_fixture_gate": "100_percent; every pinned clean case must end complete with no skipped chunks",
+    "clean_fixture_minimum_rate": 1.0,
+    "production_minimum_rate": 0.99,
+    "production_minimum_rate_status": "proposed_and_fixed_for_p0",
+    "production_scope": "per_language_direction; eligible speech sessions; rolling evaluation window",
+    "production_minimum_sessions_per_direction": 300,
+    "production_gate_rule": "full_audio_success_rate >= 99%; no-audio, invalid-audio, incomplete terminals, and skipped chunks count as failures",
+    "production_gate_rationale": "A 1% maximum end-to-end incomplete-audio rate is a practical initial production floor; retain the stricter 100% pinned-clean regression gate and revisit the production floor using observed launch telemetry.",
+    "report_all_of": [
+      "output_audio_success_rate",
+      "full_audio_success_rate",
+      "no_audio_rate",
+      "skip_reasons"
+    ]
+  },
+  "quality_gates": {
+    "strict_source_and_target_final_equality": true,
+    "spoken_text_spans_and_audio_order_integrity": true,
+    "high_risk_human_review_required": true,
+    "human_review_stage": "S5",
+    "mechanical_baseline_is_quality_approved": false
+  },
+  "capacity_gates": {
+    "requires_fixed_arrival_rate": true,
+    "requires_cpu_memory_and_sessions_per_core": true,
+    "no_capacity_acceptance_in_single_session_latency_runs": true,
+    "default_limit_saturation_scenarios": {
+      "configured_max_sessions": 2,
+      "offered_load_multipliers": [1, 2, 4, 8],
+      "rounds_per_load": 3,
+      "arrival_window_seconds": 2,
+      "interpretation": "report configured limit, memory-admitted sessions, successful overlap and rejected/failed arrivals separately"
+    },
+    "configured_limit_sweep": {
+      "max_sessions_values": [2, 4, 8, 16],
+      "offered_load_multiplier": 1,
+      "rounds_per_value": 3
+    },
+    "measurement_route_scope": "run each of six language/mode routes independently",
+    "offered_load_protocol": "open-loop scheduled session starts; stream PCM at 1x; repeat at increasing offered rates",
+    "required_metrics": [
+      "offered_arrival_rate_sessions_per_second",
+      "advertised_max_sessions",
+      "observed_peak_overlapping_client_attempts",
+      "observed_peak_successful_session_overlap",
+      "functional_failure_rate",
+      "output_audio_success_rate",
+      "full_audio_success_rate",
+      "first_output_latency_p50_p90_p95",
+      "process_tree_cpu_core_equivalents_p90_p95",
+      "peak_process_tree_rss_bytes",
+      "peak_successful_sessions_per_physical_core",
+      "peak_successful_sessions_per_observed_cpu_core_equivalent"
+    ],
+    "repeat_count_per_rate": 3,
+    "browser_and_natural_long_audio_are_separate_gates": true
+  }
+}

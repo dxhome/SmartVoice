@@ -25,7 +25,9 @@ SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service for 
 - **One API for STT and TTS:** Connect compatible agents and apps through a single audio API.
 - **Choose and move your models:** Install only what you need, select models directly, or export model packages for offline transfer.
 
-**Streaming preview:** Original subtitles (zh/en), translated subtitles and translated speech (zh↔en) are available through a versioned WebSocket and browser page. Enable with `SMARTVOICE_STREAMING_ENABLED=true`, then use `/console/streaming`, `WS /v1/audio/stream` and `GET /v1/audio/stream/capabilities`; see [streaming setup and contract](doc/streaming.md) and [migration evidence and remaining acceptance](doc/streaming-migration.md).
+**Streaming preview:** Original subtitles (zh/en), translated subtitles and translated speech (zh↔en) are available by default through a versioned WebSocket and browser page. Use `/console/streaming`, `WS /v1/audio/stream` and `GET /v1/audio/stream/capabilities`; install the required model assets for each scenario. See [streaming setup and contract](doc/streaming.md) and [migration evidence and remaining acceptance](doc/streaming-migration.md).
+
+Streaming sessions now use shared model workers and private bounded state. Total lifetime and cumulative audio caps are disabled by default; send explicit heartbeats during input pauses. See [long-session resource boundaries](doc/streaming-shared-workers.md).
 
 **Current scope:** CPU inference is supported; GPU inference, packaged installers, and Android are not yet supported. Installing or updating models requires downloading files from their configured sources. The service binds to `127.0.0.1` by default; network exposure has no API authentication, so keep it on a trusted network and restrict access with your firewall.
 
@@ -326,6 +328,13 @@ python scripts/test.py ci
 ```
 
 `python scripts/test.py regression` is the default inference regression suite. It includes the existing functional and real-inference tests, short bilingual functional cases for SenseVoice, Qwen3-ASR, and Whisper, audio-window boundary cases, and 75-second segmented inputs. Models not installed on the current runtime are skipped individually. Run `python scripts/test.py full` for every CI and regression test plus 300- and 590-second bilingual inputs across all three STT models. Full mode requires all three models and the validated patched Whisper runtime; it fails its prerequisite check rather than silently skipping them. Long-input expansion is intentionally excluded from the default regression run. The STT tests check functional success and response metadata, not transcript accuracy. See [`doc/testing.md`](doc/testing.md) and [`tests/fixtures/stt/README.md`](tests/fixtures/stt/README.md) for suite details.
+
+Full also requires the default streaming model chains and pinned FLEURS fixtures,
+and processes one hour of cyclic audio through real streaming stages for each of
+the six routes with bounded accelerated input. Use `python scripts/test.py full
+--streaming-only` to run that streaming scope independently. This verifies long
+input and cleanup, not a one-hour wall-clock soak or real-time latency SLA; see
+[full streaming regression](scripts/README.md#full-streaming-regression).
 See [`doc/releasing.md`](doc/releasing.md) for versioning, GitHub Releases, and optional PyPI publishing.
 
 ## Repository layout

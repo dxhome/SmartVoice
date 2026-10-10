@@ -433,7 +433,7 @@ Transport validates messages and serializes events. `services/streaming` owns im
 
 ASR is genuinely online. Translation uses replaceable bounded drafts and committed complete units; TTS synthesizes bounded committed text chunks. This does not imply native streaming translation or native streaming TTS. Model adapters remain responsible for tokenizer, runtime and model-specific audio/text conventions.
 
-Dedicated per-session native workers can be terminated on deadline/cancellation, and retain admission/model leases until process exit is confirmed. Failed cleanup quarantines capacity. This differs from legacy REST's shared native worker threads, which cannot be forcibly interrupted. Streaming and REST share finite compute admission when streaming is enabled. Queues, ACK windows, input duration, initialization and native calls are bounded. Estimated model memory admission is not a hard process RSS limit.
+Dedicated per-session native workers can be terminated on deadline/cancellation, and retain admission/model leases until process exit is confirmed. Failed cleanup quarantines capacity. This differs from legacy REST's shared native worker threads, which cannot be forcibly interrupted. Streaming and REST always share finite compute admission. Queues, ACK windows, input duration, initialization and native calls are bounded. Estimated model memory admission is not a hard process RSS limit.
 
 Streaming is preview status, disabled by default. Six-route macOS arm64 smoke evidence does not establish multi-platform support, quality acceptance, P90 targets or concurrency capacity. See [contract](streaming.md), [migration status](streaming-migration.md), and [benchmark procedure](../benchmarks/streaming/README.md).
 

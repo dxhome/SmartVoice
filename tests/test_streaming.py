@@ -1,7 +1,6 @@
 """Product protocol and lifecycle checks without model downloads or native inference."""
 import asyncio
 from contextlib import contextmanager
-from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -68,7 +67,7 @@ def hang_forever():
     while True:time.sleep(.1)
 
 class StreamingContractTests(unittest.TestCase):
-    def settings(self,**changes):return Settings(data_dir=Path('.smartvoice-dev')/('stream-tests-'+uuid.uuid4().hex),streaming_enabled=True,**changes)
+    def settings(self,**changes):return Settings(data_dir=Path('.smartvoice-dev')/('stream-tests-'+uuid.uuid4().hex),**changes)
     def test_six_plans_and_generic_model_validation(self):
         repository=Repository()
         for mode in ('transcription','translated_subtitles','spoken_interpretation'):
@@ -79,12 +78,15 @@ class StreamingContractTests(unittest.TestCase):
                 self.assertTrue(set(plan.model_ids).issubset({r['id'] for r in repository.installed_models()}))
         for change in ({'source_language':'auto'},{'unexpected':1},{'models':{'asr':'tts-matcha-zh-baker'}},{'ack_window':True},{'models':{'asr':None}},{'mode':[]},{'audio':{'encoding':'pcm_s16le','sample_rate':16000,'channels':True}}):
             with self.subTest(change=change),self.assertRaises(StageError):resolve({**configuration(),**change},repository)
-    def test_default_disabled_and_cross_origin_rejected(self):
-        app=create_app(replace(self.settings(),streaming_enabled=False),FakeProvider())
+    def test_streaming_available_by_default_and_cross_origin_rejected(self):
+        settings=self.settings();app=create_app(settings,FakeProvider())
+        app.state.streaming=StreamingManager(settings,Repository(),FakeWorkers(),Profiler,FairGate,package_wav)
         with TestClient(app) as client:
-            self.assertFalse(client.get('/v1/audio/stream/capabilities').json()['enabled'])
+            self.assertTrue(client.get('/v1/audio/stream/capabilities').json()['enabled'])
             with client.websocket_connect('/v1/audio/stream') as ws:
-                ws.send_json(configuration());self.assertEqual(ws.receive_json()['code'],'streaming_disabled')
+                ws.send_json(configuration());self.assertEqual(ws.receive_json()['type'],'session_ready')
+                ws.send_json({'type':'finish'})
+                while ws.receive_json()['type'] not in ('session_complete','error'):pass
             with self.assertRaises(Exception):
                 with client.websocket_connect('/v1/audio/stream',headers={'origin':'https://untrusted.example'}):pass
             self.assertEqual(client.get('/console/streaming').status_code,200)
@@ -167,7 +169,7 @@ class StreamingContractTests(unittest.TestCase):
 
 class StreamingLifecycleTests(unittest.IsolatedAsyncioTestCase):
     def make(self,**changes):
-        settings=Settings(data_dir=Path('.smartvoice-dev/streaming-tests'),streaming_enabled=True,**changes)
+        settings=Settings(data_dir=Path('.smartvoice-dev/streaming-tests'),**changes)
         repo=Repository();workers=FakeWorkers()
         return StreamingManager(settings,repo,workers,Profiler,FairGate,package_wav),repo,workers
     async def test_cancel_before_task_start_and_reopen(self):
@@ -176,7 +178,7 @@ class StreamingLifecycleTests(unittest.IsolatedAsyncioTestCase):
         session=manager.open(configuration());await session.ready.wait();await session.cancel();self.assertEqual(repo.users,0)
         self.assertTrue(all(w.closed for w in workers.created));await manager.close()
     async def test_capacity_and_no_input_idle_cleanup(self):
-        manager,repo,workers=self.make(streaming_idle_seconds=.03)
+        manager,repo,workers=self.make(streaming_max_sessions=1,streaming_idle_seconds=.03)
         session=manager.open(configuration())
         with self.assertRaisesRegex(StageError,'capacity'):manager.open(configuration())
         await asyncio.wait_for(session.done.wait(),2)
@@ -220,7 +222,7 @@ class StreamingLifecycleTests(unittest.IsolatedAsyncioTestCase):
         await manager.close()
 
     async def test_unproven_cleanup_quarantines_capacity_and_model_lease(self):
-        manager,repo,workers=self.make()
+        manager,repo,workers=self.make(streaming_max_sessions=1)
         worker=FakeWorker(workers)
         async def fail_construct(factory,deadline=None):raise StageError('asr_failure', 'Initialization failed')
         async def fail_close():raise StageError('cleanup_failure', 'Owned worker still alive')
@@ -260,9 +262,10 @@ class StreamingBenchmarkTests(unittest.TestCase):
         from benchmarks.streaming.run import summarize
         def row(ok):
             return dict(scenario='speech_en_zh',functional_success=ok,failure=None,
+                variant='clean',
                 first_output_seconds={'audio_segment':4} if ok else {},onset_first_output_seconds={},
                 speech_onset_method=None,output_audio_success=ok,full_audio_success=ok,
-                final_snapshot={'audio_segments':[{}] if ok else [],'audio_skipped':[]})
+                final_snapshot={'final_events':[],'audio_segments':[{}] if ok else [],'audio_skipped':[]})
         result=summarize([row(True),row(False)])['speech_en_zh']
         self.assertEqual(result['total'],2);self.assertEqual(result['failed'],1)
         self.assertEqual(result['output_audio_success_rate'],.5);self.assertEqual(result['no_audio_rate'],.5)

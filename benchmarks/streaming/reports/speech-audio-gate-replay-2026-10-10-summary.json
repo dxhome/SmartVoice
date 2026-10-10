@@ -1,0 +1,56 @@
+{
+  "schema": "smartvoice.stream.speech-audio-gate-replay-summary.v1",
+  "date": "2026-10-10",
+  "sample_scope": {
+    "corpus": "FLEURS clean fixtures",
+    "unique_recordings_per_direction": 10,
+    "replays_per_recording": 30,
+    "sessions_per_direction": 300,
+    "concurrency": 2,
+    "note": "Repeated local product-code replays; not 300 independent speakers and not production telemetry."
+  },
+  "configuration": {
+    "streaming_max_sessions": 2,
+    "streaming_memory_mib": 16000,
+    "streaming_compute_slots": 8,
+    "num_threads": 2
+  },
+  "gate": {
+    "minimum_sessions_per_direction": 300,
+    "minimum_full_audio_success_rate": 0.99,
+    "minimum_successes_at_300": 297,
+    "denominator": "All non-silence speech sessions; no audio, invalid WAV, non-complete terminal, and any skipped segment count as failure."
+  },
+  "routes": {
+    "speech_en_zh": {
+      "eligible_sessions": 300,
+      "full_audio_success_sessions": 300,
+      "full_audio_success_rate": 1.0,
+      "gate_status": "pass",
+      "protocol_failures": 0,
+      "non_complete_terminals": 0,
+      "audio_skipped_segments": 0,
+      "audio_integrity_errors": 0,
+      "unique_cases": 10
+    },
+    "speech_zh_en": {
+      "eligible_sessions": 300,
+      "full_audio_success_sessions": 300,
+      "full_audio_success_rate": 1.0,
+      "gate_status": "pass",
+      "protocol_failures": 0,
+      "non_complete_terminals": 0,
+      "audio_skipped_segments": 0,
+      "audio_integrity_errors": 0,
+      "unique_cases": 10
+    }
+  },
+  "strict_quality_guard": {
+    "passed": true,
+    "compared_sessions": 600,
+    "all_source_and_target_final_audio_expectations_match": true
+  },
+  "full_session_report": ".smartvoice-dev/streaming-product/speech-production-gate-replay-2026-10-10.json",
+  "replay_evidence_status": "numerical replay gate passed; actual production telemetry validation remains pending",
+  "full_session_report_sha256": "5642a14f4a3a1c3bc3f0eb7c62ffdca2f1b0db4ab75799a373447603a9deecdd"
+}

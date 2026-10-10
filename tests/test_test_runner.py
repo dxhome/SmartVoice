@@ -29,6 +29,9 @@ class TestRunnerScopeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ), \
              patch.dict('sys.modules',{'sherpa_onnx':SimpleNamespace(__version__='1.13.8')}), \
              patch.object(runner,'_regression_prerequisites',return_value=[]), \
+             patch('tests.streaming_long_audio.required_models',return_value=[]), \
+             patch('tests.streaming_long_audio.fixture',return_value=({},b'\0\0')), \
+             patch.object(runner.importlib.util,'find_spec',return_value=True), \
              patch('smartvoice.services.model_storage.model_directory',side_effect=lambda _,name:Path(directory)/name), \
              patch('sys.stderr',new_callable=io.StringIO):
             asset=Path(directory)/model;asset.mkdir();(asset/'smartvoice-model.json').write_text('{}')
@@ -39,3 +42,17 @@ class TestRunnerScopeTests(unittest.TestCase):
             # Even installed manifests do not make an unpatched Whisper wheel
             # eligible for the unfiltered full suite.
             self.assertEqual(self.run_empty_suite(['full']),2)
+
+    def test_streaming_only_full_requires_streaming_assets(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ), \
+             patch.dict('sys.modules',{'sherpa_onnx':SimpleNamespace(__version__='1.13.8')}), \
+             patch.object(runner,'_regression_prerequisites',return_value=[]), \
+             patch.object(runner.importlib.util,'find_spec',return_value=True), \
+             patch('tests.streaming_long_audio.required_models',return_value=['required-streaming-model']), \
+             patch('tests.streaming_long_audio.fixture',return_value=({},b'\0\0')), \
+             patch('smartvoice.services.model_storage.model_directory',side_effect=lambda _,name:Path(directory)/name), \
+             patch('sys.stderr',new_callable=io.StringIO):
+            self.assertEqual(self.run_empty_suite(['full','--streaming-only']),2)
+            asset=Path(directory)/'required-streaming-model';asset.mkdir()
+            (asset/'smartvoice-model.json').write_text('{}')
+            self.assertEqual(self.run_empty_suite(['full','--streaming-only']),0)

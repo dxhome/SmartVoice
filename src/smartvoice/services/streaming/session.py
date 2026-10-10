@@ -1,11 +1,14 @@
 """Transport-independent bounded streaming session lifecycle."""
 import asyncio
+import logging
 import time
 import uuid
 from dataclasses import dataclass
 from smartvoice.domain.streaming import AudioBlock, StageError
-from .incremental import IncrementalPipeline
-from .speech import SpeechPipeline
+from .workflows import WORKFLOWS
+from smartvoice.domain.stream_context import SessionContext
+
+logger=logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Limits:
@@ -18,8 +21,13 @@ class StreamSession:
         self.profiler, self.translation_gate = profiler, gate
         self.limits = Limits(translation_job_seconds=settings.streaming_native_seconds)
         self.initialization_seconds = settings.streaming_initialization_seconds
+        self.workflow = WORKFLOWS[plan.mode]
+        self.workflow.validate(specs)
+        self.context = SessionContext(plan.source_language,plan.context_terms)
+        self.asr_context_version = -1
         self.id = uuid.uuid4().hex
         self.started = time.monotonic()
+        self.last_activity = self.started
         self.ready = asyncio.Event(); self.stop = asyncio.Event(); self.done = asyncio.Event()
         self.input = asyncio.Queue(maxsize=50); self.output = asyncio.Queue(maxsize=32)
         self.translation_input = asyncio.Queue(maxsize=4)
@@ -35,7 +43,7 @@ class StreamSession:
         self.asr_worker = workers.create('asr', profiler); self.asr = None
         self.mt_worker = workers.create('translation', profiler) if plan.translation_model_id else None
         self.translator = None; self.pipeline = None
-        self.speech = SpeechPipeline(self, packager) if plan.mode == 'speech' else None
+        self.speech = self.workflow.speech_pipeline(self, packager)
         self.task = asyncio.create_task(self.run())
 
     async def emit(self, row, terminal=False):
@@ -72,14 +80,18 @@ class StreamSession:
             raise StageError('invalid_state','Audio requires a ready, open session')
         if not pcm or len(pcm)%2 or len(pcm)>32000:
             raise StageError('invalid_audio','PCM frames must contain 1–16000 complete samples')
-        if self.samples+len(pcm)//2 > int(16000*self.settings.streaming_lifetime_seconds):
+        if self.settings.streaming_max_audio_seconds and self.samples+len(pcm)//2 > int(16000*self.settings.streaming_max_audio_seconds):
             raise StageError('input_limit','Audio duration limit exceeded')
         if self.input.full(): raise StageError('input_overload','Input queue is full; pace audio in real time')
         now = time.monotonic()
+        self.last_activity = now
         if self.first_input is None: self.first_input = now
         self.input_sequence += 1
         self.input.put_nowait(AudioBlock(self.input_sequence,pcm,self.samples,now))
         self.samples += len(pcm)//2
+
+    def heartbeat(self):
+        self.last_activity = time.monotonic()
 
     async def finish_input(self):
         if not self.ready.is_set() or self.input_finished or self.stop.is_set():
@@ -101,24 +113,30 @@ class StreamSession:
         self.asr = await self.asr_worker.construct(self.workers.binding(self.specs['asr'],self.plan), deadline=self.initialization_seconds)
         if self.mt_worker:
             self.translator = await self.mt_worker.construct(self.workers.binding(self.specs['translation'],self.plan),deadline=self.initialization_seconds)
-        self.pipeline = IncrementalPipeline(self,self.translator,self.plan)
+        self.pipeline = self.workflow.text_pipeline(self,self.translator,self.plan)
         await self.pipeline.start()
         if self.speech: await self.speech.start()
         self.profiler.add('session.initialize',time.monotonic()-self.started)
         self.last_frame=time.monotonic()
         self.ready.set()
-        await self.emit(dict(type='session_ready', plan=self.plan.public(), input_queue_frames=50, ack_window=self.ack_window))
+        await self.emit(dict(type='session_ready', plan=self.plan.public(), input_queue_frames=50, ack_window=self.ack_window,
+            heartbeat_interval_seconds=max(.01,self.settings.streaming_idle_seconds/3),
+            context_capabilities=getattr(self.asr,'context_support',{})))
         while not self.stop.is_set():
             self.pipeline.check()
             if self.speech: self.speech.check()
             try: block=await asyncio.wait_for(self.input.get(),min(.1,self.settings.streaming_idle_seconds))
             except TimeoutError:
-                if time.monotonic()-getattr(self,'last_frame',self.started) > self.settings.streaming_idle_seconds:
-                    raise StageError('input_timeout','No input or finish received within idle deadline')
+                if time.monotonic()-self.last_activity > self.settings.streaming_idle_seconds:
+                    raise StageError('input_timeout','No audio or heartbeat received within connection idle deadline')
                 continue
             if block is None: break
             self.last_frame=time.monotonic()
             self.profiler.add('input.queue_wait',time.monotonic()-block.received_at)
+            snapshot=self.context.snapshot()
+            if hasattr(self.asr,'context_support') and snapshot.version!=self.asr_context_version:
+                await self.asr_worker.call(self.asr.update_context,snapshot,deadline=self.limits.translation_job_seconds)
+                self.asr_context_version=snapshot.version
             await self.hypotheses(await self.asr_worker.call(self.asr.push_audio,block,deadline=self.limits.translation_job_seconds))
         await self.hypotheses(await self.asr_worker.call(self.asr.finish,deadline=self.limits.translation_job_seconds))
         await self.pipeline.finish()
@@ -128,17 +146,21 @@ class StreamSession:
         self.run_started.set()
         failure=None;cleanup_errors=[];safe_to_release=True
         try:
-            async with asyncio.timeout(self.settings.streaming_lifetime_seconds): await self.process()
+            async with asyncio.timeout(self.settings.streaming_lifetime_seconds or None): await self.process()
         except asyncio.CancelledError:
             self.cancel_reason=self.cancel_reason or 'canceled'
         except TimeoutError: failure=StageError('session_timeout','Session lifetime exceeded')
-        except StageError as exc: failure=exc
-        except Exception: failure=StageError('stage_failure','Streaming stage failed')
+        except StageError as exc:
+            failure=exc
+            logger.warning('Streaming session %s failed at %s (%s): %s',self.id,exc.stage or 'session',exc.code,exc.message)
+        except Exception as exc:
+            failure=StageError('stage_failure','Streaming stage failed')
+            logger.exception('Unexpected streaming session %s failure',self.id)
         finally:
             self.tearing_down=True
             self.teardown_force=bool(failure or self.cancel_reason or self.protocol_failure)
             self.stop.set();self.ack_changed.set()
-            # Every stage owns an isolated process; settle or kill native work before releasing resources.
+            # Release only this session's stage handles; shared native work settles before release.
             for component in (self.pipeline,self.speech):
                 if component:
                     try: await component.close()
@@ -161,7 +183,9 @@ class StreamSession:
                 if cleanup_errors: failure=StageError('cleanup_failure','Stage resource cleanup failed')
                 if failure:
                     await self.emit(dict(type='error',code=failure.code,message=failure.message,
-                        stage=failure.stage or 'session',retryable=failure.code.endswith(('timeout','overload'))),terminal=True)
+                        stage=failure.stage or 'session',retryable=failure.code.endswith(('timeout','overload')),
+                        profiling=self.profiler.summary(), first_output_seconds=self.first.copy(),
+                        counts=self.counts.copy(),resources=self.resource_snapshot()),terminal=True)
                 else:
                     status=('canceled' if self.cancel_reason else 'no_speech' if not self.counts.get('source_unit_final') else
                         'no_audio' if self.speech and not self.speech.sequence else
@@ -169,8 +193,18 @@ class StreamSession:
                     await self.emit(dict(type='session_complete',status=status,reason=self.cancel_reason,
                         counts=self.counts.copy(),first_output_seconds=self.first.copy(),
                         audio_skips=self.speech.skipped.copy() if self.speech else {},
-                        profiling=self.profiler.summary(),metrics_clock='server monotonic; first received PCM; not browser/onset TTFO'),terminal=True)
+                        profiling=self.profiler.summary(),resources=self.resource_snapshot(),
+                        metrics_clock='server monotonic; first received PCM; not browser/onset TTFO'),terminal=True)
             finally: self.done.set()
+
+    def resource_snapshot(self):
+        snapshot=self.context.snapshot()
+        return dict(scope='bounded logical session state; model pool is global, not RSS',
+            input_frames=self.input.qsize(),recent_context_units=len(snapshot.recent_text),
+            recent_context_chars=sum(map(len,snapshot.recent_text)),context_terms=len(snapshot.terms),
+            context_version=snapshot.version,
+            retained_text_units=len(self.pipeline.latest) if self.pipeline else 0,
+            model_pool=self.workers.metrics() if hasattr(self.workers,'metrics') else {})
 
     async def cancel(self, reason='canceled'):
         if self.done.is_set(): return

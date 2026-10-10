@@ -25,7 +25,9 @@ SmartVoice 是面向开发者的本地语音转文字（STT）和文字转语音
 - **一个 API 同时支持 STT 和 TTS：** 通过统一的音频 API 接入兼容的智能体和应用。
 - **自由选择和迁移模型：** 只安装需要的模型，可直接指定模型，也可导出模型包以便离线传输。
 
-**流式预览：** 通过版本化 WebSocket 和浏览器页面提供中文/英文原文字幕、中英双向译文字幕及译文语音，通过 `SMARTVOICE_STREAMING_ENABLED=true` 显式启用；浏览器入口 `/console/streaming`，实时接口 `WS /v1/audio/stream`，能力查询 `GET /v1/audio/stream/capabilities`。当前实测平台为 macOS arm64；参阅[启用与接口契约](doc/streaming.md)及[迁移证据和剩余验收](doc/streaming-migration.md)。
+**流式预览：** 默认提供版本化 WebSocket 和浏览器页面，支持中文/英文原文字幕、中英双向译文字幕及译文语音；浏览器入口 `/console/streaming`，实时接口 `WS /v1/audio/stream`，能力查询 `GET /v1/audio/stream/capabilities`。使用各场景前需安装所需模型资产。当前实测平台为 macOS arm64；参阅[接口契约与安装](doc/streaming.md)及[迁移证据和剩余验收](doc/streaming-migration.md)。
+
+流式会话使用共享模型 worker 和私有有界状态；默认不限制会话墙钟或累计音频时长，暂停输入时应继续发送心跳。参阅[长会话资源边界](doc/streaming-shared-workers.md)。
 
 **当前范围：** 支持 CPU 推理；暂不支持 GPU 推理、打包安装程序和 Android。安装或更新模型需要从配置的数据源下载文件。服务默认绑定到 `127.0.0.1`；对外开放网络时没有 API 身份验证，因此请仅在可信网络中使用并配置防火墙访问限制。
 
@@ -326,6 +328,12 @@ python scripts/test.py ci
 ```
 
 `python scripts/test.py regression` 运行默认推理回归套件，包括现有功能和真实推理测试、SenseVoice/Qwen3-ASR/Whisper 的中英双语短样本、音频窗口边界以及 75 秒分段输入。当前运行环境未安装的模型会分别跳过。运行 `python scripts/test.py full` 可执行全部 CI 和回归测试，以及三个 STT 模型的 300 秒和 590 秒中英双语输入。完整模式要求安装全部三个模型和已验证的 Whisper 补丁运行时；如果前置条件不满足，会直接报告错误，不会静默跳过。默认回归测试有意不包含长音频扩展测试。STT 测试检查功能是否成功及响应元数据，不评估转录准确率。套件详情请参阅 [`doc/testing.md`](doc/testing.md) 和 [`tests/fixtures/stt/README.md`](tests/fixtures/stt/README.md)。
+
+Full 还要求默认流式模型链路及固定 FLEURS 语料，在六条真实流式链路中分别
+以有界加速输入处理一小时循环语音。可使用
+`python scripts/test.py full --streaming-only` 独立执行流式部分。
+该测试验证长输入、输出完整性及资源回收，不等同于一小时墙钟 soak 或实时延迟验收。
+详见[完整流式回归](scripts/README.md#full-streaming-regression)。
 
 版本管理、GitHub Release 和可选的 PyPI 发布流程请参阅 [`doc/releasing.md`](doc/releasing.md)。
 

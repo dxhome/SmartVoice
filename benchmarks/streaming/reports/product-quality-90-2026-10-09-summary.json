@@ -1,0 +1,252 @@
+{
+  "schema": "smartvoice.stream.product-quality-summary.v1",
+  "run_id": "product-quality-90-2026-10-09-r1",
+  "run_status": "completed; not quality-accepted",
+  "quality_accepted": false,
+  "corpus_revision": "fleurs-quality-90-v1",
+  "corpus_manifest_sha256": "5f8460f106ce8a7c6c0095bb78d14dc31823a1716f623acb19e1c21fa4edc0ee",
+  "acceptance_sha256": "29e908327015257976a8b55126425c9ddeb103c1b41562de1d89125815ba9c46",
+  "source_full_report_sha256": "e880fb82fbc17b46ec2785f4e7a1780652be286eb6884184cf94be5af17f427e",
+  "source_full_report_local_path": ".smartvoice-dev/streaming-product/quality90-product-run-2026-10-09.json",
+  "sample_scope": {
+    "corpus_cases": 90,
+    "modes": [
+      "transcription",
+      "translated_subtitles"
+    ],
+    "sessions": 180,
+    "rounds": 1,
+    "replay_rate": "1x"
+  },
+  "outcomes": {
+    "functional_failures": 0,
+    "protocol_failures": 0,
+    "expected_silence_controls": 4,
+    "expected_silence_controls_successful": 4,
+    "translated_target_semantics": "pending S5 human review; no automatic lexical equivalence score"
+  },
+  "routes": {
+    "transcription_en": {
+      "sessions": 16,
+      "functional_failures": 0,
+      "protocol_failures": 0,
+      "expected_no_speech": 0,
+      "source_quality": {
+        "metric": "WER",
+        "normalization_profile": "latin_wer",
+        "value": 0.20569620253164558,
+        "n": 16,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "source_quality_by_variant": {
+        "clean": {
+          "metric": "WER",
+          "value": 0.13924050632911392,
+          "n": 4
+        },
+        "noise10db": {
+          "metric": "WER",
+          "value": 0.34177215189873417,
+          "n": 4
+        },
+        "quiet": {
+          "metric": "WER",
+          "value": 0.17721518987341772,
+          "n": 4
+        },
+        "room_proxy": {
+          "metric": "WER",
+          "value": 0.16455696202531644,
+          "n": 4
+        }
+      },
+      "target_reference_count": 0,
+      "target_final_count": 0,
+      "target_semantic_quality_status": "not_applicable",
+      "clean_latency": {
+        "n": 4,
+        "p90_seconds": 1.777014208957553,
+        "assessment": "insufficient_samples"
+      },
+      "models": {
+        "asr": "streaming-stt-zipformer-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": null,
+        "tts": null
+      }
+    },
+    "transcription_zh": {
+      "sessions": 74,
+      "functional_failures": 0,
+      "protocol_failures": 0,
+      "expected_no_speech": 2,
+      "source_quality": {
+        "metric": "CER",
+        "normalization_profile": "han_cer",
+        "value": 0.1903114186851211,
+        "n": 72,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "source_quality_by_variant": {
+        "clean": {
+          "metric": "CER",
+          "value": 0.16608996539792387,
+          "n": 18
+        },
+        "noise10db": {
+          "metric": "CER",
+          "value": 0.21453287197231835,
+          "n": 18
+        },
+        "noise_only": {
+          "metric": "CER",
+          "value": null,
+          "n": 0
+        },
+        "quiet": {
+          "metric": "CER",
+          "value": 0.17647058823529413,
+          "n": 18
+        },
+        "room_proxy": {
+          "metric": "CER",
+          "value": 0.2041522491349481,
+          "n": 18
+        },
+        "silence": {
+          "metric": "CER",
+          "value": null,
+          "n": 0
+        }
+      },
+      "target_reference_count": 0,
+      "target_final_count": 0,
+      "target_semantic_quality_status": "not_applicable",
+      "clean_latency": {
+        "n": 18,
+        "p90_seconds": 3.072797832894139,
+        "assessment": "insufficient_samples"
+      },
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": null,
+        "tts": null
+      }
+    },
+    "translation_en_zh": {
+      "sessions": 16,
+      "functional_failures": 0,
+      "protocol_failures": 0,
+      "expected_no_speech": 0,
+      "source_quality": {
+        "metric": "WER",
+        "normalization_profile": "latin_wer",
+        "value": 0.20569620253164558,
+        "n": 16,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "source_quality_by_variant": {
+        "clean": {
+          "metric": "WER",
+          "value": 0.13924050632911392,
+          "n": 4
+        },
+        "noise10db": {
+          "metric": "WER",
+          "value": 0.34177215189873417,
+          "n": 4
+        },
+        "quiet": {
+          "metric": "WER",
+          "value": 0.17721518987341772,
+          "n": 4
+        },
+        "room_proxy": {
+          "metric": "WER",
+          "value": 0.16455696202531644,
+          "n": 4
+        }
+      },
+      "target_reference_count": 0,
+      "target_final_count": 16,
+      "target_semantic_quality_status": "pending_human_review",
+      "clean_latency": {
+        "n": 4,
+        "p90_seconds": 2.8332712079863995,
+        "assessment": "insufficient_samples"
+      },
+      "models": {
+        "asr": "streaming-stt-zipformer-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-m2m100-zh-en-int8",
+        "tts": null
+      }
+    },
+    "translation_zh_en": {
+      "sessions": 74,
+      "functional_failures": 0,
+      "protocol_failures": 0,
+      "expected_no_speech": 2,
+      "source_quality": {
+        "metric": "CER",
+        "normalization_profile": "han_cer",
+        "value": 0.1903114186851211,
+        "n": 72,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "source_quality_by_variant": {
+        "clean": {
+          "metric": "CER",
+          "value": 0.16608996539792387,
+          "n": 18
+        },
+        "noise10db": {
+          "metric": "CER",
+          "value": 0.21453287197231835,
+          "n": 18
+        },
+        "noise_only": {
+          "metric": "CER",
+          "value": null,
+          "n": 0
+        },
+        "quiet": {
+          "metric": "CER",
+          "value": 0.17647058823529413,
+          "n": 18
+        },
+        "room_proxy": {
+          "metric": "CER",
+          "value": 0.2041522491349481,
+          "n": 18
+        },
+        "silence": {
+          "metric": "CER",
+          "value": null,
+          "n": 0
+        }
+      },
+      "target_reference_count": 62,
+      "target_final_count": 72,
+      "target_semantic_quality_status": "pending_human_review",
+      "clean_latency": {
+        "n": 18,
+        "p90_seconds": 3.7430229579331353,
+        "assessment": "insufficient_samples"
+      },
+      "models": {
+        "asr": "streaming-stt-paraformer-zh-en-int8",
+        "formatting": "streaming-ct-transformer-zh-en",
+        "translation": "streaming-mt-opus-zh-en-int8",
+        "tts": null
+      }
+    }
+  },
+  "limitations": [
+    "One pass only; not an accepted latency sample size.",
+    "WER/CER describe source transcription only.",
+    "Target reference availability is incomplete for en-to-zh.",
+    "Human semantic review and speech onset ground truth remain pending."
+  ]
+}

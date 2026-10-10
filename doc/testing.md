@@ -14,6 +14,10 @@ python scripts/test.py ci
 
 This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The CI entry point excludes `test_real_inference.py` and `test_stt_audio_regression.py` so it remains fast and does not depend on local models.
 
+The CI entry point also excludes `test_streaming_real_long.py`. It retains shared
+worker fault tests and the bounded long-audio generator/output-audit tests without
+loading speech models.
+
 The active GitHub Actions CI workflow installs the development dependencies and runs this entry point on pull requests and pushes to `main`. It also builds and checks the source distribution and the Linux wheel.
 
 ## Default regression tests
@@ -37,6 +41,36 @@ python scripts/test.py full
 Full discovers and runs the same complete test tree as CI and default regression, then adds 300- and 590-second English and Chinese recordings for each of the three STT models (12 long model-language-duration inferences). The recordings are created deterministically from the committed reference utterances, separated by silence, and padded to the exact target duration. Full mode requires all three STT models to be installed and runtime-available, plus the validated `sherpa-onnx 1.13.8+smartvoice.whisper2` wheel. Missing prerequisites fail the run rather than skipping long-audio coverage. It stays out of routine CI and default regression because its long-audio inferences are substantially more expensive.
 
 The `ci` mode remains the lightweight test set used by GitHub Actions. The `regression` mode contains the full existing functional suite and its inference checks with the quick and boundary STT cases; `full` contains all CI and regression cases plus long-audio expansion.
+
+### Real streaming hour cases
+
+Full includes `tests/test_streaming_real_long.py`: six separate cases, each with
+3600 seconds of checksum-pinned cyclic FLEURS PCM. The real online ASR and enabled
+formatting/translation/TTS adapters execute through the production session and
+shared worker pool. Input is accelerated according to actual consumption, with
+at most two input frames buffered. Queues, compute permits, semantic commitment
+and native deadlines remain active; clocks and models are not mocked.
+
+```sh
+SMARTVOICE_HOME=/absolute/model/home python scripts/test.py full --streaming-only
+```
+
+This scoped command omits REST/STT suites. Unfiltered `full` requires both its
+existing STT prerequisites and every default streaming chain model, including
+Chinese mixed-script fallback, the streaming extra and pinned fixtures. Missing
+prerequisites fail; an enabled full hour case cannot be silently skipped.
+
+The tests clone immutable asset files into isolated temporary model roots using
+hardlinks (copy fallback where needed), leaving user configuration and derived
+runtime state separate. They generate only bounded PCM frames, incrementally
+audit output and verify input coverage, complete drain, audio/text/reference
+alignment, history/context bounds, model-use leases, compute permits and owned
+process shutdown. Per-route success/failure reports remain in
+`.smartvoice-dev/full-streaming/<run-id>/`. The per-route wall deadline is one hour.
+
+This covers one hour of **audio content**, not one hour of wall-clock stability.
+It does not assert real-time TTFO/P90, natural meeting quality, WebSocket/browser
+playback or concurrency capacity. Those remain separate measured regressions.
 
 ## Real TCP HTTP completion checks
 

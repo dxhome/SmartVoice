@@ -1,0 +1,174 @@
+{
+  "schema": "smartvoice.stream.shared-pool.validation.v1",
+  "date": "2026-10-10",
+  "automatic_tests": {
+    "count": 65,
+    "passed": true,
+    "hour_logical_audio": "3600 one-second blocks per speech direction; accelerated simulated stages"
+  },
+  "six_routes": {
+    "report_sha256": "fa3a929b30733f21b7de72bccce9de8528304e133063ee2685928e2b77119ed5",
+    "settings": {
+      "max_sessions": 4,
+      "lifetime_seconds": 0.0,
+      "idle_seconds": 60.0,
+      "max_audio_seconds": 0.0,
+      "max_model_workers": 8,
+      "max_pending_jobs": 32,
+      "estimated_model_memory_mib": 8000
+    },
+    "compute_slots": 2,
+    "strict_quality_guard": {
+      "scope": "only selected cases; not complete baseline coverage",
+      "passed": true,
+      "findings": [
+        {
+          "scenario": "transcription_zh",
+          "case": "zh_02_clean",
+          "errors": []
+        },
+        {
+          "scenario": "transcription_en",
+          "case": "en_02_clean",
+          "errors": []
+        },
+        {
+          "scenario": "translation_zh_en",
+          "case": "zh_02_clean",
+          "errors": []
+        },
+        {
+          "scenario": "translation_en_zh",
+          "case": "en_02_clean",
+          "errors": []
+        },
+        {
+          "scenario": "speech_zh_en",
+          "case": "zh_02_clean",
+          "errors": []
+        },
+        {
+          "scenario": "speech_en_zh",
+          "case": "en_02_clean",
+          "errors": []
+        }
+      ]
+    },
+    "routes": [
+      {
+        "scenario": "transcription_zh",
+        "status": "complete",
+        "failure": null,
+        "first_output_seconds": {
+          "source_partial": 1.8532194170402363,
+          "source_unit_partial": 1.8565577500266954,
+          "source_final": 6.643363542039879,
+          "source_unit_final": 6.651511625037529
+        },
+        "audio_integrity_errors": []
+      },
+      {
+        "scenario": "transcription_en",
+        "status": "complete",
+        "failure": null,
+        "first_output_seconds": {
+          "source_partial": 1.7540412920061499,
+          "source_unit_partial": 1.7575375420274213,
+          "source_final": 5.596179959014989,
+          "source_unit_final": 5.600706291967072
+        },
+        "audio_integrity_errors": []
+      },
+      {
+        "scenario": "translation_zh_en",
+        "status": "complete",
+        "failure": null,
+        "first_output_seconds": {
+          "source_partial": 1.8819801249774173,
+          "source_unit_partial": 1.9030981250107288,
+          "target_partial": 2.5710309999994934,
+          "source_final": 6.644111667061225,
+          "source_unit_final": 6.652362292050384,
+          "target_final": 6.6943951670546085
+        },
+        "audio_integrity_errors": []
+      },
+      {
+        "scenario": "translation_en_zh",
+        "status": "complete",
+        "failure": null,
+        "first_output_seconds": {
+          "source_partial": 1.7604795830557123,
+          "source_unit_partial": 1.763277791091241,
+          "target_partial": 2.849450125009753,
+          "source_final": 5.59762050001882,
+          "source_unit_final": 5.601674208068289,
+          "target_final": 6.104969250038266
+        },
+        "audio_integrity_errors": []
+      },
+      {
+        "scenario": "speech_zh_en",
+        "status": "complete",
+        "failure": null,
+        "first_output_seconds": {
+          "source_partial": 1.872627708944492,
+          "source_unit_partial": 1.8764918339438736,
+          "target_partial": 3.7279549170052633,
+          "source_final": 6.6457189589273185,
+          "source_unit_final": 6.654846583958715,
+          "target_final": 6.697835291968659,
+          "audio_segment": 7.111492083990015
+        },
+        "audio_integrity_errors": []
+      },
+      {
+        "scenario": "speech_en_zh",
+        "status": "complete",
+        "failure": null,
+        "first_output_seconds": {
+          "source_partial": 1.7558843340957537,
+          "source_unit_partial": 1.7583285419968888,
+          "target_partial": 3.395707542076707,
+          "source_final": 5.596792750060558,
+          "source_unit_final": 5.6029341670218855,
+          "target_final": 6.132998875109479,
+          "audio_segment": 6.315336709027179
+        },
+        "audio_integrity_errors": []
+      }
+    ]
+  },
+  "duplex_300_seconds": {
+    "wall_seconds": 304.047275541001,
+    "peak_active_sessions": 4,
+    "peak_model_workers": 7,
+    "estimated_peak_resident_mib": 5750,
+    "routes": [
+      {
+        "scenario": "speech_zh_en",
+        "status": "complete",
+        "audio_chunks": 39,
+        "audio_skips": 0,
+        "integrity_errors": [],
+        "failure": null
+      },
+      {
+        "scenario": "speech_en_zh",
+        "status": "complete",
+        "audio_chunks": 59,
+        "audio_skips": 0,
+        "integrity_errors": [],
+        "failure": null
+      }
+    ]
+  },
+  "idle_reclamation": {
+    "model_workers": 0,
+    "resident_mib": 0,
+    "stage_handles": 0,
+    "active_jobs": 0,
+    "pending_jobs": 0
+  },
+  "scope": "Small pinned cases and repeated FLEURS duplex, delivery ACK. Not p90 acceptance, hour-long native soak, production capacity, physical audibility or RSS proof."
+}

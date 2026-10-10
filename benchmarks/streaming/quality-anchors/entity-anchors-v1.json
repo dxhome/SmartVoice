@@ -1,0 +1,146 @@
+{
+  "schema": "smartvoice.stream.quality-anchor-import.v1",
+  "source_sha256": "4618b245b86f0e510e041b2d2b257656e58ecf6c51fd38c5c10a7d327f26f214",
+  "source_path": "sandbox/streaming/entity-anchors.json",
+  "review_status": "diagnostic-only",
+  "quality_accepted": false,
+  "data": {
+    "scope": "Small transcript-derived diagnostic anchor set, not word alignment or a bilingual human review. Alias matches do not change raw CER/WER.",
+    "anchors": {
+      "zh_00": [
+        {
+          "kind": "name",
+          "label": "马尔泰利",
+          "aliases": [
+            "马尔泰利"
+          ]
+        },
+        {
+          "kind": "number",
+          "label": "9",
+          "aliases": [
+            "9",
+            "九"
+          ]
+        },
+        {
+          "kind": "name",
+          "label": "CEP",
+          "aliases": [
+            "cep"
+          ]
+        }
+      ],
+      "zh_01": [
+        {
+          "kind": "number",
+          "label": "35 mm",
+          "aliases": [
+            "35毫米",
+            "三十五毫米",
+            "35mm"
+          ]
+        }
+      ],
+      "zh_05": [
+        {
+          "kind": "number",
+          "label": "34",
+          "aliases": [
+            "34",
+            "三十四"
+          ]
+        }
+      ],
+      "zh_09": [
+        {
+          "kind": "name",
+          "label": "罗斯贝",
+          "aliases": [
+            "罗斯贝"
+          ]
+        }
+      ],
+      "en_00": [
+        {
+          "kind": "number",
+          "label": "1963",
+          "aliases": [
+            "1963",
+            "nineteen sixty three"
+          ]
+        }
+      ],
+      "en_01": [
+        {
+          "kind": "name",
+          "label": "Martelly",
+          "aliases": [
+            "martelly"
+          ]
+        },
+        {
+          "kind": "name",
+          "label": "CEP",
+          "aliases": [
+            "cep"
+          ]
+        },
+        {
+          "kind": "number",
+          "label": "nine",
+          "aliases": [
+            "9",
+            "nine"
+          ]
+        }
+      ],
+      "en_03": [
+        {
+          "kind": "name",
+          "label": "Pohutukawa",
+          "aliases": [
+            "pohutukawa"
+          ]
+        }
+      ],
+      "en_05": [
+        {
+          "kind": "name",
+          "label": "del Potro",
+          "aliases": [
+            "del potro"
+          ]
+        },
+        {
+          "kind": "number",
+          "label": "6-6",
+          "aliases": [
+            "6 6",
+            "six six",
+            "six to six"
+          ]
+        }
+      ],
+      "en_06": [
+        {
+          "kind": "number",
+          "label": "1963",
+          "aliases": [
+            "1963",
+            "nineteen sixty three"
+          ]
+        }
+      ],
+      "en_08": [
+        {
+          "kind": "name",
+          "label": "T. rex",
+          "aliases": [
+            "t rex"
+          ]
+        }
+      ]
+    }
+  }
+}

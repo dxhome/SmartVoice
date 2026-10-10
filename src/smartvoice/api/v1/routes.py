@@ -131,7 +131,7 @@ async def capabilities(
 async def runtime(request: Request) -> dict[str, object]:
     result = get_provider(request).runtime()
     result["router"] = request.app.state.model_router.public_status(get_provider(request).installed_models())
-    result['streaming'] = {'enabled': request.app.state.settings.streaming_enabled,
+    result['streaming'] = {'enabled': True,
         'active_sessions': len(request.app.state.streaming.active),
         'estimated_resident_mib': request.app.state.streaming.resident,
         'shared_compute': request.app.state.compute_budget.snapshot(),

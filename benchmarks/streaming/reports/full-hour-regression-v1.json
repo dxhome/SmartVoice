@@ -1,0 +1,405 @@
+{
+  "schema": "smartvoice.stream.full-hour-summary.v1",
+  "date": "2026-10-10",
+  "ci": {
+    "tests": 305,
+    "wall_seconds": 48.621,
+    "passed": true
+  },
+  "full_streaming": {
+    "tests": 69,
+    "wall_seconds": 1954.479,
+    "passed": true
+  },
+  "routes": [
+    {
+      "mode": "spoken_interpretation",
+      "source_language": "en",
+      "input_audio_seconds": 3600.0,
+      "wall_seconds": 488.199,
+      "speedup": 7.374,
+      "audio_chunks": 789,
+      "counts": {
+        "session_ready": 1,
+        "source_partial": 7094,
+        "source_unit_partial": 71,
+        "source_final": 693,
+        "utterance_complete": 693,
+        "source_unit_final": 624,
+        "target_final": 624,
+        "audio_segment": 789,
+        "target_partial": 58,
+        "session_complete": 1
+      },
+      "final_text_sha256": "70578e618702060821676d622bc2207d73966982ab9dec28eb08b7b084bf472e",
+      "peak_state": {
+        "input_frames": 2,
+        "retained_units": 128,
+        "context_chars": 267,
+        "context_terms": 20
+      },
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "early_output_verification": "first-output timestamp before partial-input progress log",
+      "first_output_wall_seconds": {
+        "source_unit_partial": 3.665205708006397,
+        "audio_segment": 4.987627208000049,
+        "target_partial": 11.505015500006266
+      },
+      "raw_report": ".smartvoice-dev/full-streaming/05352d6352374bbd90731172b3a9bde0/spoken_interpretation-en.json",
+      "raw_report_sha256": "1ea9a9a3f5b3160bb7e66d865e1a833b6b9dc424efd48e14ca0ea38edfd92cfe",
+      "fixture_id": "en_02_clean",
+      "fixture_sha256": "61ee2bfd08e4851b5fda3be2776f9363df5a4fa31c5cad9af00fec32c208c30b",
+      "manifest_sha256": "bf5c5f68f0c52d924e3a8248a13f52632e1884e7f5fae3209e68f75be731dd9c",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "versions": {
+        "sherpa-onnx": "1.13.8+smartvoice.whisper2",
+        "ctranslate2": "4.8.2",
+        "sentencepiece": "0.2.2"
+      },
+      "failure": null
+    },
+    {
+      "mode": "spoken_interpretation",
+      "source_language": "zh",
+      "input_audio_seconds": 3600.0,
+      "wall_seconds": 599.067,
+      "speedup": 6.009,
+      "audio_chunks": 906,
+      "counts": {
+        "session_ready": 1,
+        "source_partial": 3728,
+        "source_unit_partial": 90,
+        "source_final": 455,
+        "utterance_complete": 455,
+        "source_unit_final": 906,
+        "target_final": 906,
+        "audio_segment": 906,
+        "session_complete": 1
+      },
+      "final_text_sha256": "c4257cbb1dfee507d788ddd99a9a87da08669db85c6e240a98cadfcaa9fe9795",
+      "peak_state": {
+        "input_frames": 2,
+        "retained_units": 128,
+        "context_chars": 51,
+        "context_terms": 0
+      },
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "early_output_verification": "first-output timestamp before partial-input progress log",
+      "first_output_wall_seconds": {
+        "source_unit_partial": 3.0168289589928463,
+        "audio_segment": 3.8015162089141086
+      },
+      "raw_report": ".smartvoice-dev/full-streaming/05352d6352374bbd90731172b3a9bde0/spoken_interpretation-zh.json",
+      "raw_report_sha256": "b4d314c7efba645c1e78d56da8926b5b0ffa512f8f0061f2a3116446c7d2a439",
+      "fixture_id": "zh_02_clean",
+      "fixture_sha256": "75cd95e20fd66ae458b777f1fdde2050166360563c46e71de98246d6cc895354",
+      "manifest_sha256": "bf5c5f68f0c52d924e3a8248a13f52632e1884e7f5fae3209e68f75be731dd9c",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "versions": {
+        "sherpa-onnx": "1.13.8+smartvoice.whisper2",
+        "ctranslate2": "4.8.2",
+        "sentencepiece": "0.2.2"
+      },
+      "failure": null
+    },
+    {
+      "mode": "transcription",
+      "source_language": "en",
+      "input_audio_seconds": 3600.0,
+      "wall_seconds": 165.836,
+      "speedup": 21.708,
+      "audio_chunks": 0,
+      "counts": {
+        "session_ready": 1,
+        "source_partial": 7094,
+        "source_unit_partial": 3,
+        "source_final": 693,
+        "utterance_complete": 693,
+        "source_unit_final": 693,
+        "session_complete": 1
+      },
+      "final_text_sha256": "22f1fada7caf3c37269a43c996a0e169912dacadd6df47ea322d36f4f8ac02be",
+      "peak_state": {
+        "input_frames": 2,
+        "retained_units": 128,
+        "context_chars": 207,
+        "context_terms": 11
+      },
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "early_output_verification": "first-output timestamp before partial-input progress log",
+      "first_output_wall_seconds": {
+        "source_unit_partial": 1.3649015409173444
+      },
+      "raw_report": ".smartvoice-dev/full-streaming/05352d6352374bbd90731172b3a9bde0/transcription-en.json",
+      "raw_report_sha256": "1e3f76af289cbce7b12f821aa562570e1022754b9d9185b95ba748c0267c6215",
+      "fixture_id": "en_02_clean",
+      "fixture_sha256": "61ee2bfd08e4851b5fda3be2776f9363df5a4fa31c5cad9af00fec32c208c30b",
+      "manifest_sha256": "bf5c5f68f0c52d924e3a8248a13f52632e1884e7f5fae3209e68f75be731dd9c",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "versions": {
+        "sherpa-onnx": "1.13.8+smartvoice.whisper2",
+        "ctranslate2": "4.8.2",
+        "sentencepiece": "0.2.2"
+      },
+      "failure": null
+    },
+    {
+      "mode": "transcription",
+      "source_language": "zh",
+      "input_audio_seconds": 3600.0,
+      "wall_seconds": 155.757,
+      "speedup": 23.113,
+      "audio_chunks": 0,
+      "counts": {
+        "session_ready": 1,
+        "source_partial": 3728,
+        "source_unit_partial": 9,
+        "source_final": 455,
+        "utterance_complete": 455,
+        "source_unit_final": 456,
+        "session_complete": 1
+      },
+      "final_text_sha256": "2c73577877fe3855952e961658cbec1b78cb42220a266b91d51cb9075813ed6b",
+      "peak_state": {
+        "input_frames": 2,
+        "retained_units": 128,
+        "context_chars": 75,
+        "context_terms": 0
+      },
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "early_output_verification": "first-output timestamp before partial-input progress log",
+      "first_output_wall_seconds": {
+        "source_unit_partial": 1.6656431659357622
+      },
+      "raw_report": ".smartvoice-dev/full-streaming/05352d6352374bbd90731172b3a9bde0/transcription-zh.json",
+      "raw_report_sha256": "4a29e7e3319a718f7af5c719e4aa501adf000b6b8443b169996a290550421ec1",
+      "fixture_id": "zh_02_clean",
+      "fixture_sha256": "75cd95e20fd66ae458b777f1fdde2050166360563c46e71de98246d6cc895354",
+      "manifest_sha256": "bf5c5f68f0c52d924e3a8248a13f52632e1884e7f5fae3209e68f75be731dd9c",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "versions": {
+        "sherpa-onnx": "1.13.8+smartvoice.whisper2",
+        "ctranslate2": "4.8.2",
+        "sentencepiece": "0.2.2"
+      },
+      "failure": null
+    },
+    {
+      "mode": "translated_subtitles",
+      "source_language": "en",
+      "input_audio_seconds": 3600.0,
+      "wall_seconds": 329.931,
+      "speedup": 10.911,
+      "audio_chunks": 0,
+      "counts": {
+        "session_ready": 1,
+        "source_partial": 7094,
+        "source_unit_partial": 69,
+        "source_final": 693,
+        "utterance_complete": 693,
+        "source_unit_final": 521,
+        "target_final": 521,
+        "session_complete": 1
+      },
+      "final_text_sha256": "e0068dd99e54ba2d7b3c33438f18597a10505c4ce559bca2691fc698f6ef2ae9",
+      "peak_state": {
+        "input_frames": 2,
+        "retained_units": 128,
+        "context_chars": 269,
+        "context_terms": 20
+      },
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "early_output_verification": "separate native hour rerun: pre-finish target-final count > 0",
+      "first_output_wall_seconds": {
+        "source_unit_partial": 2.05296116694808
+      },
+      "raw_report": ".smartvoice-dev/full-streaming/05352d6352374bbd90731172b3a9bde0/translated_subtitles-en.json",
+      "raw_report_sha256": "9b61c34d58a6ac8d327caff9be521db7f09fe9e63adc3ec4d8692bb0c0c09277",
+      "fixture_id": "en_02_clean",
+      "fixture_sha256": "61ee2bfd08e4851b5fda3be2776f9363df5a4fa31c5cad9af00fec32c208c30b",
+      "manifest_sha256": "bf5c5f68f0c52d924e3a8248a13f52632e1884e7f5fae3209e68f75be731dd9c",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "versions": {
+        "sherpa-onnx": "1.13.8+smartvoice.whisper2",
+        "ctranslate2": "4.8.2",
+        "sentencepiece": "0.2.2"
+      },
+      "failure": null
+    },
+    {
+      "mode": "translated_subtitles",
+      "source_language": "zh",
+      "input_audio_seconds": 3600.0,
+      "wall_seconds": 174.178,
+      "speedup": 20.669,
+      "audio_chunks": 0,
+      "counts": {
+        "session_ready": 1,
+        "source_partial": 3728,
+        "source_unit_partial": 81,
+        "source_final": 455,
+        "utterance_complete": 455,
+        "source_unit_final": 456,
+        "target_final": 456,
+        "target_partial": 98,
+        "session_complete": 1
+      },
+      "final_text_sha256": "8df7e7cab758a231386b18ea7e86096adc03427f08279623af4215bd642f252a",
+      "peak_state": {
+        "input_frames": 2,
+        "retained_units": 128,
+        "context_chars": 75,
+        "context_terms": 0
+      },
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "early_output_verification": "first-output timestamp before partial-input progress log",
+      "first_output_wall_seconds": {
+        "source_unit_partial": 1.8489172499394044,
+        "target_partial": 2.63417649990879
+      },
+      "raw_report": ".smartvoice-dev/full-streaming/05352d6352374bbd90731172b3a9bde0/translated_subtitles-zh.json",
+      "raw_report_sha256": "bf6afe17cc4749686db95ff224b12f8e194bfaf35587eed1dd94088b599d6154",
+      "fixture_id": "zh_02_clean",
+      "fixture_sha256": "75cd95e20fd66ae458b777f1fdde2050166360563c46e71de98246d6cc895354",
+      "manifest_sha256": "bf5c5f68f0c52d924e3a8248a13f52632e1884e7f5fae3209e68f75be731dd9c",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "versions": {
+        "sherpa-onnx": "1.13.8+smartvoice.whisper2",
+        "ctranslate2": "4.8.2",
+        "sentencepiece": "0.2.2"
+      },
+      "failure": null
+    }
+  ],
+  "additional_en_subtitles_rerun": {
+    "passed": true,
+    "wall_seconds": 335.5535757909529,
+    "input_audio_seconds": 3600.0,
+    "before_finish": {
+      "audio_seconds_sent": 3600.0,
+      "counts": {
+        "session_ready": 1,
+        "source_partial": 7093,
+        "source_unit_partial": 69,
+        "source_final": 692,
+        "utterance_complete": 692,
+        "source_unit_final": 519,
+        "target_final": 517
+      },
+      "wall_seconds": 333.19263908301946
+    },
+    "first_output_wall_seconds": {
+      "source_unit_partial": 1.901143290917389,
+      "target_final": 2.780847832909785
+    },
+    "owned_workers_still_alive": [],
+    "raw_report": ".smartvoice-dev/full-streaming/7ba7e2df4e3f4c3dbae1f742bbbc9545/translated_subtitles-en.json",
+    "raw_report_sha256": "b85983e8d88ea7fa6762e7d43d39021348d2103eedb26dad2c1a8021883ffeaa"
+  },
+  "scope": "Six serial real production-session routes, 3600s cyclic pinned PCM each, accelerated bounded ingestion, native ASR/MT/TTS. Delivery ACK validates payload/order, not speaker playback. Not wall-hour soak, natural meeting quality, latency SLA or concurrent capacity.",
+  "verification_note": "The six-route full run predates the explicit pre-finish assertion and concurrent-close fix. Current CI validates close regressions; additional native en-subtitles rerun validates the explicit pre-finish assertion and current cleanup. First-output/progress evidence confirms other routes produce output during input.",
+  "settings": {
+    "compute_slots": 2,
+    "max_sessions": 2,
+    "memory_budget_mib": 4096,
+    "lifetime_seconds": 0,
+    "max_audio_seconds": 0
+  },
+  "raw_report_location_note": "raw_report paths are repository-relative, run-local ignored artifacts; they are not distributed with this summary. SHA-256 values identify the original evidence."
+}

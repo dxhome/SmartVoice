@@ -1,6 +1,27 @@
 # Downloaded public speech data and converted benchmark cache
 cache/
 data/
+# Versioned streaming evaluation fixtures are curated, attributed, and checksum-pinned.
+!streaming/data/
+streaming/data/*
+!streaming/data/fleurs/
+streaming/data/fleurs/*
+!streaming/data/fleurs/clean/
+streaming/data/fleurs/clean/*
+!streaming/data/fleurs/clean/*.wav
+!streaming/data/fleurs/clean.manifest.json
+!streaming/data/fleurs/onset-annotations-v1.json
+!streaming/data/fleurs/NOTICE.md
+!streaming/data/fleurs/quality/
+streaming/data/fleurs/quality/*
+!streaming/data/fleurs/quality/NOTICE.md
+!streaming/data/fleurs/quality/new_confirmation/
+streaming/data/fleurs/quality/new_confirmation/*
+!streaming/data/fleurs/quality/new_confirmation/*.wav
+!streaming/data/fleurs/quality/existing_regression/
+streaming/data/fleurs/quality/existing_regression/*
+!streaming/data/fleurs/quality/existing_regression/*.wav
+!streaming/data/fleurs/quality-corpus-v1.json
 
 # Per-run logs, generated speech and unaggregated/identifiable evaluation data
 logs/
