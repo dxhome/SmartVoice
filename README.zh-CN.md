@@ -1,52 +1,47 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/dxhome/SmartVoice/main/assets/smartvoice-logo.png" alt="SmartVoice 标志" width="220">
   <p><strong>在自己的设备上运行语音识别和语音合成。</strong></p>
-  <p>统一的 OpenAI 风格音频 API · 按语言智能路由模型 · CPU 推理 · 无按请求计费</p>
+  <p>OpenAI 风格 REST 音频 API · 流式 WebSocket · 按语言路由模型 · 本地 CPU 推理</p>
   <p><a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
 # SmartVoice
 
-SmartVoice 是面向开发者的本地语音转文字（STT）和文字转语音（TTS）服务。安装所需模型，在自己的设备上运行推理，并通过统一的 OpenAI 风格音频 API 接入应用。
+SmartVoice 是面向开发者的本地语音识别、语音合成与流式语音服务。安装所需模型，在自己的设备上运行推理，并通过 OpenAI 风格 REST 音频 API 或版本化流式 WebSocket 接入应用。
 
 **推理过程中的音频保留在本机。** 安装模型后，支持的工作流可离线运行，无需云端账号，也没有按请求收取的推理费用。SmartVoice 支持 Windows x64、macOS Apple Silicon 和 Linux x86_64 上的 CPU 推理。
 
-[快速开始](#快速开始) · [浏览模型](#模型目录) · [试用 API](#api) · [架构](#架构) · [报告问题](https://github.com/dxhome/SmartVoice/issues)
+[快速开始](#快速开始) · [浏览模型](#模型管理) · [试用 API](#api) · [架构](#架构) · [报告问题](https://github.com/dxhome/SmartVoice/issues)
 
 ## 可以用它构建什么？
 
 - **私密语音输入：** 在本地转录录音，避免将音频发送到托管语音 API。
 - **离线语音助手：** 为本地智能体或应用添加语音识别和语音播报能力。
-- **多语言语音功能：** 使用 `smartvoice-auto` 模型 ID，按任务和语言路由 STT 与 TTS 请求。
+- **多语言语音功能：** 使用 `smartvoice-auto` 模型 ID，按任务和语言路由 STT 与 TTS 请求，也可处理中文和英文流式语音场景。
 
 ## 为什么选择 SmartVoice？
 
 - **以隐私为先：** 推理在你的设备上运行；模型、音频和服务配置的存放位置由你决定。
-- **一个 API 同时支持 STT 和 TTS：** 通过统一的音频 API 接入兼容的智能体和应用。
+- **统一的语音 API：** 通过一个本地 API 接入兼容应用，支持语音转录、语音合成和流式处理。
+- **内置流式语音能力：** 音频到达时即可转录、显示译文字幕或播放翻译语音。
 - **自由选择和迁移模型：** 只安装需要的模型，可直接指定模型，也可导出模型包以便离线传输。
 
-**流式预览：** 默认提供版本化 WebSocket 和浏览器页面，支持中文/英文原文字幕、中英双向译文字幕及译文语音；浏览器入口 `/console/streaming`，实时接口 `WS /v1/audio/stream`，能力查询 `GET /v1/audio/stream/capabilities`。使用各场景前需安装所需模型资产。当前实测平台为 macOS arm64；参阅[接口契约与安装](doc/streaming.md)及[迁移证据和剩余验收](doc/streaming.md#产品迁移记录与阶段状态)。
-
-流式会话使用共享模型 worker、私有在线 ASR 状态和有界上下文；默认不限制会话墙钟或累计音频时长，暂停输入时应继续发送心跳。会话准入、模型驻留、队列和计算仍有边界，默认会话上限和计算许可均为 2。上下文存储已实现，但当前 greedy ASR 不使用历史文本提示或热词偏置；显式启用恢复的会话可在有限宽限期内于同一服务进程续传。浏览器默认启用恢复；未播完音频块可能重播，服务重启后不能恢复。参阅[长会话设计与资源边界](doc/streaming.md#共享模型-worker长会话与容错)。
-
-**当前范围：** 支持 CPU 推理；暂不支持 GPU 推理、打包安装程序和 Android。安装或更新模型需要从配置的数据源下载文件。服务默认绑定到 `127.0.0.1`；对外开放网络时没有 API 身份验证，因此请仅在可信网络中使用并配置防火墙访问限制。
+SmartVoice 支持 Windows x64、macOS Apple Silicon 和 Linux x86_64 上的 CPU 推理；暂不支持 GPU、Linux/Windows ARM64、Intel macOS、Android、HTTPS、打包安装程序或 MCP。下载模型需要互联网连接；安装完成后，语音推理在本机运行。服务默认绑定 `127.0.0.1`，且没有 API 身份验证；如需绑定外部接口，请限制在可信网络并配置防火墙。
 
 ## 功能
 
 | 类别 | 支持内容 |
 |---|---|
-| 平台 | Windows x64、macOS Apple Silicon、Linux x86_64 源码构建和平台 wheel；Linux 在 Ubuntu 26.04 x86_64 上验证 |
-| 推理 | 支持 sherpa-onnx CPU 推理；原生 C INT8 Qwen3-TTS 运行时支持以上三个平台，包括 Linux x86_64 上的模型推理 |
-| STT | Whisper Base 多语言、SenseVoice Small、Qwen3-ASR 0.6B |
-| TTS | Kokoro 1.1、Matcha Baker、Supertonic 3、Qwen3-TTS 0.6B |
-| 智能路由 | 根据任务和语言，按可编辑的优先级列表选择已安装模型；`smartvoice-auto` 同时适用于 STT 和 TTS |
-| API | OpenAPI 文档、语音转录、语音合成、模型目录和运行状态 |
-| 模型管理 | 安装、卸载、离线导入/导出和可续传下载 |
-| 暂不支持 | GPU 推理、Linux/Windows ARM64、Intel macOS、Android、HTTPS、打包安装程序、MCP |
+| 平台 | Windows x64、macOS Apple Silicon、Linux x86_64 CPU；Linux 模型推理已在 Ubuntu 26.04 x86_64 验证 |
+| 语音识别 | Whisper Base 多语言、SenseVoice Small、Qwen3-ASR 0.6B |
+| 语音合成 | Kokoro 1.1、Matcha Baker、Supertonic 3、Qwen3-TTS 0.6B；默认返回 MP3 |
+| 流式处理 | 实时转录、中英双向译文字幕和译文语音，通过版本化 WebSocket API 与浏览器工作区使用 |
+| 智能路由 | 可编辑的任务和语言模型优先级；`smartvoice-auto` 同时路由转录和语音合成 |
+| Console | 浏览器模型管理、语音试用、路由配置和流式工作区 |
+| 模型管理 | 安装、刷新、卸载、下载任务、离线导入/导出 |
+| API | 版本化 REST API、流式 WebSocket、OpenAPI 文档及运行状态/能力查询 |
 
-架构原则、实现概览、各推理后端的操作系统/架构/设备支持矩阵，以及模型安装状态和推理可用状态的区别，请参阅[架构总结与指南](doc/architecture-guidelines.md)。
-
-SmartVoice 支持 OpenAI Audio API 的一部分约定，但不代表与其完全兼容。请求和响应详情请参阅 [API 规范](doc/api-spec.md)。
+架构原则、平台兼容性和模型可用性说明请参阅[架构总结与指南](doc/architecture-guidelines.md)。SmartVoice 支持 OpenAI Audio API 的一部分约定，并非完全兼容；详情请见 [API 规范](doc/api-spec.md)。
 
 ## 智能路由
 
@@ -75,11 +70,21 @@ SmartVoice 根据 API 接口和语言进行路由：
 python -m smartvoice router reload
 ```
 
-系统会选择第一个已安装且验证通过的候选模型。推理失败时不会自动重试下一个候选模型。请求详情请参阅 [API 规范](doc/api-spec.md)。
+每次请求都会先按路由表中的任务和语言规则匹配，再选择优先级最高、已安装且当前运行时可用的模型。模型选择依据可编辑的路由策略，而不是模型安装顺序。模型选定后若推理失败，SmartVoice 会返回错误，不会静默切换其他模型。请求详情请参阅 [API 规范](doc/api-spec.md)。
 
-## 模型目录
+## 流式处理
 
-语言支持情况表示模型目录中声明的支持范围，不代表不同模型之间的效果比较。各模型和语音的许可协议可能不同于 SmartVoice 的许可协议。
+流式处理是 SmartVoice 的正式功能，可在音频到达时持续处理。它提供三种场景：实时转录并显示原文字幕、中英双向译文字幕，以及播放译文语音。可以在 `/console/streaming` 浏览器工作区处理本地音频文件，也可以通过 `WS /v1/audio/stream` 接入发送实时 PCM 音频的客户端。Console 会显示当前场景所需模型链路是否就绪。
+
+API 客户端应先查询 `GET /v1/audio/stream/capabilities`，再建立会话。WebSocket 使用版本化协议 `smartvoice.stream.v1`；客户端发送 16 kHz、单声道 PCM16 音频帧，接收增量转录/翻译事件；译文语音场景还会收到按序排列的音频块。浏览器工作区支持字幕修订、顺序播放，以及服务进程仍在运行时的断线重连；服务重启后不能续传。
+
+按场景和语言方向安装所需的流式模型组件：所有场景都需要在线语音识别和标点模型；译文字幕还需要对应方向的翻译模型；译文语音还需要兼容的 TTS 模型。安装流式翻译模型前，需要安装 `streaming` 和 `model-preparation` extras。详见[模型管理](#模型管理)和[流式安装与 API 契约](doc/streaming.md)。
+
+## 模型管理
+
+SmartVoice 将应用程序与模型文件分开管理。你可以在 Console、CLI 或 API 下载任务中浏览和安装模型。系统会同时验证模型文件和当前运行时是否可用。下载模型需要互联网；已安装模型可在离线环境中推理。模型及音色许可可能不同于 SmartVoice 的许可协议。
+
+### 语音模型
 
 | 模型 ID | 任务 | 语言 / 音色 | 预计模型文件大小 | 热请求 RTF | 每 CPU 核心 req/s |
 |---|---|---|---:|---:|---:|
@@ -89,13 +94,49 @@ python -m smartvoice router reload
 | `tts-kokoro-multilingual-v1-1-zh-en` | TTS | 中文、英语；103 个说话人 | ~0.43 GB | 0.324 | 0.329 |
 | `tts-matcha-zh-baker` | TTS | 中文；一个音色 | ~0.15 GB | 0.030 | 2.379 |
 | `tts-supertonic-v3-multilingual-int8` | TTS | 31 种语言；不含中文 | ~0.15 GB | 0.236 | 0.692 |
-| `tts-qwen3-0-6b-customvoice` | TTS | 10 种语言；9 个预设音色 | ~2.50 GB | 0.557 | 未测量* |
+| `tts-qwen3-0-6b-customvoice` | TTS | 10 种语言；9 个预设音色 | ~2.50 GB | 0.557 | 未测量 |
 
-RTF 为热请求的中位数（支持中文的模型使用中文，Supertonic 使用英语）；数值越低，相对于音频时长的处理速度越快。每 CPU 核心吞吐量取并发测试中最高的通过速率。两项数据均使用代表性样本，并且仅适用于测试平台：Apple Silicon Mac、macOS 27.0、10 个逻辑 CPU、16 GiB 内存、Python 3.11.9 和 sherpa-onnx 1.13.8。Sherpa 测试使用两个实例、每个实例两个线程，等待队列上限为 4；Qwen3-TTS 使用单个串行原生运行时。由于采样 CPU 使用率时未能完整计入 Qwen3-TTS 原生引擎进程，因此没有提供它的每核心速率。详情请参阅[基准测试报告](benchmarks/README.md#concurrency-and-request-experience)。
+### 流式模型组件
 
-模型大小为解压后的近似值；准确文件和大小请查看 [`catalog/models.json`](catalog/models.json)。安装 Qwen3-TTS 0.6B 至少需要 6 GiB 可用空间。Windows 运行时要求 AVX2 和 FMA；Linux 构建会使用当前机器提供的 CPU 指令集。更多信息请参阅[平台兼容性说明](doc/architecture-guidelines.md#build-and-hardware-qualifications)。
+流式功能组合在线识别和标点，并按需增加翻译与译文语音合成。按语言方向和使用场景安装所需组件即可：
 
-STT 请求使用 `language=auto` 时，SmartVoice 会使用可选的 Whisper Tiny 语言检测器，再根据检测出的语言选择模型。运行 `python -m smartvoice models install all` 可安装它；否则 SmartVoice 会使用已安装且支持自动检测的模型。其可用状态会显示在 `/v1/capabilities` 中。
+| 模型 ID | 用途 | 语言 |
+|---|---|---|
+| `streaming-stt-paraformer-zh-en-int8` | 在线语音识别 | 中文、英语 |
+| `streaming-stt-zipformer-en-int8` | 在线语音识别 | 英语 |
+| `streaming-ct-transformer-zh-en` | 标点 | 中文、英语 |
+| `streaming-mt-opus-zh-en-int8` | 翻译 | 中文 → 英语 |
+| `streaming-mt-m2m100-zh-en-int8` | 翻译 | 英语 → 中文 |
+
+流式语音合成复用上方的普通 TTS 模型。详见[流式处理](#流式处理)。
+
+上方语音模型的 RTF 为热请求中位数（模型支持中文时使用中文；Supertonic 使用英语），数值越低，相对于音频时长的处理速度越快。每 CPU 核心吞吐量取并发测试中最高的通过速率。两项数据均来自代表性样本，仅适用于 Apple Silicon Mac（macOS 27.0、10 个逻辑 CPU、16 GiB 内存、Python 3.11.9、sherpa-onnx 1.13.8）。Sherpa 测试使用两个实例、每个实例两个线程，等待队列上限为 4；Qwen3-TTS 使用单个串行原生运行时。由于未能在 CPU 采样中完整计入 Qwen3-TTS 原生引擎进程，因此未提供其每核心速率。详见[基准测试报告](benchmarks/README.md#concurrency-and-request-experience)。
+
+模型大小为解压后的近似值；准确文件和大小请查看 [`catalog/models.json`](catalog/models.json)。安装 Qwen3-TTS 0.6B 至少需要 6 GiB 可用空间。Windows 运行时要求 AVX2 和 FMA。已发布的 Linux x86_64 wheel 要求 glibc 2.38 或更新版本，详见[平台兼容性说明](doc/architecture-guidelines.md#build-and-hardware-qualifications)。
+
+### 安装与维护
+
+按模型 ID 安装，或使用 `all` 安装整个目录及语言检测器（可能需要数 GiB 磁盘空间）：
+
+```bash
+python -m smartvoice models list
+python -m smartvoice models install stt-sensevoice-small-int8
+python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
+python -m smartvoice models refresh
+python -m smartvoice models export stt-sensevoice-small-int8 ./sensevoice.smartvoice.zip
+python -m smartvoice models import ./sensevoice.smartvoice.zip
+python -m smartvoice models uninstall stt-sensevoice-small-int8
+```
+
+Hugging Face 模型可用 `--source` 指定镜像基础地址；下载文件仍会按目录中固定的哈希值校验。也可在 Console 或通过 API 下载任务安装模型。模型正在被服务使用时不能卸载。
+
+从模型目录安装流式翻译模型前，需先安装转换依赖：
+
+```bash
+python -m pip install 'smartvoice[streaming,model-preparation]'
+```
+
+翻译模型在安装阶段完成校验和准备，推理时使用本地准备好的资产。CLI 和 API 详情请参阅[流式安装说明](doc/streaming.md#最小安装与启动流程)和 [API 规范](doc/api-spec.md)。
 
 ## 快速开始
 
@@ -219,11 +260,13 @@ python -m smartvoice --host 127.0.0.1 --port 8000
 
 ### 3. 管理模型并在 Console 中试用语音功能
 
-打开 [SmartVoice Console](http://127.0.0.1:8000/console)。在 **Models** 中浏览模型目录、安装和管理模型。下载模型需要互联网连接，模型文件存储在源码目录之外：macOS 为 `~/Library/Application Support/SmartVoice`，Linux 为 `~/.smartvoice`，Windows 为 `%LOCALAPPDATA%\SmartVoice`。安装后，推理在本机运行。支持的语言和估算文件大小请参阅[模型目录](#模型目录)。
+打开 [SmartVoice Console](http://127.0.0.1:8000/console)。在 **Models** 中浏览目录、安装和管理模型。下载需要互联网连接，模型文件存放在源码目录之外：macOS 为 `~/Library/Application Support/SmartVoice`，Linux 为 `~/.smartvoice`，Windows 为 `%LOCALAPPDATA%\SmartVoice`。安装后，推理在本机运行。模型、语言和估算大小见[模型管理](#模型管理)。
 
 在 Console 工作区中使用已安装的模型试用语音识别和合成。可以使用根据所选模型和设置生成的 API 示例，也可以直接在 Console 中编辑 Smart Router 优先级；保存的路由配置会立即生效。你也可以打开交互式 [API 文档](http://127.0.0.1:8000/docs)。
 
-服务设置保存在 `<data_dir>/smartvoice.json`；路由优先级单独保存在 `<data_dir>/router.json`。Sherpa 模型使用惰性实例池支持并行推理，详情请参阅[推理并发说明](doc/architecture-guidelines.md#inference-concurrency-lifecycle-and-limits)。
+试用流式处理时，安装对应场景需要的模型组件，然后打开[流式工作区](http://127.0.0.1:8000/console/streaming)。页面可将本地音频文件流式处理为原文字幕、译文字幕或译文语音。安装翻译模型前需执行 `python -m pip install 'smartvoice[streaming,model-preparation]'`，详见[模型管理](#模型管理)。
+
+服务设置保存在 `<data_dir>/smartvoice.json`；路由优先级单独保存在 `<data_dir>/router.json`。
 
 也可以通过 CLI 管理模型。例如，安装一组基础 STT 和 TTS 模型以及语言检测器：
 
@@ -271,54 +314,43 @@ curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
   --output speech.mp3
 ```
 
-TTS 默认返回单声道 MP3（96 kbps）；如需 WAV，请设置 `"response_format":"wav"`。请求最多支持 4,000 个字符；生成音频最长为 180 秒，规范化 WAV 和最终响应分别有 32 MiB 大小上限。Supertonic 会将较长文本分块处理；长 STT 输入会按模型声明的窗口进行静音感知切分（Whisper Base 为 25 秒，默认 15 秒），窗口之间重叠 1 秒，并在各片段之间使用单一语言判定，同时保留 10 分钟输入上限。可用参数、语言行为和错误码请参阅 `/docs` 或 [API 规范](doc/api-spec.md)。本地 Whisper 中文解码修复需要打过补丁的原生 wheel，详情请参阅[构建与验证说明](doc/archive/stt/whisper-chinese-decoding-fix.md)。
+TTS 默认返回单声道 MP3（96 kbps）；如需 WAV，请设置 `"response_format":"wav"`。请求参数、支持语言、响应格式、限制和错误码请参阅 `/docs` 或 [API 规范](doc/api-spec.md)。
 
-## 管理模型
+### 流式音频
 
-CLI 支持 `models list`、`refresh`、`install`、`uninstall`、`export` 和 `import`。`models list` 先按安装状态分组，再按 STT、TTS、Streaming（STT/MT/CT 子类）和 SmartVoice native 分类；每个模型都会显示可用状态，不可用时还会显示原因。可用性检查会同时验证模型文件完整性和当前推理运行时/设备。运行中的服务在进程范围内维护一份模型可用性快照：服务启动时初始化，并在模型管理操作后更新。如果模型文件是在服务外部修改的，可运行 `python -m smartvoice models refresh` 或调用 `POST /v1/models/refresh` 更新快照。作为后备机制，服务每 10 分钟检查一次，并在后台刷新，同时继续使用最近一次成功的快照。TTL 刷新失败后，会分别在 5、10 和 15 秒后重试；重试三次仍失败后，将等待手动刷新或模型管理操作触发恢复扫描。可通过 `model_availability_ttl_seconds` 或 `SMARTVOICE_MODEL_AVAILABILITY_TTL_SECONDS` 配置检查间隔。运行 `python -m smartvoice models install all` 可安装目录中尚未安装的所有模型以及 Whisper Tiny 语言检测器。模型按目录配置的数据源顺序下载；发现已有模型目录无效时会跳过并提示修复方法。安装所有模型可能需要数 GiB 磁盘空间。Windows x64 上只有构建了原生运行时后才能使用 Qwen3-TTS，详情请参阅[在 Windows 上构建 Qwen3-TTS 运行时](#在-windows-上构建-qwen3-tts-运行时)。也可以通过 API 下载任务安装模型。导出的模型包可传到离线机器并导入。服务正在使用某个模型时，不能卸载该模型。
-
-流式专用模型使用 `streaming-stt-*`、`streaming-mt-*`、`streaming-ct-*` ID，共用 TTS 的 ID 保持不变。可用 `models list --category streaming` 过滤 CLI；`GET /v1/models?category=streaming` 查询已验证安装资产，`GET /v1/catalog?category=streaming` 查询全部目录条目。`install all` 包含翻译模型，需先运行 `python -m pip install -e '.[streaming,model-preparation]'` 安装转换依赖；翻译模型在安装阶段校验源文件、离线转换并验证固定产物，推理阶段不会转换。旧流式 ID 和安装目录继续兼容。详见[安装与就绪检查](doc/streaming.md)。
-
-使用 `python -m smartvoice models install <model-id>` 安装模型。默认情况下，SmartVoice 使用模型目录中指定的数据源。对于 Hugging Face 模型，可以通过 `--source` 传入兼容的镜像基础 URL 来更换数据源，例如：
+建立流式会话前，先查询本机可用的模型链路：
 
 ```bash
-python -m smartvoice models install stt-qwen3-asr-600m-int8 --source https://hf-mirror.com
+curl http://127.0.0.1:8000/v1/audio/stream/capabilities
 ```
 
-该基础 URL 会与目录中固定的仓库、修订版本和文件路径组合。只有所有必需模型文件都托管在 Hugging Face 上时才能使用此选项。下载后仍会依据目录中的 SHA-256 值校验文件。
-
-```bash
-python -m smartvoice models list
-python -m smartvoice models refresh
-python -m smartvoice models export stt-sensevoice-small-int8 ./sensevoice.smartvoice.zip
-python -m smartvoice models import ./sensevoice.smartvoice.zip
-python -m smartvoice models uninstall stt-sensevoice-small-int8
-```
+客户端连接 `ws://127.0.0.1:8000/v1/audio/stream`，使用 `smartvoice.stream.v1` 协议配置 `transcription`、`translated_subtitles` 或 `spoken_interpretation` 场景，再发送 16 kHz、单声道 PCM16 音频帧。客户端会收到增量转录和翻译事件；译文语音场景还会返回按序排列的音频块。协议和客户端示例请参阅[流式安装与 API 契约](doc/streaming.md)。
 
 ## 架构
 
 ```text
-客户端 / 智能体 ──► 版本化 HTTP API ──► 应用服务
-                         ▲                    │
-                         │                    ▼
-                    本地 CLI              领域契约
-                                              │
-                               ┌──────────────┴──────────────┐
-                               ▼                             ▼
-                         推理端口                    模型仓库端口
-                               │                             │
-                               ▼                             ▼
-                      组合式推理提供器              文件系统目录适配器
-                       ┌───────┴────────┐
-                       ▼                ▼
-                  sherpa-onnx      原生 C INT8 Qwen-TTS
-                    适配器               适配器
-                       │
-                       ▼
-                  平台诊断适配器
+客户端 / 智能体 / 浏览器 Console ──► 版本化 REST API + 流式 WebSocket
+                                                   │
+本地 CLI ─────────────────────────────────────────┤
+                                                   ▼
+                                             应用服务
+                         ┌─────────────────────┼──────────────────────┐
+                         ▼                     ▼                      ▼
+                    语音转录与合成          智能路由              流式语音
+                                           与模型选择        识别 / 翻译 / 合成
+                         └─────────────────────┼──────────────────────┘
+                                               ▼
+                                             领域契约
+                               ┌───────────────┴───────────────┐
+                               ▼                               ▼
+                           推理接口                       模型管理
+                               │                               │
+                               ▼                               ▼
+                   sherpa-onnx 与原生 Qwen       模型目录、下载和本地存储
+                         运行时适配器
 ```
 
-调用方使用有版本控制的 API 和能力接口；推理细节封装在提供器和仓库接口之后。源码部署支持 Windows x64、macOS Apple Silicon 和 Linux x86_64 上的 CPU 推理。Qwen3-TTS 在这三个平台上均通过原生 C INT8 适配器运行；Linux 源码部署按上文说明链接到系统 OpenBLAS。SmartVoice 暂不提供 GPU 推理后端和 Android 运行时。详细矩阵和模型可用性说明请参阅[架构总结与指南](doc/architecture-guidelines.md)。
+支持的源码和 wheel 部署可在 Windows x64、macOS Apple Silicon 和 Linux x86_64 上执行 CPU 推理。后端和平台详情请参阅[架构总结与指南](doc/architecture-guidelines.md)。
 
 ## 开发
 
@@ -327,32 +359,25 @@ python -m pip install -e ".[dev]"
 python scripts/test.py ci
 ```
 
-`python scripts/test.py regression` 运行默认推理回归套件，包括现有功能和真实推理测试、SenseVoice/Qwen3-ASR/Whisper 的中英双语短样本、音频窗口边界以及 75 秒分段输入。当前运行环境未安装的模型会分别跳过。运行 `python scripts/test.py full` 可执行全部 CI 和回归测试，以及三个 STT 模型的 300 秒和 590 秒中英双语输入。完整模式要求安装全部三个模型和已验证的 Whisper 补丁运行时；如果前置条件不满足，会直接报告错误，不会静默跳过。默认回归测试有意不包含长音频扩展测试。STT 测试检查功能是否成功及响应元数据，不评估转录准确率。套件详情请参阅 [`doc/testing.md`](doc/testing.md) 和 [`tests/fixtures/stt/README.md`](tests/fixtures/stt/README.md)。
-
-Full 还要求默认流式模型链路及固定 FLEURS 语料，在六条真实流式链路中分别
-以有界加速输入处理一小时循环语音。可使用
-`python scripts/test.py full --streaming-only` 独立执行流式部分。
-该测试验证长输入、输出完整性及资源回收，不等同于一小时墙钟 soak 或实时延迟验收。
-详见[完整流式回归](scripts/README.md#full-streaming-regression)。
-
-本机 macOS 平台的六条真实模型一小时音频回归已通过，包括输出顺序、完整排空
-和原生 worker 回收。2026-10-12 最新 CI 353 项通过；六条链路的真实模型同进程续传验证通过；浏览器矩阵中 14/14 条正向断言通过，另有 1 条预期负向 Safari 超时匹配。见[实测结果与剩余验证](doc/streaming.md#测试覆盖与评测结果)。
-可提交报告采用可迁移的证据引用，CI 拒绝绝对路径和越界路径；一小时摘要使用
-[固定导出脚本](scripts/README.md#export-a-portable-hour-summary)。
-实时延迟、新模型池并发容量、小时墙钟 soak 和真实浏览器播放仍需独立验收。
+`python scripts/test.py regression` 运行功能测试及当前环境已安装模型的真实推理测试。`python scripts/test.py full` 还会运行长音频 STT 和真实模型流式回归，要求安装相应模型资产和语料。测试模式及前置条件请参阅 [`doc/testing.md`](doc/testing.md)。
 
 版本管理、GitHub Release 和可选的 PyPI 发布流程请参阅 [`doc/releasing.md`](doc/releasing.md)。
 
 ## 仓库目录
 
 ```text
-catalog/       模型元数据和默认路由表
-src/           API/CLI 入口、应用服务、领域契约、端口和适配器
-tests/         单元测试、API 测试和可选的真实推理测试
-benchmarks/    基准测试代码、配置和结果
-config/        示例服务配置
-doc/           API 规范、测试、发布、需求和设计说明
-assets/        项目标志
+.github/       GitHub Actions CI 与发布工作流
+assets/        项目标志和浏览器图标
+benchmarks/    语音质量、性能与流式评测工具和报告
+catalog/       模型目录、默认路由表和流式工作流配置
+config/        服务配置示例
+doc/           API、架构、测试、发布和产品文档
+native/        Qwen3-TTS 原生运行时源码和构建支持
+samples/       多语言语音样本和转录文本
+scripts/       构建、测试、模型准备和验证命令
+src/           应用 API、Console、CLI、服务和推理适配器
+tests/         单元、API、流式和真实模型推理回归测试
+pyproject.toml 软件包元数据、依赖和构建配置
 ```
 
 ## 许可协议

@@ -95,11 +95,18 @@ class PoolTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(sample['worker_rss_bytes_per_active_session'],0)
 
     async def test_worker_self_resource_sample_survives_child_enumeration_denial(self):
-        sample=_worker_resource_sample(sample_rss=True)
+        from types import SimpleNamespace
+        from unittest.mock import Mock,patch
+        process=Mock()
+        process.cpu_times.return_value=SimpleNamespace(user=1.25,system=.5)
+        process.memory_info.return_value=SimpleNamespace(rss=4096)
+        process.children.side_effect=PermissionError('restricted host')
+        with patch.dict('sys.modules',{'psutil':SimpleNamespace(Process=lambda pid:process)}):
+            sample=_worker_resource_sample(sample_rss=True)
         self.assertTrue(sample['process_self_complete'])
-        self.assertGreater(sample['self_rss_bytes'],0)
-        self.assertIsNotNone(sample['self_cpu_user_seconds'])
-        self.assertIn('self',sample['rss_kind'])
+        self.assertEqual(sample['self_rss_bytes'],4096)
+        self.assertEqual(sample['self_cpu_user_seconds'],1.25)
+        self.assertEqual(sample['rss_kind'],'worker_process_self')
 
     async def test_cancel_waiting_job_keeps_sibling_healthy(self):
         a,x=await self.open(); b,y=await self.open()
@@ -195,8 +202,10 @@ class PoolTests(unittest.IsolatedAsyncioTestCase):
 
 class ContextTests(unittest.TestCase):
     def test_worker_rss_denial_keeps_portable_cpu_fallback(self):
-        from unittest.mock import patch
-        with patch('psutil.Process',side_effect=PermissionError('restricted host')):
+        from types import SimpleNamespace
+        from unittest.mock import Mock,patch
+        denied=SimpleNamespace(Process=Mock(side_effect=PermissionError('restricted host')))
+        with patch.dict('sys.modules',{'psutil':denied}):
             sample=_worker_resource_sample(sample_rss=True)
         self.assertFalse(sample['process_self_complete'])
         self.assertEqual(sample['rss_kind'],'high_water')

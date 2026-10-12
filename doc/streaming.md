@@ -1,8 +1,8 @@
-# 流式处理预览：接口与安装
+# 流式语音处理：接口与安装
 
 ## 范围与可用性
 
-提供三种模式：`transcription`（原文字幕）、`translated_subtitles`（译文字幕）、`spoken_interpretation`（译文语音）。源语言必须指定 `zh` 或 `en`；翻译目标必须是另一个语言。WebSocket、能力查询和浏览器入口默认可用；当前验证平台为 macOS arm64。既有一次性接口保持原语义，在线 ASR 模型不能作为一次性 ASR 使用。
+提供三种模式：`transcription`（原文字幕）、`translated_subtitles`（译文字幕）、`spoken_interpretation`（译文语音）。源语言必须指定 `zh` 或 `en`；翻译目标必须是另一个语言。WebSocket、能力查询和浏览器入口默认可用；具体场景是否就绪取决于所需模型和运行时，可通过 capabilities 查询。既有一次性接口保持原语义，在线 ASR 模型不能作为一次性 ASR 使用。
 
 使用正常 `smartvoice --port 8766` 入口即可访问流式功能，不需要启用配置或环境变量。若直接启动 Uvicorn，配置 `--ws-max-size 32768 --ws-max-queue 8`。旧版 `smartvoice.json` 中的 `streaming_enabled` 项会被忽略。服务启动和会话创建不会下载模型。WebSocket 服务端依赖随基础包安装。翻译阶段需要 CTranslate2 和 SentencePiece，使用项目的 `streaming` extra 安装；模型离线转换还需要 `model-preparation` extra。
 
