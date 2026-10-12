@@ -140,13 +140,25 @@ class SharedPool:
             for key in list(self.entries): await self._evict(key)
 
     def metrics(self):
+        workers=[]
+        for key,entry in sorted(self.entries.items(),key=lambda item:repr(item[0])):
+            workers.append(dict(stage=entry.worker.name,initialized=entry.initialized,
+                users=entry.users,**entry.worker.resource_metrics()))
         return dict(model_workers=len(self.entries), resident_mib=self.resident_mib,
                     stage_handles=sum(e.users for e in self.entries.values()),
                     active_jobs=sum(e.gate.busy for e in self.entries.values()),
-                    pending_jobs=sum(len(e.gate.waiters) for e in self.entries.values()))
+                    pending_jobs=sum(len(e.gate.waiters) for e in self.entries.values()),
+                    worker_resources=workers,
+                    worker_resource_scope='owned native worker self-report; current RSS sampled after native jobs; CPU counters cumulative')
 
     def owned_pids(self):
         return tuple(pid for e in self.entries.values() for pid in e.worker.owned_pids())
+
+    def owned_processes(self):
+        rows=[]
+        for entry in self.entries.values():
+            rows.extend(dict(stage=entry.worker.name,pid=pid) for pid in entry.worker.owned_pids())
+        return tuple(rows)
 
 
 class PooledWorker:

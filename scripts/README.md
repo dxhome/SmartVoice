@@ -50,6 +50,13 @@ not establish natural meeting translation quality, concurrency capacity, browser
 playback or physical audibility. CI keeps fast generator/audit and fault tests;
 the real hour cases run in `full` only.
 
+Full also runs `test_streaming_resume_native.py`: short pinned fixtures on all
+six routes verify that recovery keeps the ASR handle/private context, duplicate
+input is not processed twice, outputs drain and owned workers exit. These cases
+supplement rather than repeat the hour tests. Fast CI recovery coverage includes
+real TCP loss with simulated stages and a Node.js client simulation (explicitly
+skipped when Node is unavailable). Neither proves physical browser playback.
+
 ### Export a portable hour summary
 
 Use the fixed exporter instead of assembling checked-in summaries with absolute
@@ -85,6 +92,7 @@ All workflows accept their existing runner options after the workflow name. Use 
 | `streaming-capacity` | Measure fixed-arrival streaming load, route latency, failures, CPU/RSS and per-core concurrency. | `validation/verify_streaming_capacity.py` |
 | `streaming-capacity-matrix` | Start isolated services at multiple `max_sessions` settings and compare concurrent quality against the frozen snapshot. | `validation/verify_streaming_capacity_matrix.py` |
 | `streaming-stability` | Run repeated/long-input sessions and optionally verify exit cleanup for an owned server process. | `validation/verify_streaming_stability.py` |
+| `streaming-duplex-soak` | Run concurrent real-time zh→en and en→zh speech sessions while sampling API and worker resources. | `validation/verify_streaming_duplex_soak.py` |
 | `stt-http` | Real TCP HTTP checks for STT/TTS formats, long audio, limits, timeout and disconnect. | `validation/verify_stt_http.py` |
 | `stt-admission` | Inference admission, overload, queue timeout and recovery checks. | `validation/verify_stt_admission.py` |
 | `stt-policy` | Compare language/cache behavior, segmentation windows and overlap policies. | `validation/compare_stt_policies.py` |
@@ -117,7 +125,7 @@ All workflows accept their existing runner options after the workflow name. Use 
 
 ## Product streaming preview
 
-`tests/test_streaming.py` covers plan resolution, protocol validation, lifecycle/cancellation, admission, model leases, shared inference scheduling, native worker termination, ordered audio and metric accounting. Run the standard CI suite with `scripts/test.py ci`. Real six-route replay is available through `scripts/validate_speech.py streaming`; see [benchmark procedure](../benchmarks/streaming/README.md). Explicit pinned local bundles can be prepared with `scripts/prepare_streaming_bundle.py`; it never downloads or converts assets. Real model, playback, platform and resource acceptance are separate from fake-stage CI.
+`tests/test_streaming.py` covers plan resolution, protocol validation, lifecycle/cancellation, admission, model leases, shared inference scheduling, native worker termination, ordered audio and metric accounting. Run the standard CI suite with `scripts/test.py ci`. Real six-route replay is available through `scripts/validate_speech.py streaming`; see [benchmark procedure](../benchmarks/streaming/README.md). Explicit pinned local bundles can be prepared with `scripts/prepare_streaming_bundle.py`; it never downloads or converts assets. The full-only `tests/test_streaming_resume_native.py` validates two same-process resumptions on each route with installed models. Real playback, platform, quality/performance and resource acceptance remain separate from fake-stage CI.
 
 
-Streaming deterministic tests: `python -m unittest tests.test_streaming tests.test_streaming_resilience tests.test_streaming_documentation`; see [coverage matrix](../doc/streaming-test-coverage.md). They require no model downloads and do not establish streaming quality/performance acceptance.
+Streaming deterministic tests: `python -m unittest tests.test_streaming tests.test_streaming_resilience tests.test_streaming_documentation`; see [coverage matrix](../doc/streaming.md#测试覆盖与评测结果). They require no model downloads and do not establish streaming quality/performance acceptance.

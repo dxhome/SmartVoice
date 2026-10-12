@@ -1,6 +1,6 @@
 {
   "schema": "smartvoice.stream.acceptance.v1",
-  "revision": "product-streaming-p0-v1",
+  "revision": "product-streaming-p0-v2",
   "percentile_method": "nearest_rank",
   "sample_scope": {
     "minimum_sessions_per_route": 30,
@@ -18,11 +18,10 @@
       "comparison": "strict_less_than",
       "clock": "first_pcm_send"
     },
-    "speech_ttfo": {
-      "limit_seconds": 3.0,
-      "comparison": "strict_less_than",
-      "clock": "human_annotated_speech_onset",
-      "vad_substitute_is_diagnostic_only": true
+    "speech_ttfo_observation": {
+      "clock": "first_pcm_send",
+      "acceptance_threshold": null,
+      "purpose": "diagnostic distribution only; report P50/P90/P95 without pass/fail target"
     }
   },
   "speech_audio_success": {

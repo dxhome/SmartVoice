@@ -82,14 +82,33 @@ class StreamingContractTests(unittest.TestCase):
         settings=self.settings();app=create_app(settings,FakeProvider())
         app.state.streaming=StreamingManager(settings,Repository(),FakeWorkers(),Profiler,FairGate,package_wav)
         with TestClient(app) as client:
-            self.assertTrue(client.get('/v1/audio/stream/capabilities').json()['enabled'])
+            capabilities=client.get('/v1/audio/stream/capabilities').json()
+            self.assertTrue(capabilities['enabled'])
+            self.assertEqual(capabilities['limits']['max_input_queue_frames'],250)
+            self.assertEqual(capabilities['performance_targets']['speech_ttfo_threshold_seconds'],None)
+            self.assertEqual(capabilities['performance_targets']['speech_ttfo_clock'],'first_pcm_send')
             with client.websocket_connect('/v1/audio/stream') as ws:
-                ws.send_json(configuration());self.assertEqual(ws.receive_json()['type'],'session_ready')
+                ws.send_json(configuration());ready=ws.receive_json();self.assertEqual(ready['type'],'session_ready')
+                self.assertEqual(ready['input_queue_frames'],settings.streaming_input_queue_frames)
+                self.assertEqual(settings.streaming_input_queue_frames,250)
                 ws.send_json({'type':'finish'})
                 while ws.receive_json()['type'] not in ('session_complete','error'):pass
             with self.assertRaises(Exception):
                 with client.websocket_connect('/v1/audio/stream',headers={'origin':'https://untrusted.example'}):pass
             self.assertEqual(client.get('/console/streaming').status_code,200)
+
+    def test_process_sampler_uses_known_owned_worker_pids(self):
+        try:
+            import psutil
+        except ImportError:
+            self.skipTest('psutil is optional')
+        workers=SimpleNamespace(owned_pids=lambda:(2**30,))
+        sample=StreamingManager.process_resource_sample(workers)
+        self.assertTrue(sample['available'])
+        self.assertEqual(sample['known_owned_worker_count'],1)
+        self.assertEqual(sample['sampled_owned_worker_count'],0)
+        self.assertFalse(sample['owned_workers_complete'])
+        self.assertFalse(sample['process_tree_complete'])
     def test_websocket_text_and_speech_delivery_and_playback(self):
         for mode in ('transcription','translated_subtitles','spoken_interpretation'):
             for consumption in ('delivery','playback') if mode=='spoken_interpretation' else ('delivery',):
@@ -201,6 +220,10 @@ class StreamingLifecycleTests(unittest.IsolatedAsyncioTestCase):
         for _ in range(3):
             worker=ProcessAffinityWorker('test',Profiler(),grace_seconds=.1)
             self.assertEqual(await worker.call(return_answer,deadline=5),42)
+            resources=worker.resource_metrics()
+            self.assertEqual(resources['samples'],1)
+            self.assertGreater(resources['peak_rss_bytes'],0)
+            self.assertGreaterEqual(resources['cumulative_cpu_user_seconds'],0)
             await worker.aclose();self.assertTrue(worker.closed)
             self.assertFalse(worker.owned_pids())
 
@@ -252,6 +275,43 @@ class StreamingQualityPolicyTests(unittest.TestCase):
         self.assertEqual(names.prepare('Annual Ann announcement').text, 'Annual 安 announcement')
 
 class StreamingBenchmarkTests(unittest.TestCase):
+    def test_acceptance_requires_thirty_samples_for_subtitle_p90_but_not_speech_ttfo(self):
+        from benchmarks.streaming.run import summarize
+
+        def transcription_row(latency):
+            return dict(scenario='transcription_en',functional_success=True,failure=None,variant='clean',
+                reference='',first_output_seconds={'source_unit_partial':latency},onset_first_output_seconds={},
+                speech_onset_method=None,final_snapshot=dict(final_events=[dict(type='source_unit_final',text='hello')],
+                    audio_segments=[],audio_skipped=[]),expect_no_speech=False,profiling={})
+
+        def speech_row(latency):
+            return dict(scenario='speech_en_zh',functional_success=True,failure=None,variant='clean',
+                reference='',first_output_seconds={'audio_segment':latency},onset_first_output_seconds={},
+                speech_onset_method=None,output_audio_success=True,full_audio_success=True,
+                final_snapshot=dict(final_events=[],audio_segments=[{}],audio_skipped=[]),expect_no_speech=False,
+                profiling={})
+
+        subtitle=summarize([transcription_row(.9) for _ in range(30)])['transcription_en']
+        self.assertEqual(subtitle['latency_target_assessment']['status'],'pass')
+        self.assertEqual(subtitle['latency_target_assessment']['n'],30)
+        short=summarize([transcription_row(.9) for _ in range(29)])['transcription_en']
+        self.assertEqual(short['latency_target_assessment']['status'],'insufficient_samples')
+
+        speech=summarize([speech_row(7.0) for _ in range(30)])['speech_en_zh']
+        self.assertEqual(speech['latency_observation']['status'],'observational_only')
+        self.assertIsNone(speech['latency_observation']['acceptance_threshold'])
+        self.assertAlmostEqual(speech['latency_observation']['value_p90_seconds'],7.0)
+        self.assertNotIn('latency_target_assessment',speech)
+
+    def test_realtime_pacer_reanchors_instead_of_bursting_after_a_stall(self):
+        from benchmarks.streaming.run import RealtimePacer
+        pacer=RealtimePacer(started=0,max_lag_seconds=.02)
+        delay,lag,reanchored=pacer.before_frame(1.0,now=1.5)
+        self.assertEqual(delay,0);self.assertAlmostEqual(lag,.5);self.assertTrue(reanchored)
+        delay,lag,reanchored=pacer.before_frame(1.02,now=1.52)
+        self.assertEqual(delay,0);self.assertAlmostEqual(lag,0);self.assertFalse(reanchored)
+        self.assertEqual(pacer.reanchors,1)
+
     def test_nearest_rank_and_resource_units(self):
         from benchmarks.streaming.run import percentiles
         from benchmarks.streaming.resources import numeric_quantiles

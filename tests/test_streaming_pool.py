@@ -12,6 +12,8 @@ from smartvoice.domain.stream_context import SessionContext
 from smartvoice.adapters.inference.runtime.compute_budget import ComputeBudget
 from smartvoice.adapters.inference.runtime.stream_profile import Profiler
 from smartvoice.adapters.inference.runtime.stream_pool import SharedPool, PooledWorker
+from smartvoice.adapters.inference.runtime.stream_workers import _worker_resource_sample
+from smartvoice.services.streaming.manager import StreamingManager
 
 
 class Counter:
@@ -73,6 +75,31 @@ class PoolTests(unittest.IsolatedAsyncioTestCase):
         c,_=await self.open(Binding(('third',)))
         self.assertEqual(self.pool.resident_mib,200)
         self.assertNotIn(('model',),self.pool.entries)
+
+    async def test_process_sampler_reads_scheduler_owned_worker_pid(self):
+        if __import__('importlib').util.find_spec('psutil') is None:
+            self.skipTest('psutil is optional')
+        worker,handle=await self.open()
+        await worker.call(handle.increment)
+        sample=StreamingManager.process_resource_sample(self.pool,1)
+        self.assertEqual(sample['known_owned_worker_count'],1)
+        self.assertEqual(sample['sampled_owned_worker_count'],1)
+        self.assertTrue(sample['owned_workers_complete'])
+        # This sandbox denies descendant traversal, so complete worker self
+        # reports are the fallback resource evidence.
+        self.assertFalse(sample['process_tree_complete'])
+        self.assertGreaterEqual(sample['process_count'],2)
+        self.assertGreater(sample['rss_bytes'],0)
+        self.assertGreater(sample['cpu_user_seconds'],0)
+        self.assertEqual(sample['worker_processes'][0]['stage'],'asr')
+        self.assertGreater(sample['worker_rss_bytes_per_active_session'],0)
+
+    async def test_worker_self_resource_sample_survives_child_enumeration_denial(self):
+        sample=_worker_resource_sample(sample_rss=True)
+        self.assertTrue(sample['process_self_complete'])
+        self.assertGreater(sample['self_rss_bytes'],0)
+        self.assertIsNotNone(sample['self_cpu_user_seconds'])
+        self.assertIn('self',sample['rss_kind'])
 
     async def test_cancel_waiting_job_keeps_sibling_healthy(self):
         a,x=await self.open(); b,y=await self.open()
@@ -167,6 +194,15 @@ class PoolTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ContextTests(unittest.TestCase):
+    def test_worker_rss_denial_keeps_portable_cpu_fallback(self):
+        from unittest.mock import patch
+        with patch('psutil.Process',side_effect=PermissionError('restricted host')):
+            sample=_worker_resource_sample(sample_rss=True)
+        self.assertFalse(sample['process_self_complete'])
+        self.assertEqual(sample['rss_kind'],'high_water')
+        self.assertIsNotNone(sample['cpu_user_seconds'])
+        self.assertIsNotNone(sample['cpu_system_seconds'])
+
     def test_private_bounded_confirmed_context(self):
         a=SessionContext('en',('SmartVoice',)); b=SessionContext('en')
         for index in range(2000): a.commit(str(index),'GPU is active. '+('x'*300))

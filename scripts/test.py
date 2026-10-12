@@ -29,7 +29,7 @@ def _without_real_inference(suite: unittest.TestSuite) -> unittest.TestSuite:
     for test in suite:
         if isinstance(test, unittest.TestSuite):
             filtered.addTests(_without_real_inference(test))
-        elif not test.__class__.__module__.endswith(("test_real_inference", "test_stt_audio_regression", "test_streaming_real_long")):
+        elif not test.__class__.__module__.endswith(("test_real_inference", "test_stt_audio_regression", "test_streaming_real_long", "test_streaming_resume_native")):
             filtered.addTest(test)
     return filtered
 

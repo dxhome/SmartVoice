@@ -1,0 +1,1489 @@
+{
+  "schema": "smartvoice.stream.followup-evidence.v1",
+  "date": "2026-10-11",
+  "configuration": {
+    "max_sessions": 2,
+    "compute_slots": 8,
+    "memory_admission_mib": 8192,
+    "lifetime_seconds": 0,
+    "max_audio_seconds": 0,
+    "soak_idle_seconds": 10,
+    "browser_background_pass_idle_seconds": 60
+  },
+  "queue_analysis": {
+    "historical_failure_wall_seconds": 2725.8,
+    "client_stall_max_seconds": 22.1317,
+    "monitor_gap_max_seconds": 24.2208,
+    "asr_call_wall_max_seconds": 21.782,
+    "pacing_policy": "reanchor after >20ms stall; no burst catch-up; all frames retained",
+    "attribution": "Pacing and compute slots both changed; host stall cause not established"
+  },
+  "hour": {
+    "schema": "smartvoice.stream.soak-analysis.v1",
+    "wall_seconds": 3607.3729225830175,
+    "routes": {
+      "speech_zh_en": {
+        "guard": {
+          "passed": true,
+          "errors": [],
+          "target_finals": 456,
+          "audio_chunks": 456,
+          "audio_duration_seconds": 1822.6612471655471,
+          "scope": "complete input, WAV validation, exact target-final spans and chunk order; no semantic quality claim"
+        },
+        "terminal_status": "complete",
+        "first_output_seconds": {
+          "source_partial": 1.8630612089764327,
+          "source_unit_partial": 1.8719084999756888,
+          "target_partial": 3.777710916940123,
+          "source_final": 6.645853459020145,
+          "source_unit_final": 6.655652416986413,
+          "target_final": 6.7004052919801325,
+          "audio_segment": 7.253241749946028
+        },
+        "input_pacing": {
+          "policy": "1x schedule reanchors after >20ms stall; never burst catch-up",
+          "frame_count": 180000,
+          "lag_sample_count": 4096,
+          "sample_window": 4096,
+          "lag_p50_seconds": 0.0,
+          "lag_p90_seconds": 0.0,
+          "lag_max_seconds": 0.33335187495686114,
+          "frames_over_20ms_late": 43,
+          "schedule_reanchors": 43,
+          "max_lag_before_reanchor_seconds": 0.33335187495686114
+        },
+        "peak_input_queue_frames": 32,
+        "input_overload_count": 0,
+        "stage_waits": {
+          "input.queue_wait": {
+            "count": 180000,
+            "total_seconds": 192.32208546926267,
+            "max_seconds": 1.2053068750537932,
+            "sample_count": 2048,
+            "p50_seconds": 0.00016033300198614597,
+            "p90_seconds": 0.00027145794592797756,
+            "p95_seconds": 0.0004754579858854413,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "asr.pool_queue_wait": {
+            "count": 180459,
+            "total_seconds": 31.11023531446699,
+            "max_seconds": 0.16023858299013227,
+            "sample_count": 2048,
+            "p50_seconds": 0.00010895798914134502,
+            "p90_seconds": 0.00019012507982552052,
+            "p95_seconds": 0.00022816599812358618,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "asr.compute_admission_wait": {
+            "count": 180459,
+            "total_seconds": 2.1501441311556846,
+            "max_seconds": 0.025595042039640248,
+            "sample_count": 2048,
+            "p50_seconds": 1.2874952517449856e-05,
+            "p90_seconds": 1.754099503159523e-05,
+            "p95_seconds": 2.575002145022154e-05,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "translation.pool_queue_wait": {
+            "count": 1368,
+            "total_seconds": 0.16713500069454312,
+            "max_seconds": 0.0017239589942619205,
+            "sample_count": 1368,
+            "p50_seconds": 9.14999982342124e-05,
+            "p90_seconds": 0.00021245796233415604,
+            "p95_seconds": 0.0002756250323727727,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "translation.translate.wall": {
+            "count": 1365,
+            "total_seconds": 134.06821354560088,
+            "max_seconds": 0.49414450000040233,
+            "sample_count": 1365,
+            "p50_seconds": 0.10717891599051654,
+            "p90_seconds": 0.13845895801205188,
+            "p95_seconds": 0.15163137495983392,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "tts.synthesize.wall": {
+            "count": 456,
+            "total_seconds": 375.3667562016053,
+            "max_seconds": 4.109759749961086,
+            "sample_count": 456,
+            "p50_seconds": 0.8003917919704691,
+            "p90_seconds": 0.8829383329721168,
+            "p95_seconds": 0.9403637079522014,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          }
+        },
+        "strict_baseline_guard": {
+          "same_input": true,
+          "source_finals_match": true,
+          "target_finals_match": true
+        }
+      },
+      "speech_en_zh": {
+        "guard": {
+          "passed": true,
+          "errors": [],
+          "target_finals": 693,
+          "audio_chunks": 693,
+          "audio_duration_seconds": 2138.7951927437643,
+          "scope": "complete input, WAV validation, exact target-final spans and chunk order; no semantic quality claim"
+        },
+        "terminal_status": "complete",
+        "first_output_seconds": {
+          "source_partial": 1.7550625000149012,
+          "source_unit_partial": 1.7596486660186201,
+          "target_partial": 3.5467085000127554,
+          "source_final": 5.594709916040301,
+          "source_unit_final": 5.6007672500563785,
+          "target_final": 6.136546666035429,
+          "audio_segment": 6.334760208032094
+        },
+        "input_pacing": {
+          "policy": "1x schedule reanchors after >20ms stall; never burst catch-up",
+          "frame_count": 180000,
+          "lag_sample_count": 4096,
+          "sample_window": 4096,
+          "lag_p50_seconds": 0.0,
+          "lag_p90_seconds": 0.0,
+          "lag_max_seconds": 0.6158254159381613,
+          "frames_over_20ms_late": 44,
+          "schedule_reanchors": 44,
+          "max_lag_before_reanchor_seconds": 0.6158254159381613
+        },
+        "peak_input_queue_frames": 24,
+        "input_overload_count": 0,
+        "stage_waits": {
+          "input.queue_wait": {
+            "count": 180000,
+            "total_seconds": 92.6701330721844,
+            "max_seconds": 0.5002239589812234,
+            "sample_count": 2048,
+            "p50_seconds": 0.0001250840723514557,
+            "p90_seconds": 0.00020354194566607475,
+            "p95_seconds": 0.00025349995121359825,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "asr.pool_queue_wait": {
+            "count": 180697,
+            "total_seconds": 30.24729040521197,
+            "max_seconds": 0.046074667014181614,
+            "sample_count": 2048,
+            "p50_seconds": 0.000177249894477427,
+            "p90_seconds": 0.00027529196813702583,
+            "p95_seconds": 0.0003587080864235759,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "asr.compute_admission_wait": {
+            "count": 180697,
+            "total_seconds": 2.276509605580941,
+            "max_seconds": 0.007560333935543895,
+            "sample_count": 2048,
+            "p50_seconds": 7.3339324444532394e-06,
+            "p90_seconds": 1.3665994629263878e-05,
+            "p95_seconds": 1.5332945622503757e-05,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "translation.pool_queue_wait": {
+            "count": 1388,
+            "total_seconds": 0.22057874395977706,
+            "max_seconds": 0.005767000024206936,
+            "sample_count": 1388,
+            "p50_seconds": 0.00012262491509318352,
+            "p90_seconds": 0.00029087497387081385,
+            "p95_seconds": 0.0003950000973418355,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "translation.translate.wall": {
+            "count": 1385,
+            "total_seconds": 519.562700733426,
+            "max_seconds": 1.8953071250580251,
+            "sample_count": 1385,
+            "p50_seconds": 0.39256404188927263,
+            "p90_seconds": 0.5443250000244007,
+            "p95_seconds": 0.5840798750286922,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          },
+          "tts.synthesize.wall": {
+            "count": 693,
+            "total_seconds": 138.05473327089567,
+            "max_seconds": 0.7370349169941619,
+            "sample_count": 693,
+            "p50_seconds": 0.19164037494920194,
+            "p90_seconds": 0.2243086249800399,
+            "p95_seconds": 0.2552710840245709,
+            "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+          }
+        },
+        "strict_baseline_guard": {
+          "same_input": true,
+          "source_finals_match": true,
+          "target_finals_match": true
+        }
+      }
+    },
+    "resources": {
+      "sample_count": 717,
+      "steady_samples": 165,
+      "steady_after_seconds": 2771.2829370498657,
+      "logical_cpu_count": 10,
+      "owned_workers_complete": true,
+      "process_tree_complete": false,
+      "cpu_core_equivalents": {
+        "n": 164,
+        "maximum": 1.0778472595544335,
+        "p50": 0.908666865726771,
+        "p90": 0.9972069970259373,
+        "p95": 1.0117313416350333
+      },
+      "rss_bytes": {
+        "n": 717,
+        "maximum": 2136195072,
+        "p50": 1822228480,
+        "p90": 1868021760,
+        "p95": 1876426752
+      },
+      "steady_rss_start_bytes": 1846575104,
+      "steady_rss_end_bytes": 1847508992,
+      "steady_rss_slope_bytes_per_hour": -144793802.40355012,
+      "worker_rss_bytes_per_active_session": {
+        "n": 165,
+        "maximum": 908468224.0,
+        "p50": 890707968.0,
+        "p90": 900317184.0,
+        "p95": 901955584.0
+      },
+      "audio_seconds_per_cpu_second": 2.3604411086680575,
+      "pending_jobs_peak": 0,
+      "marginal_session_memory_status": "not_measured; amortized model memory is not marginal session cost",
+      "scope": "API plus all scheduler-known native workers; descendant traversal may be restricted; summed RSS includes shared pages"
+    }
+  },
+  "default_compute2_sixty_seconds": {
+    "speech_zh_en": {
+      "guard": {
+        "passed": true,
+        "errors": [],
+        "target_finals": 9,
+        "audio_chunks": 9,
+        "audio_duration_seconds": 31.69648526077098,
+        "scope": "complete input, WAV validation, exact target-final spans and chunk order; no semantic quality claim"
+      },
+      "terminal_status": "complete",
+      "first_output_seconds": {
+        "source_partial": 1.8634755830280483,
+        "source_unit_partial": 1.8662328330101445,
+        "target_partial": 3.763982250005938,
+        "source_final": 6.642168542020954,
+        "source_unit_final": 6.650966041954234,
+        "target_final": 6.69669641694054,
+        "audio_segment": 7.211074666935019
+      },
+      "input_pacing": {
+        "policy": "1x schedule reanchors after >20ms stall; never burst catch-up",
+        "frame_count": 3000,
+        "lag_sample_count": 3000,
+        "sample_window": 4096,
+        "lag_p50_seconds": 0.0,
+        "lag_p90_seconds": 0.0,
+        "lag_max_seconds": 2.9579969123005867e-06,
+        "frames_over_20ms_late": 0,
+        "schedule_reanchors": 0,
+        "max_lag_before_reanchor_seconds": 2.9579969123005867e-06
+      },
+      "peak_input_queue_frames": 16,
+      "input_overload_count": 0,
+      "stage_waits": {
+        "input.queue_wait": {
+          "count": 3000,
+          "total_seconds": 48.75273038819432,
+          "max_seconds": 0.3410516669973731,
+          "sample_count": 2048,
+          "p50_seconds": 9.270908776670694e-05,
+          "p90_seconds": 0.07055970805231482,
+          "p95_seconds": 0.18794366694055498,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "asr.pool_queue_wait": {
+          "count": 3012,
+          "total_seconds": 0.46906264196150005,
+          "max_seconds": 0.010361292050220072,
+          "sample_count": 2048,
+          "p50_seconds": 8.504197467118502e-05,
+          "p90_seconds": 0.00024524994660168886,
+          "p95_seconds": 0.0004330830415710807,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "asr.compute_admission_wait": {
+          "count": 3012,
+          "total_seconds": 7.705508531886153,
+          "max_seconds": 0.28539687499869615,
+          "sample_count": 2048,
+          "p50_seconds": 1.3415934517979622e-05,
+          "p90_seconds": 0.010368917020969093,
+          "p95_seconds": 0.020374709041789174,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "translation.pool_queue_wait": {
+          "count": 27,
+          "total_seconds": 0.004931124276481569,
+          "max_seconds": 0.0007037499453872442,
+          "sample_count": 27,
+          "p50_seconds": 0.00013287505134940147,
+          "p90_seconds": 0.00031941698398441076,
+          "p95_seconds": 0.0006864590104669333,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "translation.translate.wall": {
+          "count": 24,
+          "total_seconds": 3.1286989180371165,
+          "max_seconds": 0.31662616692483425,
+          "sample_count": 24,
+          "p50_seconds": 0.11988054204266518,
+          "p90_seconds": 0.20448416692670435,
+          "p95_seconds": 0.2311530829174444,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "tts.synthesize.wall": {
+          "count": 9,
+          "total_seconds": 8.188540124800056,
+          "max_seconds": 1.0798341250047088,
+          "sample_count": 9,
+          "p50_seconds": 0.9105505000334233,
+          "p90_seconds": 1.0798341250047088,
+          "p95_seconds": 1.0798341250047088,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        }
+      }
+    },
+    "speech_en_zh": {
+      "guard": {
+        "passed": true,
+        "errors": [],
+        "target_finals": 12,
+        "audio_chunks": 12,
+        "audio_duration_seconds": 35.56630385487528,
+        "scope": "complete input, WAV validation, exact target-final spans and chunk order; no semantic quality claim"
+      },
+      "terminal_status": "complete",
+      "first_output_seconds": {
+        "source_partial": 1.7561925000045449,
+        "source_unit_partial": 1.7620652500772849,
+        "target_partial": 3.4814196249935776,
+        "source_final": 5.595423332997598,
+        "source_unit_final": 5.602052916074172,
+        "target_final": 6.113109625061043,
+        "audio_segment": 6.3545348750194535
+      },
+      "input_pacing": {
+        "policy": "1x schedule reanchors after >20ms stall; never burst catch-up",
+        "frame_count": 3000,
+        "lag_sample_count": 3000,
+        "sample_window": 4096,
+        "lag_p50_seconds": 0.0,
+        "lag_p90_seconds": 0.0,
+        "lag_max_seconds": 3.916909918189049e-06,
+        "frames_over_20ms_late": 0,
+        "schedule_reanchors": 0,
+        "max_lag_before_reanchor_seconds": 3.916909918189049e-06
+      },
+      "peak_input_queue_frames": 17,
+      "input_overload_count": 0,
+      "stage_waits": {
+        "input.queue_wait": {
+          "count": 3000,
+          "total_seconds": 53.46168683061842,
+          "max_seconds": 0.3480603749630973,
+          "sample_count": 2048,
+          "p50_seconds": 8.241611067205667e-05,
+          "p90_seconds": 0.09383916691876948,
+          "p95_seconds": 0.1966216251021251,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "asr.pool_queue_wait": {
+          "count": 3016,
+          "total_seconds": 0.39019639405887574,
+          "max_seconds": 0.008285082993097603,
+          "sample_count": 2048,
+          "p50_seconds": 7.662491407245398e-05,
+          "p90_seconds": 0.00019483303185552359,
+          "p95_seconds": 0.000354332965798676,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "asr.compute_admission_wait": {
+          "count": 3016,
+          "total_seconds": 8.635146316606551,
+          "max_seconds": 0.2936098340433091,
+          "sample_count": 2048,
+          "p50_seconds": 1.0584015399217606e-05,
+          "p90_seconds": 0.010529250022955239,
+          "p95_seconds": 0.020387624972499907,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "translation.pool_queue_wait": {
+          "count": 27,
+          "total_seconds": 0.005456084734760225,
+          "max_seconds": 0.0008061670232564211,
+          "sample_count": 27,
+          "p50_seconds": 0.00015691702719777822,
+          "p90_seconds": 0.00043033307883888483,
+          "p95_seconds": 0.0005822080420330167,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "translation.translate.wall": {
+          "count": 24,
+          "total_seconds": 11.564335289644077,
+          "max_seconds": 0.8099877500208095,
+          "sample_count": 24,
+          "p50_seconds": 0.4580509589286521,
+          "p90_seconds": 0.7076620410662144,
+          "p95_seconds": 0.7109036659821868,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        },
+        "tts.synthesize.wall": {
+          "count": 12,
+          "total_seconds": 2.7863555387593806,
+          "max_seconds": 0.26154995802789927,
+          "sample_count": 12,
+          "p50_seconds": 0.23328287492040545,
+          "p90_seconds": 0.25471745792310685,
+          "p95_seconds": 0.26154995802789927,
+          "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+        }
+      }
+    }
+  },
+  "per_worker_stage_peak_rss_bytes": {
+    "translation": 821805056,
+    "formatting": 84525056,
+    "tts": 296550400,
+    "asr": 331382784
+  },
+  "session_cost": {
+    "schema": "smartvoice.stream.session-cost.v1",
+    "median_rss_bytes": {
+      "warm_idle": 681082880,
+      "one_session": 555024384,
+      "two_sessions": 566738944
+    },
+    "worker_counts": {
+      "warm_idle": [
+        7
+      ],
+      "one_session": [
+        7
+      ],
+      "two_sessions": [
+        7
+      ]
+    },
+    "matched_resident_workers": true,
+    "first_session_delta_bytes": -126058496,
+    "second_session_delta_bytes": 11714560,
+    "scope": "warm initialized empty sessions; signed RSS differences include allocator/reclaim noise; not active-context worst case"
+  },
+  "browser": {
+    "cases": [
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "en",
+        "fixture": "en_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 20,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 2,
+        "completed_audio_sequences": [
+          1,
+          2
+        ],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1866,
+          "target_partial_ms": 3699.0999999046326,
+          "ttfo_audio_ms": 6621.199999928474,
+          "ttfsa_first_pcm_ms": 6675.799999952316,
+          "input_to_last_played_ms": 15471.899999976158,
+          "played_chunks": 2,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791708787580605000.json",
+          "raw_report_sha256": "87d5c3bea18ba2c0504d43b4c9ace87db9ee3d26876ff0ef9e978bbe3905bf28"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "transcription",
+        "language": "en",
+        "fixture": "en_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 14,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 0,
+        "completed_audio_sequences": [],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1884.3999999761581,
+          "target_partial_ms": null,
+          "ttfo_audio_ms": null,
+          "ttfsa_first_pcm_ms": null,
+          "input_to_last_played_ms": null,
+          "played_chunks": 0,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791708827317608000.json",
+          "raw_report_sha256": "4d1813697ddb864572d8d90d248e9cbe5aa77edfb89dd4a0f0c1b0a3aaed46de"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "translated_subtitles",
+        "language": "en",
+        "fixture": "en_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 20,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 0,
+        "completed_audio_sequences": [],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1861.6000000238419,
+          "target_partial_ms": 2961.399999976158,
+          "ttfo_audio_ms": null,
+          "ttfsa_first_pcm_ms": null,
+          "input_to_last_played_ms": null,
+          "played_chunks": 0,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791708879320402000.json",
+          "raw_report_sha256": "a03acc609742a6eda5e8ced731712b1f69c945754e5c60e0b9b4d9006c040ff8"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "transcription",
+        "language": "zh",
+        "fixture": "zh_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 10,
+        "draft_revision_units": 1,
+        "delivered_audio_chunks": 0,
+        "completed_audio_sequences": [],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1979.5,
+          "target_partial_ms": null,
+          "ttfo_audio_ms": null,
+          "ttfsa_first_pcm_ms": null,
+          "input_to_last_played_ms": null,
+          "played_chunks": 0,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791708919570953000.json",
+          "raw_report_sha256": "47e5d8cb3534f1748e07309e5a70e6a927c73f02aa66fc3659a3b1a70be46728"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "translated_subtitles",
+        "language": "zh",
+        "fixture": "zh_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 16,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 0,
+        "completed_audio_sequences": [],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1968.8999999761581,
+          "target_partial_ms": 2678.100000023842,
+          "ttfo_audio_ms": null,
+          "ttfsa_first_pcm_ms": null,
+          "input_to_last_played_ms": null,
+          "played_chunks": 0,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791708976070195000.json",
+          "raw_report_sha256": "d909cbc4090ffb15d3c855b68cbc815e40bfe1c85a4f0b42de8d3f0403c64739"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "zh",
+        "fixture": "zh_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 15,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 2,
+        "completed_audio_sequences": [
+          1,
+          2
+        ],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1960.0999999046326,
+          "target_partial_ms": 3906,
+          "ttfo_audio_ms": 7542.799999952316,
+          "ttfsa_first_pcm_ms": 7586.899999976158,
+          "input_to_last_played_ms": 13057.799999952316,
+          "played_chunks": 2,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791709027820869000.json",
+          "raw_report_sha256": "510cb7bf0fe29809bcb048b62eb76590c2a97bd676ca0c166f32bb60db2a39d2"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "zh",
+        "fixture": "zh_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 15,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 2,
+        "completed_audio_sequences": [
+          1,
+          2
+        ],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 32,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 2182.5,
+          "target_partial_ms": 4174.600000023842,
+          "ttfo_audio_ms": 10176.5,
+          "ttfsa_first_pcm_ms": 10223.899999976158,
+          "input_to_last_played_ms": 19200.299999952316,
+          "played_chunks": 2,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709052.27838,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 4114,
+              "delivered_bytes": 277903,
+              "delivered_messages": 833,
+              "max_message_delay_seconds": 0.10905666695907712
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 486359,
+              "delivered_bytes": 550184,
+              "delivered_messages": 428,
+              "max_message_delay_seconds": 6.841193375061266
+            },
+            "ended": 1791709072.2877922
+          }
+        ],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791709072321926000.json",
+          "raw_report_sha256": "4c2eda9df74c24c3a15520f8993f6e26e07dcd651e50a2319a234b938f2887ed"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "zh",
+        "fixture": "zh_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 15,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 2,
+        "completed_audio_sequences": [
+          1,
+          2
+        ],
+        "resumed": 1,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1979.7999999523163,
+          "target_partial_ms": 4348.200000047684,
+          "ttfo_audio_ms": 8011.200000047684,
+          "ttfsa_first_pcm_ms": 8058,
+          "input_to_last_played_ms": 13527.299999952316,
+          "played_chunks": 2,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709052.27838,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 4114,
+              "delivered_bytes": 277903,
+              "delivered_messages": 833,
+              "max_message_delay_seconds": 0.10905666695907712
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 486359,
+              "delivered_bytes": 550184,
+              "delivered_messages": 428,
+              "max_message_delay_seconds": 6.841193375061266
+            },
+            "ended": 1791709072.2877922
+          }
+        ],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791709171571615000.json",
+          "raw_report_sha256": "d26eafa2b4931904fbf0def7aea842ca16eacdf9e51a81bc82da16aa6df5923e"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "zh",
+        "fixture": "zh_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 15,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 2,
+        "completed_audio_sequences": [
+          1,
+          2
+        ],
+        "resumed": 1,
+        "interrupted_audio_attempts": 1,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1963.8999999761581,
+          "target_partial_ms": 3935.7000000476837,
+          "ttfo_audio_ms": 7567.600000023842,
+          "ttfsa_first_pcm_ms": 7611,
+          "input_to_last_played_ms": 13649.299999952316,
+          "played_chunks": 2,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709052.27838,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 4114,
+              "delivered_bytes": 277903,
+              "delivered_messages": 833,
+              "max_message_delay_seconds": 0.10905666695907712
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 486359,
+              "delivered_bytes": 550184,
+              "delivered_messages": 428,
+              "max_message_delay_seconds": 6.841193375061266
+            },
+            "ended": 1791709072.2877922
+          }
+        ],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791709245070651000.json",
+          "raw_report_sha256": "d2d42458a6168895d4dab1530b117e01a54e8eb7ac18b9575c153acb14abe9aa"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "en",
+        "fixture": "en_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 20,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 2,
+        "completed_audio_sequences": [
+          1,
+          2
+        ],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 32,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 2057.899999976158,
+          "target_partial_ms": 3984.6999999284744,
+          "ttfo_audio_ms": 8642.100000023842,
+          "ttfsa_first_pcm_ms": 8685.899999976158,
+          "input_to_last_played_ms": 19414.799999952316,
+          "played_chunks": 2,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709052.27838,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 4114,
+              "delivered_bytes": 277903,
+              "delivered_messages": 833,
+              "max_message_delay_seconds": 0.10905666695907712
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 486359,
+              "delivered_bytes": 550184,
+              "delivered_messages": 428,
+              "max_message_delay_seconds": 6.841193375061266
+            },
+            "ended": 1791709072.2877922
+          },
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709314.0738401,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 3581,
+              "delivered_bytes": 365225,
+              "delivered_messages": 1100,
+              "max_message_delay_seconds": 0.09878570795990527
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 160646,
+              "delivered_bytes": 356067,
+              "delivered_messages": 571,
+              "max_message_delay_seconds": 2.5891213750001043
+            },
+            "ended": 1791709337.928434
+          }
+        ],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791709338073120000.json",
+          "raw_report_sha256": "3b80121afdd41b5aead4167f2ffb114af3de546619839d097fb2cfa592832acb"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "en",
+        "fixture": "en_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 20,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 2,
+        "completed_audio_sequences": [
+          1,
+          2
+        ],
+        "resumed": 1,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1878.3000000715256,
+          "target_partial_ms": 4043.100000023842,
+          "ttfo_audio_ms": 7021.899999976158,
+          "ttfsa_first_pcm_ms": 7066.200000047684,
+          "input_to_last_played_ms": 15828.100000023842,
+          "played_chunks": 2,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709052.27838,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 4114,
+              "delivered_bytes": 277903,
+              "delivered_messages": 833,
+              "max_message_delay_seconds": 0.10905666695907712
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 486359,
+              "delivered_bytes": 550184,
+              "delivered_messages": 428,
+              "max_message_delay_seconds": 6.841193375061266
+            },
+            "ended": 1791709072.2877922
+          },
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709314.0738401,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 3581,
+              "delivered_bytes": 365225,
+              "delivered_messages": 1100,
+              "max_message_delay_seconds": 0.09878570795990527
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 160646,
+              "delivered_bytes": 356067,
+              "delivered_messages": 571,
+              "max_message_delay_seconds": 2.5891213750001043
+            },
+            "ended": 1791709337.928434
+          }
+        ],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791709404571552000.json",
+          "raw_report_sha256": "305438c0b8225bead4eafa7541d2fac18ce19781ec25e8ef1dbdeed3e0e19961"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "en",
+        "fixture": "en_02_clean.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 21,
+        "draft_revision_units": 2,
+        "delivered_audio_chunks": 2,
+        "completed_audio_sequences": [
+          1,
+          2
+        ],
+        "resumed": 1,
+        "interrupted_audio_attempts": 1,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1871.1000000238419,
+          "target_partial_ms": 3510.3000000715256,
+          "ttfo_audio_ms": 6716,
+          "ttfsa_first_pcm_ms": 6765.399999976158,
+          "input_to_last_played_ms": 15925.899999976158,
+          "played_chunks": 2,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709052.27838,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 4114,
+              "delivered_bytes": 277903,
+              "delivered_messages": 833,
+              "max_message_delay_seconds": 0.10905666695907712
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 486359,
+              "delivered_bytes": 550184,
+              "delivered_messages": 428,
+              "max_message_delay_seconds": 6.841193375061266
+            },
+            "ended": 1791709072.2877922
+          },
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709314.0738401,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 3581,
+              "delivered_bytes": 365225,
+              "delivered_messages": 1100,
+              "max_message_delay_seconds": 0.09878570795990527
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 160646,
+              "delivered_bytes": 356067,
+              "delivered_messages": 571,
+              "max_message_delay_seconds": 2.5891213750001043
+            },
+            "ended": 1791709337.928434
+          }
+        ],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791709541075810000.json",
+          "raw_report_sha256": "9d3467e2b70f2dc40bf155abd12bf9fe976d98d6e4fa6da07995d3e0b35abe94"
+        }
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "en",
+        "fixture": "en_02_clean-wall-soak.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "dom_updates": 117,
+        "draft_revision_units": 12,
+        "delivered_audio_chunks": 12,
+        "completed_audio_sequences": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 1891.6000000238419,
+          "target_partial_ms": 3817.600000023842,
+          "ttfo_audio_ms": 6901.5,
+          "ttfsa_first_pcm_ms": 6945.799999952316,
+          "input_to_last_played_ms": 66689.5,
+          "played_chunks": 12,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709052.27838,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 4114,
+              "delivered_bytes": 277903,
+              "delivered_messages": 833,
+              "max_message_delay_seconds": 0.10905666695907712
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 486359,
+              "delivered_bytes": 550184,
+              "delivered_messages": 428,
+              "max_message_delay_seconds": 6.841193375061266
+            },
+            "ended": 1791709072.2877922
+          },
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709314.0738401,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 3581,
+              "delivered_bytes": 365225,
+              "delivered_messages": 1100,
+              "max_message_delay_seconds": 0.09878570795990527
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 160646,
+              "delivered_bytes": 356067,
+              "delivered_messages": 571,
+              "max_message_delay_seconds": 2.5891213750001043
+            },
+            "ended": 1791709337.928434
+          }
+        ],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791709653356890000.json",
+          "raw_report_sha256": "cbd7e6335d5c4547f509c8670d668e83da52022412522ea241eaa78d572393f6"
+        }
+      },
+      {
+        "passed": false,
+        "errors": [
+          "missing_current_complete_event",
+          "not_complete",
+          "server_error:input_timeout",
+          "final_text_differs_from_browser_baseline"
+        ],
+        "mode": "spoken_interpretation",
+        "language": "en",
+        "fixture": "en_02_clean-wall-soak.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Safari/605.1.15",
+        "dom_updates": 14,
+        "draft_revision_units": 1,
+        "delivered_audio_chunks": 1,
+        "completed_audio_sequences": [
+          1
+        ],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "hidden",
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": null,
+        "shaped_network_connections": [
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709052.27838,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 4114,
+              "delivered_bytes": 277903,
+              "delivered_messages": 833,
+              "max_message_delay_seconds": 0.10905666695907712
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 486359,
+              "delivered_bytes": 550184,
+              "delivered_messages": 428,
+              "max_message_delay_seconds": 6.841193375061266
+            },
+            "ended": 1791709072.2877922
+          },
+          {
+            "profile": {
+              "name": "slow",
+              "upload": 48000,
+              "download": 64000,
+              "latency": 0.08,
+              "disconnect": null
+            },
+            "started": 1791709314.0738401,
+            "upload": {
+              "bytes_per_second": 48000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 3581,
+              "delivered_bytes": 365225,
+              "delivered_messages": 1100,
+              "max_message_delay_seconds": 0.09878570795990527
+            },
+            "download": {
+              "bytes_per_second": 64000,
+              "one_way_latency_seconds": 0.08,
+              "peak_buffer_bytes": 160646,
+              "delivered_bytes": 356067,
+              "delivered_messages": 571,
+              "max_message_delay_seconds": 2.5891213750001043
+            },
+            "ended": 1791709337.928434
+          }
+        ],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": false,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791710555047592000.json",
+          "raw_report_sha256": "bdd413e62ad396b2ff398d0e21e7e29f14477261e14f9cd6204254c07bf389c2"
+        },
+        "classification": "expected_negative",
+        "expected_outcome": {
+          "error_code": "input_timeout",
+          "terminal": "not_complete",
+          "legacy_idle_timeout_seconds": 10
+        },
+        "expectation_met": true,
+        "counted_as_product_failure": false
+      },
+      {
+        "passed": true,
+        "errors": [],
+        "mode": "spoken_interpretation",
+        "language": "en",
+        "fixture": "en_02_clean-wall-soak.wav",
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Safari/605.1.15",
+        "dom_updates": 164,
+        "draft_revision_units": 14,
+        "delivered_audio_chunks": 12,
+        "completed_audio_sequences": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "resumed": 0,
+        "interrupted_audio_attempts": 0,
+        "visibility_states": [
+          "hidden",
+          "visible"
+        ],
+        "max_input_pending": 1,
+        "browser_metrics": {
+          "onset_seconds": null,
+          "source_partial_ms": 2082,
+          "target_partial_ms": 3936,
+          "ttfo_audio_ms": 7467,
+          "ttfsa_first_pcm_ms": 7515,
+          "input_to_last_played_ms": 103939,
+          "played_chunks": 12,
+          "scope": "audio start scheduling/end callback; not physical audibility"
+        },
+        "shaped_network_connections": [],
+        "scope": "real browser DOM, transport and Web Audio completion; physical audibility unverified",
+        "strict_finals_match_baseline": true,
+        "evidence_reference": {
+          "raw_report": ".smartvoice-dev/streaming-product/browser-qa/browser-1791710774755731000.json",
+          "raw_report_sha256": "962646604b399a6604645c4e156470542a61dbd890be2b0422377df64350ec81"
+        }
+      }
+    ],
+    "total": 15,
+    "physical_audibility_verified": false,
+    "expected_negative_cases": 1,
+    "expected_negative_matched": 1,
+    "unexpected_failures": 0,
+    "product_default_idle_timeout_seconds": 60,
+    "note": "The raw negative-control failure remains unchanged; it exercises a legacy 10-second idle timeout. The current 60-second default passed the matching background-resume case.",
+    "assertion_cases": 14,
+    "assertion_passed": 14,
+    "assertion_failed": 0
+  },
+  "tests": {
+    "evidence_and_pool": 21,
+    "known_worker_sampler": 1,
+    "resume_and_resilience": 47,
+    "all_passed": true,
+    "native_cancel_regression": "passed separately with spawned worker"
+  },
+  "shutdown": {
+    "api_exit_code": 0,
+    "application_shutdown_complete": true,
+    "all_descendants_independently_verified": false
+  },
+  "evidence": [
+    {
+      "raw_report": ".smartvoice-dev/streaming-product/duplex-soak-hour-r1-2026-10-10.json",
+      "raw_report_sha256": "820f6c5c3a5c045eefc1cd08cfa47b1982a902a5301a266f9b560de0551ae410"
+    },
+    {
+      "raw_report": ".smartvoice-dev/streaming-product/duplex-soak-hour-r2-2026-10-11.json",
+      "raw_report_sha256": "b52c77ef73bf0ab68ad67f96ed9ef7b9a211fa58792378bbe471613a4a5a0c12"
+    },
+    {
+      "raw_report": ".smartvoice-dev/streaming-product/duplex-soak-hour-r3-2026-10-11.json",
+      "raw_report_sha256": "831b323caf9538c1515ea0f26177d9b233aba2bc4036fd327d737a566520cd36"
+    },
+    {
+      "raw_report": ".smartvoice-dev/streaming-product/duplex-compute2-paced-r1.json",
+      "raw_report_sha256": "f913b8a138029be9ad1686c98031adf481998e9ba5b6aee9a701f295ce915988"
+    },
+    {
+      "raw_report": ".smartvoice-dev/streaming-product/session-cost-r2.json",
+      "raw_report_sha256": "9accdadc67ac460667dac4ae1b4e18b128bceb841cec443485e183cff8d857be"
+    },
+    {
+      "raw_report": ".smartvoice-dev/streaming-product/browser-matrix-r1.json",
+      "raw_report_sha256": "2ffb0f1af438516343df891550dcb18f958d20d22f684108bba8c3e876b45099"
+    }
+  ],
+  "limitations": [
+    "Default compute_slots=2 only has 60-second duplex control, not hour validation.",
+    "Known API+7 worker coverage is complete; descendant enumeration denied.",
+    "No precise marginal session memory bound; signed RSS noise/reclaim dominates.",
+    "CPU steady window starts after additional validation services stopped; not exclusive host.",
+    "No natural meeting semantic-quality, physical speaker audibility, hours hidden, or P90 acceptance claim."
+  ]
+}

@@ -50,6 +50,20 @@ python scripts/validate_speech.py streaming-stability \
   --cpu-cores 8 --output .smartvoice-dev/streaming-product/stability-zh-r1.json
 ```
 
+For simultaneous real-time zh→en and en→zh speech over a wall-clock hour, run
+the duplex soak against an isolated service configured with `max_sessions=2`.
+The report records per-frame input pacing lag, sampled current/peak input queues,
+terminal input-queue peaks, sampled API RSS/CPU, and native worker self-reported CPU/RSS. When the host
+blocks descendant enumeration, worker measurements remain available but the
+report must not claim a complete process tree. Example:
+
+```sh
+python scripts/validate_speech.py streaming-duplex-soak \
+  --url ws://127.0.0.1:8876/v1/audio/stream --seconds 3600 \
+  --output .smartvoice-dev/streaming-product/duplex-hour-r1.json \
+  --progress .smartvoice-dev/streaming-product/duplex-hour-r1.progress.json
+```
+
 For browser-specific DOM/audio/network/background validation, follow [browser QA revision 1](browser-qa-v1.md). This is intentionally separate from WebSocket replay because loopback delivery does not measure browser rendering or playback.
 
 To compare the configured admission limits 2/4/8/16 against concurrent ASR quality, launch one isolated local service at a time. The matrix keeps a fixed 2800 MiB streaming-memory budget so a high `max_sessions` value cannot bypass memory admission on a constrained host:
@@ -83,7 +97,7 @@ Nearest-rank P50/P90/P95 retain sample counts. Missing output stays in success-r
 
 WER/CER uses product `benchmarks.metrics` normalization: NFKC, casefold and punctuation deletion. Historical sandbox punctuation-to-space values are not directly comparable. Do not relabel previously reviewed corpus scores without recomputation. Profiling records initialization, admission, native calls and stage timing; stage percentiles cannot be added to obtain end-to-end percentiles.
 
-Release gates: fixed-final equality; high-risk years/names/negation/boundaries; known en_09_clean missing audio; audio order/completeness; three independent repeated rounds; long recording/browser playback; capacity at quality/latency gates with CPU/RSS/core; supported-platform packaging. First-output targets are source P90<1s, target P90<2s and speech onset TTFO P90<3s. The pinned clean-fixture full-audio gate is 100%. The initial production floor is 99% full-audio success per language direction over at least 300 eligible speech sessions; no-audio, invalid, incomplete, or skipped output counts as failure. Revisit this floor against production telemetry while retaining the strict clean-fixture gate.
+Release gates: fixed-final equality; high-risk years/names/negation/boundaries; known en_09_clean missing audio; audio order/completeness; three independent repeated rounds; long recording/browser playback; capacity at quality/latency gates with CPU/RSS/core; supported-platform packaging. The subtitle first-output targets are source P90<1s and target P90<2s. Speech TTFO is reported at P50/P90/P95 as an observational diagnostic, with no latency pass/fail threshold. The pinned clean-fixture full-audio gate is 100%. The initial production floor is 99% full-audio success per language direction over at least 300 eligible speech sessions; no-audio, invalid, incomplete, or skipped output counts as failure. Revisit this floor against production telemetry while retaining the strict clean-fixture gate.
 
 
 ## Remaining evaluation limitations
@@ -103,6 +117,75 @@ Release gates: fixed-final equality; high-risk years/names/negation/boundaries; 
 - `full_audio_success` additionally requires terminal status `complete` and zero skipped chunks. Both rates use every speech session as the denominator; no-audio and invalid-audio sessions count as failures.
 - The strict guard compares final text, spoken text/spans, skip reasons, terminal outcome, and audio integrity. It is a selected-case regression guard, not a human quality judgment.
 - Reports pin the onset annotation, baseline, manifest, code, catalog, config, dependencies and effective advertised chain capabilities by hash/content. Error terminal events include available profiling and emitted counts.
-- `acceptance.json` contains the latency targets, a 100% full-audio clean-fixture gate, and the initial production floor of 99% per direction over at least 300 eligible speech sessions. The runner marks per-route latency and clean-fixture outcomes as `pass`, `fail`, `insufficient_samples`, or (for TTFO without human onset labels) `not_evaluable_human_onset_required`.
+- `acceptance.json` contains subtitle latency targets, the observational-only speech TTFO definition, a 100% full-audio clean-fixture gate, and the initial production floor of 99% per direction over at least 300 eligible speech sessions. Subtitle latency and clean-fixture outcomes are marked `pass`, `fail` or `insufficient_samples`; TTFO has no pass/fail threshold.
 
-The runner now applies the audio and terminal rules above and includes the relevant hashes and effective capabilities in reports. The pinned fixtures are attributed in `data/fleurs/NOTICE.md` and `data/fleurs/quality/NOTICE.md`. Human onset annotation, S5 semantic review, repeatable capacity evidence, real-browser QA evidence and natural long-form playback remain pending. The initial production audio-success floor is fixed at 99% per direction with at least 300 sessions; this is a P0 acceptance policy and should be checked against real production telemetry.
+The runner now applies the audio and terminal rules above and includes the relevant hashes and effective capabilities in reports. The pinned fixtures are attributed in `data/fleurs/NOTICE.md` and `data/fleurs/quality/NOTICE.md`. A local real-browser matrix is now recorded: 14 product-behavior assertions pass, one legacy 10-second idle-timeout negative control matches its expected `input_timeout`, and there are zero unexpected failures; the matching background case passes with the current 60-second default. This is partial browser coverage, not full browser/release acceptance; see [follow-up evidence](../../doc/streaming.md#持续运行与浏览器补充验证). Human onset annotation and S5 semantic review remain pending. Repeatable capacity evidence and natural long-form playback remain subject to their separate acceptance scopes. The initial production audio-success floor is fixed at 99% per direction with at least 300 sessions; this is a P0 acceptance policy and should be checked against real production telemetry.
+
+## Queue, wall-clock soak, and resource evidence
+
+Run two continuous speech directions with fixed PCM checksums at 1×. The client
+reanchors after a scheduling stall instead of burst-catching-up; it reports all
+frames sent and every reanchor. A 3,600-second run is an actual wall-clock test,
+not the accelerated logical-hour regression:
+
+```bash
+python -m benchmarks.streaming.duplex_soak \
+  --url ws://127.0.0.1:9191/v1/audio/stream --seconds 3600 \
+  --output .smartvoice-dev/streaming-product/hour.json \
+  --progress .smartvoice-dev/streaming-product/hour.progress.json
+python -m benchmarks.streaming.analyze_soak \
+  .smartvoice-dev/streaming-product/hour.json \
+  --baseline .smartvoice-dev/streaming-product/frozen-hour.json \
+  --steady-after 120 \
+  --output .smartvoice-dev/streaming-product/hour.analysis.json
+```
+
+The analysis checks complete input, WAV validation, consecutive audio sequence,
+exact coverage of each target final by its audio spans, and source/target final
+text equality to the same-input baseline. Repetition tests lifecycle/throughput;
+it is not a natural hour of meeting speech or a semantic-quality evaluation.
+Reported profiling percentiles use the bounded tail window; count/total/max
+include all calls. Keep failure runs alongside successful runs.
+
+Capabilities sample API RSS/CPU and scheduler-owned worker PIDs directly. Each
+worker also self-reports its CPU/current RSS. `owned_workers_complete` means all
+known model workers were sampled; `process_tree_complete` additionally requires
+permitted descendant traversal. Do not claim full tree measurements when that
+flag is false. Summed RSS can include shared pages and OS reclaim noise. CPU is
+reported as observed core equivalents, with audio seconds per consumed CPU
+second; this does not establish a concurrent-session capacity limit.
+
+If other benchmark services run on the same host, record their time interval and
+use `--steady-after` to restrict the trend/CPU analysis to a subsequent stable
+window. RSS peaks still include startup and the entire run. The compute-slot
+setting is a simultaneous-native-job allowance, not a count of physical cores.
+An hour with eight slots is not evidence for the default two-slot configuration.
+
+To distinguish marginal context cost from amortized shared-model RSS, run
+`python -m benchmarks.streaming.session_cost --url <WS-url> --output <report>`
+on an idle service. It initializes both directions, then compares warm idle,
+one empty session and two empty sessions only when model-worker counts match.
+Signed RSS deltas include allocator/OS noise; a negative delta must not be
+reported as a zero-cost session or used to change residency budgets.
+
+## Real browser impairment and recovery
+
+Use the loopback QA proxy documented in [browser-qa-v1.md](browser-qa-v1.md).
+It serves the shipped streaming page with an observation panel and forwards the
+real WebSocket to a separate product API. Its network shaping limits bytes in
+both directions and pipelines an 80ms one-way delay. Disconnect controls close
+the actual transport during upload or playback. Captured evidence includes DOM
+revisions, final rows, completed audio callbacks, network-buffer peaks and the
+service's effective limits. Keep failed configurations and retries in the matrix.
+A `hidden` sample is mandatory for background coverage. Audio completion here
+means Web Audio callbacks, not independently measured speaker audibility.
+
+
+## Latest product acceptance result (2026-10-11)
+
+The default two-session/two-compute-permit duplex wall-clock hour passed with complete 1x input, exact final text, ordered complete audio and no overload. At the time of that run, the bilingual model admission budget was explicitly raised from 4096 MiB to 8192 MiB; the product default has since been updated to 8192 MiB based on the measured two-direction model residency. The sampled API plus scheduler-known worker RSS peaked at 1.95 GiB and showed no positive steady-state growth; full descendant-process enumeration is unavailable on this host.
+
+The six-route fixed clean-corpus matrix contains 30 sessions per route (10 clips × 3 rounds) at both serial and concurrency 2. Functional failures were zero, strict source/target final guards passed, and speech full-audio success was 30/30 in both directions. Source partial P90 remained above 1s and target partial P90 remained above 2s in both matrices. TTFO is observational only and has no latency target. The serial/concurrency comparison indicates the caption delay is not primarily caused by two-session contention. See the [portable final acceptance report](reports/streaming-final-acceptance-2026-10-11.json) and [coverage evidence](../../doc/streaming.md#测试覆盖与评测结果).
+
+
+The VAD-onset-adjusted diagnostics for the same fixed clips are below the subtitle limits (English/Chinese source P90 0.924/0.878s; English→Chinese/Chinese→English target P90 1.688/1.524s). These VAD onsets are not human-verified, so official first-PCM gates remain failed. Before another model tuning round, annotate audible speech onset on the fixed cases and report both clocks; do not reclassify the formal gate using VAD estimates.

@@ -30,7 +30,7 @@ Implemented in product code: six online routes, `smartvoice.stream.v1` WebSocket
 
 The benchmark entry is `scripts/validate_speech.py streaming`, with pinned corpus/config/code, strict final/audio/skip comparisons, success-rate denominators, first-PCM and annotated-onset percentiles, profiling and optional full-process-tree resources. This is a reproducible evaluation entry, not an assertion that all evaluation categories have passed.
 
-See [interface/setup](streaming.md), [migration evidence and remaining work](streaming-migration.md), and [benchmark procedure](../benchmarks/streaming/README.md). The three performance targets remain source partial P90<1s, target partial P90<2s and bidirectional speech onset TTFO P90<3s. Speech TTFO, current high-risk quality/skip cases, human onset coverage, browser long playback, full repeated corpus, resource capacity and platform packaging remain release gates. No model-quality or audio-success SLA is invented for this checkpoint.
+See [interface/setup](streaming.md), [migration evidence and remaining work](streaming.md#产品迁移记录与阶段状态), and [benchmark procedure](../benchmarks/streaming/README.md). The current subtitle performance targets are source partial P90<1s and target partial P90<2s. Speech TTFO is reported as an observation without a latency threshold. Current acceptance closes with the default two-session/two-compute-slot duplex hour and 30 fixed-corpus sessions per route across the six routes, including strict final/audio guards. Broader platform packaging and capacity above two sessions remain separate work.
 
 
 ### Goal and modes
@@ -482,7 +482,11 @@ For every release candidate, retain the CI suite, full regression results, distr
 
 ## Completed Work and Historical Notes
 
-- 流式长会话与共享 worker 改造：默认取消墙钟/累计音频硬上限，增加心跳、模型级共享池、独立会话句柄、有界私有上下文及场景工作流。实现边界、配置和待验收项见 [streaming-shared-workers.md](streaming-shared-workers.md)。当前 greedy ASR 不支持历史文本偏置；跨连接恢复和原生状态迁移仍是后续能力，不应按已实现验收。
+- 流式长会话与共享 worker 改造：默认取消墙钟/累计音频硬上限，增加心跳、模型级共享池、独立会话句柄、有界私有上下文及场景工作流。实现边界、配置和待验收项见[流式处理文档](streaming.md#共享模型-worker长会话与容错)。当前 greedy ASR 不支持历史文本偏置；服务重启/跨实例恢复和原生状态迁移仍是后续能力，不应按已实现验收。
+
+- 长流回归与报告治理（2026-10-10）：full 已增加六条真实模型链路、每条一小时音频的有界加速验证；首轮 69 项通过，英→中字幕另补测当前代码的输入期间持续输出。修复并发关闭的重复释放，最新 CI 312 项通过。固定摘要导出保留失败与证据校验和，统一相对路径/外部产物引用，CI 拒绝绝对路径和越界路径。见[测试证据及范围](streaming.md#测试覆盖与评测结果)。下一步按六链路实时质量/性能基线、新池 2/4/8/16 并发及完整进程树资源、1–2 小时墙钟 soak、真实浏览器矩阵的顺序验收；模型副本、批处理和上下文偏置按实测与适配器能力另行推进。
+
+- 同进程断线续传（2026-10-10）：协议扩展已实现。显式请求恢复的会话在有界宽限期内保留原生 ASR stream、私有上下文和未排空队列，使用恢复 token、连续输入序号/采样偏移及输出/播完游标恢复；输入指纹去重和输出缓存均有上限。浏览器自动重连，已播完块不重播，未播完块按整块恢复；终态 ACK 丢失可重取。协议、真实 TCP 中断和六条真实模型短语料回归已覆盖。服务重启/跨实例恢复、块内播放精确一次及真实浏览器压力验收仍待后续工作。
 
 - The core domain/ports/adapters boundaries, application-level STT/TTS services, REST API, CLI, model repository/lifecycle, and static language-aware router are implemented.
 - The prior router design questions and prototype JSON are superseded by the current implementation and are not open tasks. Routing uses the versioned JSON configuration, `smartvoice-auto`, direct model IDs, explicit/automatic language handling, ordered installed candidates, and hot reload.

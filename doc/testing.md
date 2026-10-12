@@ -18,6 +18,37 @@ The CI entry point also excludes `test_streaming_real_long.py`. It retains share
 worker fault tests and the bounded long-audio generator/output-audit tests without
 loading speech models.
 
+`test_streaming_resume_native.py` is also full-only: a short pinned fixture for
+each of the six routes checks two same-process reconnects without rebuilding ASR or
+resetting private context, duplicate-input suppression, complete output and
+owned process cleanup. It does not repeat the six hour cases or replace them.
+CI retains service/protocol recovery tests, a real TCP-abort replay test using
+simulated stages, and the optional Node.js browser-client protocol simulation.
+The Node simulation is an explicit skip when Node is unavailable; it is not a
+real-browser or physical-playback acceptance test.
+
+Shared-worker regressions cover handle isolation, queued/running cancellation,
+worker-loss propagation, cross-model fault isolation, concurrent initialization,
+idle eviction and exactly-once cleanup under concurrent close or canceled close
+waiters. CI also checks nested filesystem references in curated streaming reports
+for POSIX/Windows absolute paths and parent traversal. Local CI passed 337 tests
+on 2026-10-10 and 353 tests on 2026-10-12; these counts are dated observations,
+not a fixed suite-size contract.
+
+Focused recovery regressions can run independently:
+
+```bash
+python -m unittest tests.test_streaming_resume -v
+SMARTVOICE_TEST_SUITE=full python -m unittest tests.test_streaming_resume_native -v
+```
+
+The first command runs 25 test methods, including repeated disconnects, malformed
+requests, cache exhaustion, detached stage failure, sibling isolation and finish
+retransmission. The second requires the installed streaming models and writes
+ignored raw evidence under `.smartvoice-dev/full-streaming/`.
+The 2026-10-12 real-model run passed all six routes with two same-process
+resumptions per route; it does not establish restart or cross-instance recovery.
+
 The active GitHub Actions CI workflow installs the development dependencies and runs this entry point on pull requests and pushes to `main`. It also builds and checks the source distribution and the Linux wheel.
 
 ## Default regression tests
@@ -71,6 +102,20 @@ process shutdown. Per-route success/failure reports remain in
 This covers one hour of **audio content**, not one hour of wall-clock stability.
 It does not assert real-time TTFO/P90, natural meeting quality, WebSocket/browser
 playback or concurrency capacity. Those remain separate measured regressions.
+
+The local 2026-10-10 six-route streaming full run passed 69 tests, with all six
+native hour cases complete and their owned worker processes reclaimed. An
+additional current-code English-to-Chinese subtitle hour case verified target
+output before input finished. See [results and scope](streaming.md#测试覆盖与评测结果).
+The full run preceded the final concurrent-close/path-check additions; latest CI
+and the supplemental native case provide separate evidence for those changes.
+
+Export summaries with `python -m benchmarks.streaming.summarize_full_hour`;
+[export instructions](../scripts/README.md#export-a-portable-hour-summary) describe
+required six-route inputs and optional supplementary runs. Failures and incomplete
+input remain in the export. Raw evidence uses repository-relative references or
+external filename/artifact IDs/checksums; local raw files are not distributed
+automatically. Existing output summaries cannot be overwritten by the exporter.
 
 ## Real TCP HTTP completion checks
 
@@ -201,4 +246,4 @@ Elastic runtime concurrency and lifecycle tests are included in the fast suite. 
 
 ### Streaming fault and sustained-session coverage
 
-Run `python -m unittest tests.test_streaming tests.test_streaming_resilience tests.test_streaming_documentation` for the focused suite. The new resilience module covers six routes with multiple confirmed segments, revision/commit guards, initialization/inference cancellation, fault propagation, ACK/playback bounds, ASGI disconnect/reopen, shutdown, missing-model/memory admission, silence/skips/invalid PCM and 140-second logical input. See [coverage matrix and deferred acceptance](streaming-test-coverage.md). Simulated stages and logical timestamps do not establish model quality or real-time performance; native-process ownership is separately exercised with controlled subprocess work.
+Run `python -m unittest tests.test_streaming tests.test_streaming_resilience tests.test_streaming_documentation` for the focused suite. The new resilience module covers six routes with multiple confirmed segments, revision/commit guards, initialization/inference cancellation, fault propagation, ACK/playback bounds, ASGI disconnect/reopen, shutdown, missing-model/memory admission, silence/skips/invalid PCM and 140-second logical input. See [coverage matrix and deferred acceptance](streaming.md#测试覆盖与评测结果). Simulated stages and logical timestamps do not establish model quality or real-time performance; native-process ownership is separately exercised with controlled subprocess work.

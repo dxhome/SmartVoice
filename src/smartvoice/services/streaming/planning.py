@@ -57,11 +57,13 @@ class ProcessingPlan:
 
 def resolve(config, repository, threads=1):
     required={'type','protocol','mode','source_language','audio'}
-    optional={'target_language','models','include_source_text','output_consumption','glossary','ack_window','context'}
+    optional={'target_language','models','include_source_text','output_consumption','glossary','ack_window','context','resumable'}
     if not isinstance(config,dict) or not required<=config.keys() or config.keys()-required-optional:
         raise StageError('invalid_config','Unexpected or missing session fields')
     if config['type']!='configure' or config['protocol']!='smartvoice.stream.v1':
         raise StageError('invalid_config','Expected smartvoice.stream.v1 configure')
+    if type(config.get('resumable',False)) is not bool:
+        raise StageError('invalid_config','Resumable must be a boolean')
     public_mode=config['mode'];lang=config['source_language'];target=config.get('target_language')
     if not isinstance(public_mode,str) or public_mode not in MODES or not isinstance(lang,str) or lang not in ('zh','en'):
         raise StageError('invalid_config','Expected a supported mode and explicit zh/en source language')

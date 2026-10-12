@@ -101,13 +101,24 @@ async def run(args, process):
     def fetch_pool():
         url=args.url.replace('wss://','https://').replace('ws://','http://')
         url=url.split('/v1/audio/stream',1)[0]+'/v1/audio/stream/capabilities'
-        with urllib.request.urlopen(url,timeout=3) as response: return json.load(response).get('worker_pool',{})
+        with urllib.request.urlopen(url,timeout=3) as response:
+            body=json.load(response)
+            return dict(worker_pool=body.get('worker_pool',{}),process_resource_sample=body.get('process_resource_sample',{}),
+                        active_sessions=body.get('active_sessions',0))
     async def monitor_pool():
         while True:
             try:
                 sample=await asyncio.to_thread(fetch_pool)
-                pool_samples.append(dict(at_monotonic_seconds=time.monotonic(),**sample))
-                for key,value in sample.items():
+                at=time.monotonic()
+                pool=sample.get('worker_pool',{});rows=pool.get('worker_resources',[])
+                worker=dict(count=len(rows),
+                    rss_bytes=sum(r.get('last_rss_bytes') or 0 for r in rows),
+                    peak_rss_bytes=sum(r.get('peak_rss_bytes') or 0 for r in rows),
+                    cpu_user_seconds=sum(r.get('cumulative_cpu_user_seconds') or 0 for r in rows),
+                    cpu_system_seconds=sum(r.get('cumulative_cpu_system_seconds') or 0 for r in rows),
+                    rss_kinds=sorted({r.get('rss_kind') or 'unavailable' for r in rows}))
+                pool_samples.append(dict(at_monotonic_seconds=at,worker_resource_totals=worker,**sample))
+                for key,value in pool.items():
                     if isinstance(value,(int,float)):pool_peak[key]=max(pool_peak.get(key,0),value)
             except Exception: pass
             await asyncio.sleep(5)
@@ -151,6 +162,38 @@ async def run(args, process):
                        wait_after_exit_seconds=args.cleanup_wait_seconds)
 
     failures = sum(not row.get("functional_success", False) for row in records)
+    worker_samples=[(r['at_monotonic_seconds'],r['worker_resource_totals']) for r in pool_samples]
+    worker_rss=[r['rss_bytes'] for _,r in worker_samples]
+    worker_highwater=[r['peak_rss_bytes'] for _,r in worker_samples]
+    worker_cpu_rates=[]
+    for (t0,a),(t1,b) in zip(worker_samples,worker_samples[1:]):
+        elapsed=t1-t0;delta=(b['cpu_user_seconds']+b['cpu_system_seconds'])-(a['cpu_user_seconds']+a['cpu_system_seconds'])
+        if elapsed>0 and delta>=0:worker_cpu_rates.append(delta/elapsed)
+    native_worker_resources=dict(
+        source='worker self-report from owned native processes; excludes API process',
+        samples=len(worker_samples),rss_kind=sorted({kind for _,r in worker_samples for kind in r['rss_kinds']}),
+        last_worker_count=worker_samples[-1][1]['count'] if worker_samples else 0,
+        peak_worker_count=max((r['count'] for _,r in worker_samples),default=0),
+        current_rss_sum_bytes=worker_rss[-1] if worker_rss else None,
+        peak_sampled_rss_sum_bytes=max(worker_rss,default=None),
+        summed_worker_high_water_rss_bytes=max(worker_highwater,default=None),
+        estimated_cpu_core_equivalents=({f'p{p}':sorted(worker_cpu_rates)[math.ceil(len(worker_cpu_rates)*p/100)-1]
+            for p in (50,90,95)} if worker_cpu_rates else None),
+        cpu_rate_note='Adjacent 5-second capability samples; worker eviction/recreation can undercount CPU')
+    process_samples=[(at,row.get('process_resource_sample',{}),row.get('active_sessions',0)) for at,row in
+        ((r['at_monotonic_seconds'],r,r.get('active_sessions',0)) for r in pool_samples)]
+    process_samples=[(at,resource,sessions) for at,resource,sessions in process_samples if resource.get('available')]
+    process_cpu_rates=[]
+    for (t0,a,_),(t1,b,_) in zip(process_samples,process_samples[1:]):
+        elapsed=t1-t0;delta=(b.get('cpu_user_seconds',0)+b.get('cpu_system_seconds',0))-(a.get('cpu_user_seconds',0)+a.get('cpu_system_seconds',0))
+        if elapsed>0 and delta>=0:process_cpu_rates.append(delta/elapsed)
+    process_tree_resources=dict(source='API self-report of process and visible descendants; sampled through capabilities endpoint',
+        samples=len(process_samples),process_tree_complete=all(r.get('process_tree_complete',False) for _,r,_ in process_samples) if process_samples else False,
+        max_process_count=max((r.get('process_count',0) for _,r,_ in process_samples),default=0),
+        peak_sampled_rss_bytes=max((r.get('rss_bytes',0) for _,r,_ in process_samples),default=None),
+        cpu_core_equivalents_p50_p90_p95=({f'p{p}':sorted(process_cpu_rates)[math.ceil(len(process_cpu_rates)*p/100)-1]
+            for p in (50,90,95)} if process_cpu_rates else None),
+        rss_scope='Summed RSS can double-count shared pages; capability sampling interval is about 5 seconds')
     first_kind = ("audio_segment" if args.mode == "spoken_interpretation" else
                   "target_partial" if args.mode == "translated_subtitles" else "source_unit_partial")
     output_values = [row["first_output_seconds"][first_kind] for row in records
@@ -168,6 +211,8 @@ async def run(args, process):
         full_audio_success_rate=(sum(row.get("full_audio_success", False) for row in records)/len(records)
                                  if args.mode == "spoken_interpretation" and records else None),
         resources=resources, owned_process_cleanup=cleanup,
+        native_worker_resources=native_worker_resources,
+        process_tree_resources=process_tree_resources,
         shared_model_pool=dict(peak=pool_peak,recent_samples=list(pool_samples),
             scope='server admission estimates and queue counts; not measured native RSS'),
         interpretation="Repeated PCM fixture content is a soak/stability probe, not natural long-form language-quality coverage.",

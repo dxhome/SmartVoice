@@ -25,9 +25,9 @@ SmartVoice is a local speech-to-text (STT) and text-to-speech (TTS) service for 
 - **One API for STT and TTS:** Connect compatible agents and apps through a single audio API.
 - **Choose and move your models:** Install only what you need, select models directly, or export model packages for offline transfer.
 
-**Streaming preview:** Original subtitles (zh/en), translated subtitles and translated speech (zh↔en) are available by default through a versioned WebSocket and browser page. Use `/console/streaming`, `WS /v1/audio/stream` and `GET /v1/audio/stream/capabilities`; install the required model assets for each scenario. See [streaming setup and contract](doc/streaming.md) and [migration evidence and remaining acceptance](doc/streaming-migration.md).
+**Streaming preview:** Original subtitles (zh/en), translated subtitles and translated speech (zh↔en) are available by default through a versioned WebSocket and browser page. Use `/console/streaming`, `WS /v1/audio/stream` and `GET /v1/audio/stream/capabilities`; install the required model assets for each scenario. See [streaming setup and contract](doc/streaming.md) and [migration evidence and remaining acceptance](doc/streaming.md#产品迁移记录与阶段状态).
 
-Streaming sessions now use shared model workers and private bounded state. Total lifetime and cumulative audio caps are disabled by default; send explicit heartbeats during input pauses. See [long-session resource boundaries](doc/streaming-shared-workers.md).
+Streaming sessions use shared model workers with private online ASR state and bounded context. Total lifetime and cumulative audio caps are disabled by default; send explicit heartbeats during input pauses. Session admission, model residency, queues and compute remain bounded (default: two sessions and two compute slots). Context storage is implemented, but current greedy ASR does not use transcript prompts or hotword bias; opt-in sessions can resume in the same service process within a bounded grace period. The browser enables recovery by default; unfinished audio chunks may replay, and service restarts cannot resume sessions. See [long-session design and resource boundaries](doc/streaming.md#共享模型-worker长会话与容错).
 
 **Current scope:** CPU inference is supported; GPU inference, packaged installers, and Android are not yet supported. Installing or updating models requires downloading files from their configured sources. The service binds to `127.0.0.1` by default; network exposure has no API authentication, so keep it on a trusted network and restrict access with your firewall.
 
@@ -318,7 +318,7 @@ Client / Agent ──► Versioned HTTP API ──► Application services
               Platform diagnostics adapter
 ```
 
-Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The source deployment supports CPU inference on Windows x64, macOS Apple Silicon, and Linux x86_64. Qwen3-TTS uses the native C INT8 adapter on all three platforms; Linux source deployments build against the system OpenBLAS library as described above. GPU providers and Android runtimes are not available in SmartVoice. Streaming is an opt-in preview, currently verified on macOS arm64. See [Architecture Summary and Guidelines](doc/architecture-guidelines.md) for the detailed matrix and model availability semantics.
+Callers use versioned API and capability endpoints; inference details stay behind provider and repository interfaces. The source deployment supports CPU inference on Windows x64, macOS Apple Silicon, and Linux x86_64. Qwen3-TTS uses the native C INT8 adapter on all three platforms; Linux source deployments build against the system OpenBLAS library as described above. GPU providers and Android runtimes are not available in SmartVoice. Streaming is available by default as a preview; current streaming verification is on macOS arm64. See [Architecture Summary and Guidelines](doc/architecture-guidelines.md) for the detailed matrix and model availability semantics.
 
 ## Development
 
@@ -335,6 +335,18 @@ the six routes with bounded accelerated input. Use `python scripts/test.py full
 --streaming-only` to run that streaming scope independently. This verifies long
 input and cleanup, not a one-hour wall-clock soak or real-time latency SLA; see
 [full streaming regression](scripts/README.md#full-streaming-regression).
+
+The six native streaming hour cases passed on the local macOS test platform,
+including output order/completeness and owned worker cleanup. On 2026-10-12,
+the latest CI run passed 353 tests; real-model same-process resume passed on all
+six routes, and the browser evidence matrix had 14/14 positive assertions plus
+one matched expected-negative Safari timeout. See [measured results and remaining validation](doc/streaming.md#测试覆盖与评测结果).
+Checked-in reports use portable evidence references, with absolute/traversal paths
+rejected by CI. Export native-hour summaries with the
+[fixed report exporter](scripts/README.md#export-a-portable-hour-summary).
+Real-time latency, new-pool concurrency capacity, wall-hour soak and browser
+playback remain separate acceptance work.
+
 See [`doc/releasing.md`](doc/releasing.md) for versioning, GitHub Releases, and optional PyPI publishing.
 
 ## Repository layout

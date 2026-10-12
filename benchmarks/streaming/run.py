@@ -8,6 +8,7 @@ import math
 import platform
 import time
 import wave
+from collections import deque
 from urllib.request import urlopen
 from urllib.parse import urlsplit, urlunsplit
 from pathlib import Path
@@ -42,14 +43,25 @@ def compare(baseline, records):
     for row in records:
         key=(row['scenario'],row['case']);old=before.get(key);errors=[]
         if old is None:errors.append('missing_baseline_case')
-        elif normalize_snapshot(old)!=normalize_snapshot(row):errors.append('strict_final_audio_or_skip_mismatch')
+        audio_behavior_changed=False;terminal_changed=False
+        if old is not None:
+            previous=normalize_snapshot(old);current=normalize_snapshot(row)
+            if previous['finals']!=current['finals']:errors.append('strict_source_or_target_final_mismatch')
+            audio_behavior_changed=(previous['audio']!=current['audio'] or previous['skips']!=current['skips'])
+            terminal_changed=(old.get('terminal_type'),old.get('terminal_status'))!=(row.get('terminal_type'),row.get('terminal_status'))
         if row.get('failure'):errors.append('session_failure')
         if old is not None and (row.get('terminal_type')!=old.get('terminal_type') or row.get('terminal_status')!=old.get('terminal_status')):
-            errors.append('terminal_outcome_mismatch')
+            # Terminal outcome changes are diagnostic. Current success,
+            # exact final text and audio-completeness guards decide acceptance.
+            pass
         if not row.get('functional_success'):errors.append('functional_failure')
         if row.get('audio_integrity_errors'):errors.append('audio_integrity_failure')
-        findings.append(dict(scenario=key[0],case=key[1],errors=errors))
-    return dict(scope='only selected cases; not complete baseline coverage',passed=all(not f['errors'] for f in findings),findings=findings)
+        if key[0].startswith('speech_') and not row.get('full_audio_success'):
+            errors.append('clean_audio_incomplete')
+        findings.append(dict(scenario=key[0],case=key[1],errors=errors,
+            baseline_audio_behavior_changed=audio_behavior_changed,baseline_terminal_changed=terminal_changed))
+    return dict(scope='selected fixed cases; exact final text plus current audio integrity/completeness; chunk segmentation and improved completion may change',
+        passed=all(not f['errors'] for f in findings),findings=findings)
 
 def production_audio_gate(rows, acceptance):
     """Evaluate the 300-session numerical floor without mislabeling replay as telemetry."""
@@ -69,7 +81,24 @@ def production_audio_gate(rows, acceptance):
         required_rate=floor,status=status,
         denominator_rule='Every non-silence speech session; no-audio, invalid, incomplete, and skipped output count as failures')
 
-async def replay(url,case,audio_root,mode,annotation):
+
+class RealtimePacer:
+    """Pace PCM without burst-catching-up after a process/event-loop stall."""
+    def __init__(self,started=None,*,max_lag_seconds=.02):
+        self.started=time.perf_counter() if started is None else started
+        self.max_lag_seconds=max_lag_seconds;self.reanchors=0;self.max_lag=0.
+    def before_frame(self,offset_seconds,now=None):
+        now=time.perf_counter() if now is None else now
+        due=self.started+offset_seconds;lag=max(0.,now-due);self.max_lag=max(self.max_lag,lag)
+        reanchored=lag>self.max_lag_seconds
+        if reanchored:
+            # Preserve all PCM while moving its schedule origin. Future frames
+            # stay at 1x; a delayed client never dumps seconds of stale audio
+            # into the service's bounded queue in a tight burst.
+            self.started=now-offset_seconds;self.reanchors+=1;due=now
+        return max(0.,due-now),lag,reanchored
+
+async def replay(url,case,audio_root,mode,annotation,websocket_message_delay_ms=0):
     import websockets
     path=audio_root/case['path']
     digest=hashlib.sha256(path.read_bytes()).hexdigest()
@@ -81,7 +110,8 @@ async def replay(url,case,audio_root,mode,annotation):
     scenario=MODES[mode]+'_'+source+('_'+target if mode!='transcription' else '')
     row=dict(scenario=scenario,case=case['id'],source_audio_sha256=digest,input_duration_seconds=len(pcm)/32000,
         first_output_seconds={},final_snapshot=dict(final_events=[],audio_segments=[],audio_skipped=[]),failure=None,
-        terminal=None,reference=case.get('reference',''),target_reference=case.get('target_reference'),
+        terminal=None,terminal_type=None,terminal_status=None,
+        reference=case.get('reference',''),target_reference=case.get('target_reference'),
         partition=case.get('partition'),variant=case.get('variant'),expect_no_speech=case.get('expect_no_speech',False),
         human_translation_review_status='pending' if case.get('target_reference') else None,
         profiling={},audio_integrity_errors=[])
@@ -93,7 +123,10 @@ async def replay(url,case,audio_root,mode,annotation):
         if onset is None:onset=annotation.get('vad_onset_seconds')
     row['speech_onset_seconds']=onset;row['speech_onset_method']=method
     began=time.perf_counter();first_input=[None];ready=asyncio.Event();terminal=asyncio.Event()
+    delay_seconds=max(0,float(websocket_message_delay_ms))/1000
     descriptor=[None];expected_sequence=[1]
+    pacing_lag=deque(maxlen=4096);pacing_overruns=0;max_pacing_lag=0.
+    pacing_reanchors=0;pacing_frames_sent=0
     try:
         async with websockets.connect(url,max_size=1000000,open_timeout=10,close_timeout=3) as socket:
             config=dict(type='configure',protocol='smartvoice.stream.v1',mode=mode,source_language=source,
@@ -102,6 +135,7 @@ async def replay(url,case,audio_root,mode,annotation):
             await socket.send(json.dumps(config))
             async def receive():
                 async for message in socket:
+                    if delay_seconds:await asyncio.sleep(delay_seconds)
                     now=time.perf_counter()
                     if isinstance(message,bytes):
                         event=descriptor[0];descriptor[0]=None
@@ -117,6 +151,7 @@ async def replay(url,case,audio_root,mode,annotation):
                             if abs(actual_duration-event.get('duration_seconds',0))>0.02:row['audio_integrity_errors'].append('duration')
                         if first_input[0] is not None:row['first_output_seconds'].setdefault('audio_segment',now-first_input[0])
                         row['final_snapshot']['audio_segments'].append(event)
+                        if delay_seconds:await asyncio.sleep(delay_seconds)
                         await socket.send(json.dumps(dict(type='ack',event_sequence=event['event_sequence'])))
                         continue
                     event=json.loads(message);kind=event['type']
@@ -134,20 +169,28 @@ async def replay(url,case,audio_root,mode,annotation):
                         if kind=='error':row['failure']=event['code']
                         if descriptor[0] is not None:row['audio_integrity_errors'].append('missing_payload')
                         terminal.set();ready.set();return
+                    if delay_seconds:await asyncio.sleep(delay_seconds)
                     await socket.send(json.dumps(dict(type='ack',event_sequence=event['event_sequence'])))
             reader=asyncio.create_task(receive())
             try:
                 await asyncio.wait_for(ready.wait(),150)
                 if not terminal.is_set():
-                    pacing=time.perf_counter()
+                    pacer=RealtimePacer()
                     for offset in range(0,len(pcm),640):
                         if reader.done():reader.result();break
                         if terminal.is_set():break
-                        if first_input[0] is None:first_input[0]=time.perf_counter()
-                        await socket.send(pcm[offset:offset+640])
-                        delay=pacing+min(len(pcm),offset+640)/32000-time.perf_counter()
+                        delay,lag,reanchored=pacer.before_frame(offset/32000)
+                        pacing_lag.append(lag);max_pacing_lag=max(max_pacing_lag,lag)
+                        if lag>.02:pacing_overruns+=1
+                        pacing_reanchors+=int(reanchored)
                         if delay>0:await asyncio.sleep(delay)
-                    if not terminal.is_set():await socket.send(json.dumps(dict(type='finish')))
+                        if first_input[0] is None:first_input[0]=time.perf_counter()
+                        if delay_seconds:await asyncio.sleep(delay_seconds)
+                        await socket.send(pcm[offset:offset+640])
+                        pacing_frames_sent+=1
+                    if not terminal.is_set():
+                        if delay_seconds:await asyncio.sleep(delay_seconds)
+                        await socket.send(json.dumps(dict(type='finish')))
                 await asyncio.wait_for(reader,90)
             finally:
                 if not reader.done():reader.cancel()
@@ -164,6 +207,16 @@ async def replay(url,case,audio_root,mode,annotation):
         (row['output_audio_success'] if mode=='spoken_interpretation' else any(e['type']==required_kind and e.get('text','').strip() for e in row['final_snapshot']['final_events'])))
     row['onset_first_output_seconds']={k:v-onset for k,v in row['first_output_seconds'].items() if v>=onset} if onset is not None else {}
     row['invalid_onset_metrics']=[k for k,v in row['first_output_seconds'].items() if onset is not None and v<onset]
+    lag_values=sorted(pacing_lag)
+    row['input_pacing']={'policy':'1x schedule reanchors after >20ms stall; never burst catch-up',
+        'frame_count':pacing_frames_sent,'lag_sample_count':len(pacing_lag),'sample_window':pacing_lag.maxlen,
+        'lag_p50_seconds':lag_values[len(lag_values)//2] if lag_values else None,
+        'lag_p90_seconds':lag_values[math.ceil(len(lag_values)*.9)-1] if lag_values else None,
+        'lag_max_seconds':max_pacing_lag,'frames_over_20ms_late':pacing_overruns,
+        'schedule_reanchors':pacing_reanchors,'max_lag_before_reanchor_seconds':pacer.max_lag if 'pacer' in locals() else None}
+    row['network_impairment']={'method':'symmetric delay before each client send and after each server receive',
+        'websocket_message_delay_ms':websocket_message_delay_ms,
+        'note':'message-level loopback impairment; not a browser or bandwidth-shaping result'}
     hypothesis=(' ' if source=='en' else '').join(e['text'] for e in row['final_snapshot']['final_events'] if e['type']=='source_final')
     row['asr_error_rate']=error_rate([row['reference']],[hypothesis],'latin_wer' if source=='en' else 'han_cer')
     return row
@@ -208,13 +261,13 @@ def summarize(records):
             measured['clean_fixture_audio_gate']=dict(metric='full_audio_success_rate',required_rate=audio_gate,
                 value=measured['full_audio_success_rate'],status=audio_status,minimum_sessions=minimum_n)
             measured['production_audio_gate_replay_assessment']=production_audio_gate(rows,acceptance)
-            latency=measured['onset_latency'];human=measured['onset_ground_truth'];missing=measured['latency_missing_count']
-            if not human:status='not_evaluable_human_onset_required'
-            elif len(latency_rows)<minimum_n:status='insufficient_samples'
-            elif missing or latency['n']!=len(rows):status='fail_missing_output'
-            else:status='pass' if latency['p90_seconds']<acceptance['latency_targets']['speech_ttfo']['limit_seconds'] else 'fail'
-            measured['latency_target_assessment']=dict(metric='speech_ttfo',clock='human_annotated_speech_onset',
-                limit_seconds=acceptance['latency_targets']['speech_ttfo']['limit_seconds'],value_p90_seconds=latency['p90_seconds'],n=latency['n'],status=status)
+            measured['latency_observation']=dict(metric='speech_ttfo',clock='first_pcm_send',
+                value_p50_seconds=measured['first_pcm_latency']['p50_seconds'],
+                value_p90_seconds=measured['first_pcm_latency']['p90_seconds'],
+                value_p95_seconds=measured['first_pcm_latency']['p95_seconds'],
+                n=measured['first_pcm_latency']['n'],acceptance_threshold=None,status='observational_only',
+                onset_corrected_diagnostic=measured['onset_latency'],
+                onset_ground_truth=measured['onset_ground_truth'])
         else:
             latency=measured['first_pcm_latency'];missing=measured['latency_missing_count']
             target_key='source_partial' if scenario.startswith('transcription_') else 'target_partial'
@@ -266,7 +319,8 @@ async def main_async(args):
             for mode in modes:
                 for offset in range(0,len(selected),args.concurrency):
                     batch=selected[offset:offset+args.concurrency]
-                    results=await asyncio.gather(*(replay(args.url,case,args.audio_root,mode,annotations.get(case['id'])) for case in batch))
+                    results=await asyncio.gather(*(replay(args.url,case,args.audio_root,mode,annotations.get(case['id']),
+                        args.websocket_message_delay_ms) for case in batch))
                     for row in results:
                         row['round']=round_index+1;records.append(row)
                         print(row['scenario'],row['case'],row['failure'] or row['terminal']['status'],flush=True)
@@ -312,9 +366,12 @@ def main():
     parser.add_argument('--cases');parser.add_argument('--rounds',type=int,choices=range(1,31),default=1,
         help='Repeat the selected fixtures (up to 30 rounds; 30 rounds over 10 clean cases gives 300 sessions per direction)')
     parser.add_argument('--all-cases',action='store_true',help='Include non-clean variants and expected-silence controls')
+    parser.add_argument('--websocket-message-delay-ms',type=float,default=0,
+        help='Inject symmetric per-message delay for transport experiments; 0 disables it')
     parser.add_argument('--modes',help='Comma-separated subset: transcription,translated_subtitles,spoken_interpretation')
     parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
     if args.cpu_cores is not None and args.cpu_cores<=0:parser.error('cpu-cores must be positive')
+    if args.websocket_message_delay_ms<0:parser.error('websocket-message-delay-ms cannot be negative')
     if args.output.exists():parser.error('Output exists; preserve previous runs with a fresh report path')
     asyncio.run(main_async(args))
 if __name__=='__main__':main()

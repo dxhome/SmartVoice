@@ -1,0 +1,435 @@
+{
+  "schema": "smartvoice.stream.final-acceptance.v1",
+  "date": "2026-10-11",
+  "acceptance_revision": "product-streaming-p0-v2",
+  "method": {
+    "corpus_revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+    "selected_clean_cases_per_language": 10,
+    "repetitions": 3,
+    "sessions_per_route": 30,
+    "official_latency_clock": "first PCM send",
+    "percentile_method": "nearest rank",
+    "failure_denominators_include_all_attempts": true,
+    "quality_claim": "strict equality to frozen source/target final text plus functional and audio integrity guards; not human semantic approval"
+  },
+  "scenarios": {
+    "transcription_en": {
+      "label": "English original subtitles",
+      "sessions_per_run": 30,
+      "functional_failures_serial": 0,
+      "functional_failures_concurrency_2": 0,
+      "serial_latency": {
+        "metric": "source_partial",
+        "clock": "first_pcm_send",
+        "limit_seconds": 1.0,
+        "value_p90_seconds": 2.0920315840048715,
+        "n": 30,
+        "status": "fail"
+      },
+      "concurrency_2_latency": {
+        "metric": "source_partial",
+        "clock": "first_pcm_send",
+        "limit_seconds": 1.0,
+        "value_p90_seconds": 2.1088098339969292,
+        "n": 30,
+        "status": "fail"
+      },
+      "source_quality": {
+        "metric": "WER",
+        "normalization_profile": "latin_wer",
+        "value": 0.171875,
+        "n": 30,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "target_quality_review": {
+        "status": "not_applicable",
+        "cases": 0
+      },
+      "strict_final_text_guard_serial": true,
+      "strict_final_text_guard_concurrency_2": true,
+      "full_audio_success_rate_serial": null,
+      "full_audio_success_rate_concurrency_2": null,
+      "onset_latency_diagnostic_serial": {
+        "n": 30,
+        "p50_seconds": 0.7533227499462665,
+        "p90_seconds": 0.9240315840048716,
+        "p95_seconds": 0.9454520409470424
+      },
+      "onset_latency_diagnostic_concurrency_2": {
+        "n": 30,
+        "p50_seconds": 0.7771037909276783,
+        "p90_seconds": 0.9408098339969293,
+        "p95_seconds": 0.9565912090018391
+      },
+      "onset_ground_truth": false
+    },
+    "transcription_zh": {
+      "label": "Chinese original subtitles",
+      "sessions_per_run": 30,
+      "functional_failures_serial": 0,
+      "functional_failures_concurrency_2": 0,
+      "serial_latency": {
+        "metric": "source_partial",
+        "clock": "first_pcm_send",
+        "limit_seconds": 1.0,
+        "value_p90_seconds": 3.055447291000746,
+        "n": 30,
+        "status": "fail"
+      },
+      "concurrency_2_latency": {
+        "metric": "source_partial",
+        "clock": "first_pcm_send",
+        "limit_seconds": 1.0,
+        "value_p90_seconds": 3.152502000099048,
+        "n": 30,
+        "status": "fail"
+      },
+      "source_quality": {
+        "metric": "CER",
+        "normalization_profile": "han_cer",
+        "value": 0.09615384615384616,
+        "n": 30,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "target_quality_review": {
+        "status": "not_applicable",
+        "cases": 0
+      },
+      "strict_final_text_guard_serial": true,
+      "strict_final_text_guard_concurrency_2": true,
+      "full_audio_success_rate_serial": null,
+      "full_audio_success_rate_concurrency_2": null,
+      "onset_latency_diagnostic_serial": {
+        "n": 30,
+        "p50_seconds": 0.5881462500793859,
+        "p90_seconds": 0.8782180419899523,
+        "p95_seconds": 0.8811452089818195
+      },
+      "onset_latency_diagnostic_concurrency_2": {
+        "n": 30,
+        "p50_seconds": 0.6056880410425365,
+        "p90_seconds": 0.893976666988805,
+        "p95_seconds": 0.9330242499951273
+      },
+      "onset_ground_truth": false
+    },
+    "translation_zh_en": {
+      "label": "Chinese to English translated subtitles",
+      "sessions_per_run": 30,
+      "functional_failures_serial": 0,
+      "functional_failures_concurrency_2": 0,
+      "serial_latency": {
+        "metric": "target_partial",
+        "clock": "first_pcm_send",
+        "limit_seconds": 2.0,
+        "value_p90_seconds": 3.6985064999898896,
+        "n": 30,
+        "status": "fail"
+      },
+      "concurrency_2_latency": {
+        "metric": "target_partial",
+        "clock": "first_pcm_send",
+        "limit_seconds": 2.0,
+        "value_p90_seconds": 3.7422237920109183,
+        "n": 30,
+        "status": "fail"
+      },
+      "source_quality": {
+        "metric": "CER",
+        "normalization_profile": "han_cer",
+        "value": 0.09615384615384616,
+        "n": 30,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "target_quality_review": {
+        "status": "pending_human_review",
+        "cases": 0,
+        "automated_semantic_score": null
+      },
+      "strict_final_text_guard_serial": true,
+      "strict_final_text_guard_concurrency_2": true,
+      "full_audio_success_rate_serial": null,
+      "full_audio_success_rate_concurrency_2": null,
+      "onset_latency_diagnostic_serial": {
+        "n": 30,
+        "p50_seconds": 1.1155832910370083,
+        "p90_seconds": 1.524150250038132,
+        "p95_seconds": 1.6557411249941216
+      },
+      "onset_latency_diagnostic_concurrency_2": {
+        "n": 30,
+        "p50_seconds": 1.1629451670302078,
+        "p90_seconds": 1.5898033749787137,
+        "p95_seconds": 1.6766706659672783
+      },
+      "onset_ground_truth": false
+    },
+    "translation_en_zh": {
+      "label": "English to Chinese translated subtitles",
+      "sessions_per_run": 30,
+      "functional_failures_serial": 0,
+      "functional_failures_concurrency_2": 0,
+      "serial_latency": {
+        "metric": "target_partial",
+        "clock": "first_pcm_send",
+        "limit_seconds": 2.0,
+        "value_p90_seconds": 2.8953019169857726,
+        "n": 30,
+        "status": "fail"
+      },
+      "concurrency_2_latency": {
+        "metric": "target_partial",
+        "clock": "first_pcm_send",
+        "limit_seconds": 2.0,
+        "value_p90_seconds": 2.8917464159894735,
+        "n": 30,
+        "status": "fail"
+      },
+      "source_quality": {
+        "metric": "WER",
+        "normalization_profile": "latin_wer",
+        "value": 0.171875,
+        "n": 30,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "target_quality_review": {
+        "status": "pending_human_review",
+        "cases": 0,
+        "automated_semantic_score": null
+      },
+      "strict_final_text_guard_serial": true,
+      "strict_final_text_guard_concurrency_2": true,
+      "full_audio_success_rate_serial": null,
+      "full_audio_success_rate_concurrency_2": null,
+      "onset_latency_diagnostic_serial": {
+        "n": 30,
+        "p50_seconds": 1.4993129999851809,
+        "p90_seconds": 1.6881822500387207,
+        "p95_seconds": 1.9659857499822975
+      },
+      "onset_latency_diagnostic_concurrency_2": {
+        "n": 30,
+        "p50_seconds": 1.6290185839477926,
+        "p90_seconds": 1.9320645829606802,
+        "p95_seconds": 2.0764728340161964
+      },
+      "onset_ground_truth": false
+    },
+    "speech_zh_en": {
+      "label": "Chinese to English translated speech",
+      "sessions_per_run": 30,
+      "functional_failures_serial": 0,
+      "functional_failures_concurrency_2": 0,
+      "serial_latency": {
+        "metric": "speech_ttfo",
+        "clock": "first_pcm_send",
+        "value_p50_seconds": 8.904380250023678,
+        "value_p90_seconds": 11.919900124892592,
+        "value_p95_seconds": 13.36757145903539,
+        "n": 30,
+        "acceptance_threshold": null,
+        "status": "observational_only",
+        "onset_corrected_diagnostic": {
+          "n": 30,
+          "p50_seconds": 8.120380250023677,
+          "p90_seconds": 10.570541457995773,
+          "p95_seconds": 10.993420167009345
+        },
+        "onset_ground_truth": false
+      },
+      "concurrency_2_latency": {
+        "metric": "speech_ttfo",
+        "clock": "first_pcm_send",
+        "value_p50_seconds": 8.809097584104165,
+        "value_p90_seconds": 11.999726167065091,
+        "value_p95_seconds": 13.992248542024754,
+        "n": 30,
+        "acceptance_threshold": null,
+        "status": "observational_only",
+        "onset_corrected_diagnostic": {
+          "n": 30,
+          "p50_seconds": 8.025097584104165,
+          "p90_seconds": 11.010434292022138,
+          "p95_seconds": 11.064248542024753
+        },
+        "onset_ground_truth": false
+      },
+      "source_quality": {
+        "metric": "CER",
+        "normalization_profile": "han_cer",
+        "value": 0.09615384615384616,
+        "n": 30,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "target_quality_review": {
+        "status": "not_applicable",
+        "cases": 0
+      },
+      "strict_final_text_guard_serial": true,
+      "strict_final_text_guard_concurrency_2": true,
+      "full_audio_success_rate_serial": 1.0,
+      "full_audio_success_rate_concurrency_2": 1.0,
+      "onset_latency_diagnostic_serial": {
+        "n": 30,
+        "p50_seconds": 8.120380250023677,
+        "p90_seconds": 10.570541457995773,
+        "p95_seconds": 10.993420167009345
+      },
+      "onset_latency_diagnostic_concurrency_2": {
+        "n": 30,
+        "p50_seconds": 8.025097584104165,
+        "p90_seconds": 11.010434292022138,
+        "p95_seconds": 11.064248542024753
+      },
+      "onset_ground_truth": false
+    },
+    "speech_en_zh": {
+      "label": "English to Chinese translated speech",
+      "sessions_per_run": 30,
+      "functional_failures_serial": 0,
+      "functional_failures_concurrency_2": 0,
+      "serial_latency": {
+        "metric": "speech_ttfo",
+        "clock": "first_pcm_send",
+        "value_p50_seconds": 7.6188315419713035,
+        "value_p90_seconds": 10.128629792016,
+        "value_p95_seconds": 12.270542499958538,
+        "n": 30,
+        "acceptance_threshold": null,
+        "status": "observational_only",
+        "onset_corrected_diagnostic": {
+          "n": 30,
+          "p50_seconds": 7.506831541971303,
+          "p90_seconds": 8.989510875096546,
+          "p95_seconds": 11.294542499958538
+        },
+        "onset_ground_truth": false
+      },
+      "concurrency_2_latency": {
+        "metric": "speech_ttfo",
+        "clock": "first_pcm_send",
+        "value_p50_seconds": 8.786875666002743,
+        "value_p90_seconds": 10.511800833046436,
+        "value_p95_seconds": 12.140182291972451,
+        "n": 30,
+        "acceptance_threshold": null,
+        "status": "observational_only",
+        "onset_corrected_diagnostic": {
+          "n": 30,
+          "p50_seconds": 8.421674124967307,
+          "p90_seconds": 9.116867833019235,
+          "p95_seconds": 11.164182291972452
+        },
+        "onset_ground_truth": false
+      },
+      "source_quality": {
+        "metric": "WER",
+        "normalization_profile": "latin_wer",
+        "value": 0.171875,
+        "n": 30,
+        "scope": "all selected sessions including failed/no-output sessions"
+      },
+      "target_quality_review": {
+        "status": "not_applicable",
+        "cases": 0
+      },
+      "strict_final_text_guard_serial": true,
+      "strict_final_text_guard_concurrency_2": true,
+      "full_audio_success_rate_serial": 1.0,
+      "full_audio_success_rate_concurrency_2": 1.0,
+      "onset_latency_diagnostic_serial": {
+        "n": 30,
+        "p50_seconds": 7.506831541971303,
+        "p90_seconds": 8.989510875096546,
+        "p95_seconds": 11.294542499958538
+      },
+      "onset_latency_diagnostic_concurrency_2": {
+        "n": 30,
+        "p50_seconds": 8.421674124967307,
+        "p90_seconds": 9.116867833019235,
+        "p95_seconds": 11.164182291972452
+      },
+      "onset_ground_truth": false
+    }
+  },
+  "hourly_default_session_compute_soak": {
+    "requested_wall_seconds": 3600,
+    "observed_wall_seconds": 3605.7493855420034,
+    "compute_permits": 2,
+    "max_concurrent_sessions": 2,
+    "input_queue_capacity_frames_per_session": 250,
+    "input_overload_count": 0,
+    "directions": {
+      "speech_zh_en": {
+        "terminal_status": "complete",
+        "input_frames": 180000,
+        "guard_passed": true,
+        "source_finals_match_frozen_baseline": true,
+        "target_finals_match_frozen_baseline": true,
+        "target_final_count": 456,
+        "audio_chunks": 456,
+        "audio_duration_seconds": 1822.6612471655471,
+        "max_session_queue_frames": 42
+      },
+      "speech_en_zh": {
+        "terminal_status": "complete",
+        "input_frames": 180000,
+        "guard_passed": true,
+        "source_finals_match_frozen_baseline": true,
+        "target_finals_match_frozen_baseline": true,
+        "target_final_count": 693,
+        "audio_chunks": 693,
+        "audio_duration_seconds": 2138.8139682539677,
+        "max_session_queue_frames": 43
+      }
+    },
+    "resource_evidence": {
+      "sample_count": 717,
+      "process_tree_complete": false,
+      "known_scheduler_workers_complete": true,
+      "cpu_core_equivalents_p90": 1.0263999682633498,
+      "cpu_core_equivalents_p95": 1.040564585524306,
+      "peak_sampled_rss_bytes": 2093481984,
+      "steady_rss_slope_bytes_per_hour": -106132682.95091741,
+      "aggregate_current_input_queue_peak_frames": 59,
+      "sampled_session_queue_high_water_frames": 43,
+      "pending_jobs_peak": 1,
+      "scope": "API plus all scheduler-known native workers; descendant traversal may be restricted; summed RSS includes shared pages"
+    },
+    "memory_admission_budget_mib": 8192,
+    "memory_budget_note": "Raised from product default 4096 MiB to admit both bilingual speech model sets; max sessions and compute permits remained 2."
+  },
+  "conclusion": {
+    "hourly_soak": "pass: full 1x input in both directions, no overload, exact source/target finals, complete ordered audio, and no positive steady RSS growth observed in this run",
+    "strict_final_quality_guard": "pass for all six routes at serial and concurrency 2; fixed clean corpus only, semantic human review remains separate",
+    "caption_latency": "not passed: all four official first-PCM source/target partial P90 values exceed their limits at both serial and concurrency 2",
+    "speech_ttfo": "reported as observational distributions only; no latency target or pass/fail",
+    "audio_quality": "30/30 complete spoken outputs per direction in both matrices; this is not production telemetry or human listening approval",
+    "onset_diagnostic": "VAD-onset-adjusted subtitle P90 values are below their targets, but onsets are not human-verified; this diagnostic cannot replace the official first-PCM clock."
+  },
+  "evidence": {
+    "serial_30_per_route": {
+      "raw_report": ".smartvoice-dev/streaming-product/six-route-30-serial-r1-2026-10-11.json",
+      "raw_report_sha256": "205ac6360a66ff02f3cf28af7215fa0c426dd82a412adbb691a2b635c3116c6d"
+    },
+    "concurrency_2_30_per_route": {
+      "raw_report": ".smartvoice-dev/streaming-product/six-route-30-r1-2026-10-11.json",
+      "raw_report_sha256": "d00ed76254ab6c1ac62abb134086197164e1b00875111a5fecafe9b359423927"
+    },
+    "hour_soak_raw": {
+      "raw_report": ".smartvoice-dev/streaming-product/duplex-soak-hour-default2-queue250-r3-2026-10-11.json",
+      "raw_report_sha256": "eeaeb5c0f33ab20221c897024b24013191ba59e72e5931e8d153ea9f8709a556"
+    },
+    "hour_soak_analysis": {
+      "raw_report": ".smartvoice-dev/streaming-product/duplex-soak-hour-default2-queue250-r3-2026-10-11.analysis.json",
+      "raw_report_sha256": "5780d023781cfff3a170977b8a16ee3119c0d9f2173dc13fc62b2812b3502712"
+    }
+  },
+  "human_onset_annotation": {
+    "status": "received_after_this_report; not_incorporated_into_versioned_benchmark",
+    "unique_audio_cases": 20,
+    "latency_report_recalculated": false,
+    "reason": "This report stores aggregate latency percentiles only. Exact onset-adjusted P90 requires per-session first-output latency paired with its case-specific onset; subtracting marginal P90 values is invalid.",
+    "annotation_content_persisted_in_repository": false
+  }
+}

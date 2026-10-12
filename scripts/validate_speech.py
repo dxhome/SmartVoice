@@ -18,6 +18,7 @@ COMMANDS = {
     "streaming-capacity": ("validation/verify_streaming_capacity.py", "Open-loop fixed-arrival streaming capacity with CPU/RSS and sessions-per-core metrics"),
     "streaming-capacity-matrix": ("validation/verify_streaming_capacity_matrix.py", "Launch isolated configurations for max_sessions 2/4/8/16 and compare concurrent output against a frozen baseline"),
     "streaming-stability": ("validation/verify_streaming_stability.py", "Repeated sessions, long audio, and owned-server exit/resource cleanup probes"),
+    "streaming-duplex-soak": ("validation/verify_streaming_duplex_soak.py", "Real-time concurrent zh→en and en→zh speech soak with worker CPU/RSS samples"),
     "stt-http": ("validation/verify_stt_http.py", "Real TCP HTTP transcription/synthesis and MP3 checks"),
     "stt-admission": ("validation/verify_stt_admission.py", "Queue admission, overload, timeout, and recovery checks"),
     "stt-policy": ("validation/compare_stt_policies.py", "Language, cache, window, and overlap comparisons"),

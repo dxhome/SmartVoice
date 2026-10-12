@@ -435,7 +435,7 @@ ASR is genuinely online. Translation uses replaceable bounded drafts and committ
 
 Dedicated per-session native workers can be terminated on deadline/cancellation, and retain admission/model leases until process exit is confirmed. Failed cleanup quarantines capacity. This differs from legacy REST's shared native worker threads, which cannot be forcibly interrupted. Streaming and REST always share finite compute admission. Queues, ACK windows, input duration, initialization and native calls are bounded. Estimated model memory admission is not a hard process RSS limit.
 
-Streaming is preview status, disabled by default. Six-route macOS arm64 smoke evidence does not establish multi-platform support, quality acceptance, P90 targets or concurrency capacity. See [contract](streaming.md), [migration status](streaming-migration.md), and [benchmark procedure](../benchmarks/streaming/README.md).
+Streaming is available by default as a preview. Current streaming verification is on macOS arm64; smoke evidence does not establish multi-platform support, quality acceptance, P90 targets or concurrency capacity. See the [contract](streaming.md), [migration status](streaming.md#产品迁移记录与阶段状态), and [benchmark procedure](../benchmarks/streaming/README.md).
 
 
 ### Model management categories and preparation (2026-10-09)

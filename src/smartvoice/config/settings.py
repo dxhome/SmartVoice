@@ -59,8 +59,9 @@ class Settings:
     inference_execution_timeout_seconds: float = 600.0
 
     streaming_max_sessions: int = 2
-    streaming_memory_mib: int = 4096
+    streaming_memory_mib: int = 8192
     streaming_compute_slots: int = 2
+    streaming_input_queue_frames: int = 250
     streaming_idle_seconds: float = 60.0
     streaming_lifetime_seconds: float = 0.0
     streaming_max_audio_seconds: float = 0.0
@@ -70,12 +71,13 @@ class Settings:
     streaming_native_seconds: float = 15.0
     streaming_initialization_seconds: float = 30.0
     streaming_cancel_grace_seconds: float = 1.0
+    streaming_resume_grace_seconds: float = 20.0
 
     def __post_init__(self):
-        for key in ("streaming_max_sessions", "streaming_memory_mib", "streaming_compute_slots", "streaming_max_model_workers", "streaming_max_pending_jobs"):
+        for key in ("streaming_max_sessions", "streaming_memory_mib", "streaming_compute_slots", "streaming_input_queue_frames", "streaming_max_model_workers", "streaming_max_pending_jobs"):
             if type(getattr(self, key)) is not int or getattr(self, key) <= 0:
                 raise ValueError(f"{key} must be a positive integer")
-        for key in ("streaming_idle_seconds", "streaming_worker_idle_seconds", "streaming_native_seconds", "streaming_initialization_seconds", "streaming_cancel_grace_seconds"):
+        for key in ("streaming_idle_seconds", "streaming_worker_idle_seconds", "streaming_native_seconds", "streaming_initialization_seconds", "streaming_cancel_grace_seconds", "streaming_resume_grace_seconds"):
             value = getattr(self, key)
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{key} must be finite and positive")
@@ -146,11 +148,12 @@ class Settings:
             **{key: setting(key, "SMARTVOICE_" + key.upper(), getattr(cls(initial_data_dir), key), cast)
                for key, cast in {"streaming_max_sessions": int,
                  "streaming_memory_mib": int, "streaming_compute_slots": int,
+                 "streaming_input_queue_frames": int,
                  "streaming_idle_seconds": float, "streaming_lifetime_seconds": float,
                  "streaming_native_seconds": float, "streaming_initialization_seconds": float,
                  "streaming_cancel_grace_seconds": float, "streaming_max_audio_seconds": float,
                  "streaming_max_model_workers": int, "streaming_max_pending_jobs": int,
-                 "streaming_worker_idle_seconds": float}.items()},
+                 "streaming_worker_idle_seconds": float, "streaming_resume_grace_seconds": float}.items()},
             server_host=setting("server_host", "SMARTVOICE_HOST", "127.0.0.1", str),
             server_port=setting("server_port", "SMARTVOICE_PORT", 8000, int),
             log_level=setting("log_level", "SMARTVOICE_LOG_LEVEL", "INFO", str).upper(),

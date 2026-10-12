@@ -24,17 +24,20 @@ class StreamSession:
         self.workflow = WORKFLOWS[plan.mode]
         self.workflow.validate(specs)
         self.context = SessionContext(plan.source_language,plan.context_terms)
+        self.recovery = None
         self.asr_context_version = -1
         self.id = uuid.uuid4().hex
         self.started = time.monotonic()
         self.last_activity = self.started
         self.ready = asyncio.Event(); self.stop = asyncio.Event(); self.done = asyncio.Event()
-        self.input = asyncio.Queue(maxsize=50); self.output = asyncio.Queue(maxsize=32)
+        self.input = asyncio.Queue(maxsize=settings.streaming_input_queue_frames); self.output = asyncio.Queue(maxsize=32)
         self.translation_input = asyncio.Queue(maxsize=4)
         self.translation_submitted = self.translation_completed = 0
         self.pending_translation_chars = self.peak_translation_chars = self.peak_translation_segments = 0
         self.translation_seconds = 0.; self.translation_failure = None
         self.sequence = self.last_ack = self.input_sequence = self.samples = 0
+        self.input_queue_peak_frames = 0;self.input_overload_count = 0
+        self.last_input_received_at = None;self.input_frame_intervals = []
         self.ack_window = ack_window; self.ack_changed = asyncio.Event()
         self.input_finished = False; self.terminal = False
         self.run_started = asyncio.Event(); self.protocol_failure = None; self.cancel_requested = False; self.tearing_down = False
@@ -52,6 +55,7 @@ class StreamSession:
             began = time.monotonic()
             while self.sequence-self.last_ack >= self.ack_window:
                 if self.stop.is_set(): raise asyncio.CancelledError()
+                if self.recovery and not self.recovery.attached: began=time.monotonic()
                 if time.monotonic()-began > 30: raise StageError('consumer_timeout','Event ACK timed out')
                 self.ack_changed.clear()
                 try: await asyncio.wait_for(self.ack_changed.wait(), .1)
@@ -65,6 +69,7 @@ class StreamSession:
         if kind == 'audio_segment' and self.first_input is not None:
             self.first.setdefault(kind,round(now-self.first_input,6))
         if terminal: self.terminal = True
+        if self.recovery: self.recovery.remember(event)
         try: await asyncio.wait_for(self.output.put(event), 5 if terminal else 30)
         except TimeoutError: raise StageError('consumer_timeout', 'Output queue did not drain')
         return event
@@ -74,6 +79,7 @@ class StreamSession:
             raise StageError('invalid_ack', 'ACK must reference emitted events in increasing order')
         self.last_ack = sequence; self.ack_changed.set()
         if self.speech: self.speech.confirm_delivery(sequence)
+        if self.recovery: self.recovery.prune()
 
     async def push_audio(self, pcm):
         if not self.ready.is_set() or self.input_finished or self.stop.is_set():
@@ -82,12 +88,19 @@ class StreamSession:
             raise StageError('invalid_audio','PCM frames must contain 1–16000 complete samples')
         if self.settings.streaming_max_audio_seconds and self.samples+len(pcm)//2 > int(16000*self.settings.streaming_max_audio_seconds):
             raise StageError('input_limit','Audio duration limit exceeded')
-        if self.input.full(): raise StageError('input_overload','Input queue is full; pace audio in real time')
+        if self.input.full():
+            self.input_overload_count += 1
+            raise StageError('input_overload','Input queue is full; pace audio in real time')
         now = time.monotonic()
+        if self.last_input_received_at is not None:
+            self.input_frame_intervals.append(now-self.last_input_received_at)
+            if len(self.input_frame_intervals)>256:self.input_frame_intervals.pop(0)
+        self.last_input_received_at=now
         self.last_activity = now
         if self.first_input is None: self.first_input = now
         self.input_sequence += 1
         self.input.put_nowait(AudioBlock(self.input_sequence,pcm,self.samples,now))
+        self.input_queue_peak_frames=max(self.input_queue_peak_frames,self.input.qsize())
         self.samples += len(pcm)//2
 
     def heartbeat(self):
@@ -119,15 +132,16 @@ class StreamSession:
         self.profiler.add('session.initialize',time.monotonic()-self.started)
         self.last_frame=time.monotonic()
         self.ready.set()
-        await self.emit(dict(type='session_ready', plan=self.plan.public(), input_queue_frames=50, ack_window=self.ack_window,
+        await self.emit(dict(type='session_ready', plan=self.plan.public(), input_queue_frames=self.settings.streaming_input_queue_frames, ack_window=self.ack_window,
             heartbeat_interval_seconds=max(.01,self.settings.streaming_idle_seconds/3),
+            recovery=self.recovery.ready() if self.recovery else None,
             context_capabilities=getattr(self.asr,'context_support',{})))
         while not self.stop.is_set():
             self.pipeline.check()
             if self.speech: self.speech.check()
             try: block=await asyncio.wait_for(self.input.get(),min(.1,self.settings.streaming_idle_seconds))
             except TimeoutError:
-                if time.monotonic()-self.last_activity > self.settings.streaming_idle_seconds:
+                if (not self.recovery or self.recovery.attached) and time.monotonic()-self.last_activity > self.settings.streaming_idle_seconds:
                     raise StageError('input_timeout','No audio or heartbeat received within connection idle deadline')
                 continue
             if block is None: break
@@ -200,10 +214,17 @@ class StreamSession:
     def resource_snapshot(self):
         snapshot=self.context.snapshot()
         return dict(scope='bounded logical session state; model pool is global, not RSS',
-            input_frames=self.input.qsize(),recent_context_units=len(snapshot.recent_text),
+            input_frames=self.input.qsize(),input_queue_peak_frames=self.input_queue_peak_frames,
+            input_overload_count=self.input_overload_count,
+            input_frame_interval_recent_seconds=dict(n=len(self.input_frame_intervals),
+                p50=sorted(self.input_frame_intervals)[len(self.input_frame_intervals)//2] if self.input_frame_intervals else None,
+                maximum=max(self.input_frame_intervals,default=None)),
+            recent_context_units=len(snapshot.recent_text),
             recent_context_chars=sum(map(len,snapshot.recent_text)),context_terms=len(snapshot.terms),
             context_version=snapshot.version,
             retained_text_units=len(self.pipeline.latest) if self.pipeline else 0,
+            recovery=dict(detached=not self.recovery.attached,retained_events=len(self.recovery.events),
+                retained_bytes=self.recovery.bytes,input_fingerprints=len(self.recovery.frames)) if self.recovery else None,
             model_pool=self.workers.metrics() if hasattr(self.workers,'metrics') else {})
 
     async def cancel(self, reason='canceled'):

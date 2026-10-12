@@ -96,4 +96,6 @@ class StageWorkers:
         if self.reaper:
             self.reaper.cancel();await asyncio.gather(self.reaper,return_exceptions=True)
         await self.pool.close()
+    def owned_pids(self):return self.pool.owned_pids()
+    def owned_processes(self):return self.pool.owned_processes()
     def metrics(self):return self.pool.metrics()

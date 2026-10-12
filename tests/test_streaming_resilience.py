@@ -231,13 +231,16 @@ class SustainedStreamingTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(StageError): instance.open(configuration())
 
     async def test_input_queue_duration_and_frame_bounds(self):
-        workers = ControlledWorkers(block=('asr', 'push_audio')); instance, repo, _ = manager(workers)
+        workers = ControlledWorkers(block=('asr', 'push_audio')); instance, repo, _ = manager(workers,streaming_input_queue_frames=50)
         session = instance.open(configuration()); await session.ready.wait()
         for payload in (b'', b'\0', b'\0' * 32002):
             with self.assertRaises(StageError): await session.push_audio(payload)
         await session.push_audio(b'\0\0'); await workers.entered.wait()
         for _ in range(50): await session.push_audio(b'\0\0')
         with self.assertRaisesRegex(StageError, 'full'): await session.push_audio(b'\0\0')
+        snapshot=session.resource_snapshot()
+        self.assertEqual(snapshot['input_queue_peak_frames'],50)
+        self.assertEqual(snapshot['input_overload_count'],1)
         await session.cancel(); self.assertEqual(repo.users, 0)
         session = instance.open(configuration()); await session.ready.wait()
         from dataclasses import replace as replace_settings

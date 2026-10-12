@@ -1,0 +1,170 @@
+{
+  "schema": "smartvoice.stream.acceptance-run.v1",
+  "run_id": "streaming-acceptance-r1-2026-10-10",
+  "date": "2026-10-10",
+  "host": {
+    "os": "macOS",
+    "cpu_logical_cores": 10,
+    "memory_gib": 16,
+    "memory_pressure_sampling": "memory_pressure system-wide free percentage"
+  },
+  "frozen_inputs": {
+    "corpus_revision": "d16ac437ac42fb543bf2893b934dac1af970e361",
+    "corpus_sha256": "bf5c5f68f0c52d924e3a8248a13f52632e1884e7f5fae3209e68f75be731dd9c",
+    "baseline_id": "product-p0-2026-10-09-r1",
+    "baseline_status": "unreviewed reference snapshot",
+    "models_and_config": "unchanged for all measured candidates; isolated service settings recorded with the local raw artifacts"
+  },
+  "quality_and_realtime_baseline": {
+    "sessions_per_route": 30,
+    "total_sessions": 180,
+    "protocol_failures": 0,
+    "functional_failures": 0,
+    "source_final_and_target_final_text_mismatches": 0,
+    "strict_snapshot_mismatches": 3,
+    "strict_snapshot_mismatch_detail": "zh-to-en speech case zh_05_clean changed from baseline audio_skipped(incomplete) to complete playback of the already-identical target_final. This adds one aligned audio segment; it does not change source_final, source_unit_final, or target_final text.",
+    "latency_clock": "first PCM frame send to first nonempty, nonretracted event received; loopback WebSocket delivery, not browser paint or physical audibility",
+    "percentile_method": "nearest rank",
+    "latency_seconds_p50_p90_p95": {
+      "source_subtitles_zh_source_partial": [1.860, 3.102, 3.658],
+      "source_subtitles_en_source_partial": [1.762, 2.098, 2.724],
+      "translated_subtitles_zh_en_target_partial": [2.519, 3.738, 4.300],
+      "translated_subtitles_en_zh_target_partial": [2.252, 2.907, 3.171],
+      "translated_speech_zh_en_first_audio": [8.860, 12.183, 14.131],
+      "translated_speech_en_zh_first_audio": [8.361, 10.371, 12.172]
+    },
+    "acceptance": {
+      "source_partial_p90_under_1s": "fail, both languages",
+      "target_partial_p90_under_2s": "fail, both directions",
+      "speech_ttfo_p90_under_3s_from_first_pcm": "fail, both directions",
+      "human_speech_onset_labels": "unavailable; onset-based values are not accepted as ground truth",
+      "speech_full_audio_success": "30/30 per direction; the fixed clean corpus gate passes",
+      "semantic_translation_quality": "not automatically scored; this run verifies output against the frozen event/text snapshot, not human meaning review"
+    },
+    "source_error_rates": {
+      "english_wer": 0.171875,
+      "chinese_cer": 0.096154,
+      "scope": "fixed FLEURS clean fixture, product-v1 normalization; not a broad quality estimate"
+    }
+  },
+  "concurrency_capacity": {
+    "arrival": "1x paced PCM; three rounds per direction and level; same fixed safety budget within each matrix",
+    "compute_slots": 2,
+    "source_subtitles": {
+      "memory_budget_mib": 2800,
+      "results": {
+        "zh": {
+          "2": {"success": "6/6", "peak_overlap": 2, "source_partial_p50_p90_p95_seconds": [1.856, 1.864, 1.864]},
+          "4": {"success": "12/12", "peak_overlap": 4, "source_partial_p50_p90_p95_seconds": [1.851, 1.864, 1.869]},
+          "8": {"success": "24/24", "peak_overlap": 8, "source_partial_p50_p90_p95_seconds": [1.852, 1.869, 1.880]},
+          "16": {"success": "48/48", "peak_overlap": 16, "source_partial_p50_p90_p95_seconds": [1.907, 2.081, 2.121]}
+        },
+        "en": {
+          "2": {"success": "6/6", "peak_overlap": 2, "source_partial_p50_p90_p95_seconds": [1.760, 1.763, 1.763]},
+          "4": {"success": "12/12", "peak_overlap": 4, "source_partial_p50_p90_p95_seconds": [1.763, 1.786, 1.787]},
+          "8": {"success": "24/24", "peak_overlap": 8, "source_partial_p50_p90_p95_seconds": [1.757, 1.781, 1.782]},
+          "16": {"success": "48/48", "peak_overlap": 16, "source_partial_p50_p90_p95_seconds": [1.768, 1.791, 1.798]}
+        }
+      }
+    },
+    "translated_subtitles": {
+      "memory_budget_mib": 2800,
+      "results": {
+        "zh_en": {
+          "2": {"success": "6/6", "peak_overlap": 2, "target_partial_p50_p90_p95_seconds": [2.500, 2.525, 2.525]},
+          "4": {"success": "12/12", "peak_overlap": 4, "target_partial_p50_p90_p95_seconds": [2.480, 2.498, 2.498]},
+          "8": {"success": "24/24", "peak_overlap": 8, "target_partial_p50_p90_p95_seconds": [2.490, 2.654, 2.780]},
+          "16": {"success": "13/48", "peak_overlap": 5, "target_partial_p50_p90_p95_seconds": [3.140, 3.548, 3.620], "failures": {"input_overload": 35}}
+        },
+        "en_zh": {
+          "2": {"success": "6/6", "peak_overlap": 2, "target_partial_p50_p90_p95_seconds": [2.670, 3.003, 3.003]},
+          "4": {"success": "12/12", "peak_overlap": 4, "target_partial_p50_p90_p95_seconds": [2.660, 2.763, 2.950]},
+          "8": {"success": "24/24", "peak_overlap": 8, "target_partial_p50_p90_p95_seconds": [2.740, 4.176, 4.340]},
+          "16": {"success": "25/48", "peak_overlap": 9, "target_partial_p50_p90_p95_seconds": [3.960, 5.669, 6.000], "failures": {"input_overload": 23}}
+        }
+      }
+    },
+    "translated_speech": {
+      "memory_budget_mib": 4096,
+      "results": {
+        "zh_en": {
+          "2": {"success": "6/6", "peak_overlap": 2, "ttfo_p50_p90_p95_seconds": [10.950, 10.965, 10.965]},
+          "4": {"success": "12/12", "peak_overlap": 4, "ttfo_p50_p90_p95_seconds": [10.970, 11.672, 12.100]},
+          "8": {"success": "24/24", "peak_overlap": 8, "ttfo_p50_p90_p95_seconds": [12.280, 14.209, 14.230]},
+          "16": {"success": "9/48", "peak_overlap": 3, "ttfo_p50_p90_p95_seconds": [11.300, 12.344, 12.344], "failures": {"input_overload": 39}}
+        },
+        "en_zh": {
+          "2": {"success": "6/6", "peak_overlap": 2, "ttfo_p50_p90_p95_seconds": [9.930, 9.974, 9.974]},
+          "4": {"success": "12/12", "peak_overlap": 4, "ttfo_p50_p90_p95_seconds": [10.450, 10.561, 10.770]},
+          "8": {"success": "24/24", "peak_overlap": 8, "ttfo_p50_p90_p95_seconds": [11.670, 13.417, 13.780]},
+          "16": {"success": "20/48", "peak_overlap": 8, "ttfo_p50_p90_p95_seconds": [11.880, 13.068, 13.130], "failures": {"input_overload": 28}}
+        }
+      }
+    },
+    "mixed_workload": "Not rerun as a 2/4/8/16 matrix. Existing 300-second duplex speech plus source-subtitle evidence is documented separately and is not promoted to this run's acceptance result.",
+    "fairness": "Per-session completion and first-output distributions are captured; starvation/fair-share across heterogeneous routes was not measured. Successful-only latency distributions at level 16 exclude failed attempts; success rates retain them in the denominator."
+  },
+  "process_tree_resources": {
+    "status": "blocked_by_host_permissions",
+    "sampler_scope": "API root process only; descendant enumeration and system process listing were denied with PermissionError/operation not permitted",
+    "baseline_root_process_peak_rss_mib": 80.3,
+    "baseline_root_process_cpu_core_equivalents_p95": 0.099,
+    "model_pool_residency_estimate_mib": "up to 5750 for two concurrent speech directions at 8192 MiB admission budget; this is an application estimate, not measured RSS",
+    "per_process_tree_cpu_rss_and_per_session_actual_memory_cost": "not measured; do not infer from root-only values"
+  },
+  "wall_clock_soak": {
+    "requested_duration_seconds": 3600,
+    "routes": ["spoken_interpretation zh_en", "spoken_interpretation en_zh"],
+    "concurrent_sessions": 2,
+    "admission": "both routes required an 8192 MiB application admission budget; at 4096 MiB the second direction was rejected by memory admission",
+    "outcome": "fail_before_one_hour",
+    "failure": "Both 1x sessions ended with retryable input_overload at approximately 1506–1514 wall-clock seconds (about 25 minutes), after about 75,000 20 ms frames each. The server reported 'Input queue is full; pace audio in real time'.",
+    "profile": {
+      "input_queue_wait_total_seconds": {"zh_en": 759.04, "en_zh": 709.69},
+      "input_queue_wait_max_seconds": {"zh_en": 0.909, "en_zh": 0.742},
+      "asr_compute_admission_wait_total_seconds": {"zh_en": 118.92, "en_zh": 128.57},
+      "source_final_events": {"zh_en": 190, "en_zh": 289},
+      "target_final_events": {"zh_en": 191, "en_zh": 288},
+      "audio_chunks_before_failure": {"zh_en": 191, "en_zh": 288}
+    },
+    "resource_observation": "Worker-pool resident estimate stayed at 5750 MiB and sampled pending jobs stayed at zero; global memory_pressure free percentage ranged approximately 41–48%. Session handles returned to zero after failure and idle worker residency later decreased.",
+    "interpretation": "Not an hour-soak pass. Stable sampled model residency did not prevent cumulative input queue delay and eventual overload."
+  },
+  "real_browser": {
+    "browser": "Google Chrome desktop on macOS",
+    "fixture_source": "bundled pinned FLEURS clean audio",
+    "routes_completed_this_run": [
+      "source subtitles zh",
+      "source subtitles en",
+      "translated subtitles zh_en",
+      "translated subtitles en_zh",
+      "translated speech zh_en"
+    ],
+    "route_results": "All five completed; text appeared in the page DOM. The zh_en speech route reported TTFO 7.64 s and playback queue drained.",
+    "translated_speech_en_zh": "Not rerun in this browser pass; a prior browser smoke record exists, but is not counted here.",
+    "not_covered": [
+      "granular DOM revision/retraction audit",
+      "Slow 3G/network shaping",
+      "offline/disconnect and browser resume",
+      "background-tab scheduling",
+      "independent physical speaker audibility"
+    ],
+    "status": "partial"
+  },
+  "local_raw_artifact_ids": [
+    "current-six-route-baseline-2026-10-10",
+    "current-source-capacity-2026-10-10",
+    "current-translation-capacity-2026-10-10",
+    "current-speech-capacity-2026-10-10",
+    "current-speech-capacity-4096-2026-10-10",
+    "current-hour-wall-zh-en-2026-10-10",
+    "current-hour-wall-en-zh-v2-2026-10-10"
+  ],
+  "overall": {
+    "p0_baseline": "measured; strict text finals unchanged, latency targets fail",
+    "p0_concurrency": "same-route/direction capacity ramp measured; 16-way failures for translated subtitles and speech; heterogeneous 2/4/8/16 matrix and fair-share remain",
+    "p0_process_tree_resources": "not complete because host permissions block descendant/system process measurement",
+    "p1_wall_clock_soak": "failed before one hour due input_overload",
+    "p1_real_browser": "partial; five routes completed, stress conditions and full six-route recheck remain"
+  }
+}

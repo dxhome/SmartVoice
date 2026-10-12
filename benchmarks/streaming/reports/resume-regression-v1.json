@@ -1,0 +1,3594 @@
+{
+  "schema": "smartvoice.stream.resume-regression.v1",
+  "date": "2026-10-10",
+  "ci": {
+    "tests": 326,
+    "passed": true,
+    "wall_seconds": 46.899
+  },
+  "native": {
+    "test_methods": 1,
+    "routes": 6,
+    "wall_seconds": 19.723,
+    "passed": true
+  },
+  "routes": [
+    {
+      "mode": "spoken_interpretation",
+      "language": "en",
+      "failure": null,
+      "output": {
+        "counts": {
+          "session_ready": 1,
+          "source_partial": 21,
+          "source_unit_partial": 1,
+          "source_final": 2,
+          "utterance_complete": 2,
+          "source_unit_final": 2,
+          "target_final": 2,
+          "audio_segment": 2,
+          "session_complete": 1
+        },
+        "source_chars": 133,
+        "target_chars": 31,
+        "final_text_sha256": "6b14a02a22e46957365224194dd68891adce24c5e8ffb04ade1db137521f842e",
+        "audio_chunks": 2,
+        "audio_seconds": 6.130385487528345,
+        "first_output_wall_seconds": {
+          "source_unit_partial": 2.829835499986075,
+          "target_final": 3.5670409159502015,
+          "audio_segment": 3.746248207986355
+        },
+        "unspoken_targets": 0,
+        "last_source_end_sample": 166400,
+        "terminal": {
+          "type": "session_complete",
+          "status": "complete",
+          "reason": null,
+          "counts": {
+            "session_ready": 1,
+            "source_partial": 21,
+            "source_unit_partial": 1,
+            "source_final": 2,
+            "utterance_complete": 2,
+            "source_unit_final": 2,
+            "target_final": 2,
+            "audio_segment": 2
+          },
+          "first_output_seconds": {
+            "source_partial": 0.078054,
+            "source_unit_partial": 0.083106,
+            "source_final": 0.26478,
+            "source_unit_final": 0.270983,
+            "target_final": 0.819974,
+            "audio_segment": 0.999067
+          },
+          "audio_skips": {},
+          "profiling": {
+            "asr.pool_queue_wait": {
+              "count": 17,
+              "total_seconds": 0.010579875204712152,
+              "max_seconds": 0.001321291085332632,
+              "sample_count": 17,
+              "p50_seconds": 0.0005746670067310333,
+              "p90_seconds": 0.0009473750833421946,
+              "p95_seconds": 0.001321291085332632,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.compute_admission_wait": {
+              "count": 17,
+              "total_seconds": 0.00025650078896433115,
+              "max_seconds": 2.1333922632038593e-05,
+              "sample_count": 17,
+              "p50_seconds": 1.5291967429220676e-05,
+              "p90_seconds": 2.0666979253292084e-05,
+              "p95_seconds": 2.1333922632038593e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.executor_wait": {
+              "count": 18,
+              "total_seconds": 0.09186217014212161,
+              "max_seconds": 0.07472925004549325,
+              "sample_count": 18,
+              "p50_seconds": 0.000358999939635396,
+              "p90_seconds": 0.011182583984918892,
+              "p95_seconds": 0.07472925004549325,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr._construct_native": {
+              "count": 1,
+              "total_seconds": 1.0375049896538258e-05,
+              "max_seconds": 1.0375049896538258e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.0375049896538258e-05,
+              "p90_seconds": 1.0375049896538258e-05,
+              "p95_seconds": 1.0375049896538258e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.ipc_roundtrip": {
+              "count": 18,
+              "total_seconds": 0.011806205846369267,
+              "max_seconds": 0.00088095897808671,
+              "sample_count": 18,
+              "p50_seconds": 0.0006418749690055847,
+              "p90_seconds": 0.0008740830235183239,
+              "p95_seconds": 0.00088095897808671,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.6754924589768052,
+              "max_seconds": 0.6754924589768052,
+              "sample_count": 1,
+              "p50_seconds": 0.6754924589768052,
+              "p90_seconds": 0.6754924589768052,
+              "p95_seconds": 0.6754924589768052,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.session_initialize": {
+              "count": 1,
+              "total_seconds": 0.00023495801724493504,
+              "max_seconds": 0.00023495801724493504,
+              "sample_count": 1,
+              "p50_seconds": 0.00023495801724493504,
+              "p90_seconds": 0.00023495801724493504,
+              "p95_seconds": 0.00023495801724493504,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.open": {
+              "count": 1,
+              "total_seconds": 0.6757872080197558,
+              "max_seconds": 0.6757872080197558,
+              "sample_count": 1,
+              "p50_seconds": 0.6757872080197558,
+              "p90_seconds": 0.6757872080197558,
+              "p95_seconds": 0.6757872080197558,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.0032099171075969934,
+              "max_seconds": 0.0011482080444693565,
+              "sample_count": 5,
+              "p50_seconds": 0.0006297919899225235,
+              "p90_seconds": 0.0011482080444693565,
+              "p95_seconds": 0.0011482080444693565,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 5.683489143848419e-05,
+              "max_seconds": 1.758395228534937e-05,
+              "sample_count": 5,
+              "p50_seconds": 9.999959729611874e-06,
+              "p90_seconds": 1.758395228534937e-05,
+              "p95_seconds": 1.758395228534937e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.08365229098126292,
+              "max_seconds": 0.07169375009834766,
+              "sample_count": 6,
+              "p50_seconds": 0.00038379093166440725,
+              "p90_seconds": 0.07169375009834766,
+              "p95_seconds": 0.07169375009834766,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation._construct_native": {
+              "count": 1,
+              "total_seconds": 1.237494871020317e-05,
+              "max_seconds": 1.237494871020317e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.237494871020317e-05,
+              "p90_seconds": 1.237494871020317e-05,
+              "p95_seconds": 1.237494871020317e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.0036620410392060876,
+              "max_seconds": 0.0009269999573007226,
+              "sample_count": 6,
+              "p50_seconds": 0.0005937080131843686,
+              "p90_seconds": 0.0009269999573007226,
+              "p95_seconds": 0.0009269999573007226,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.2664077499648556,
+              "max_seconds": 0.2664077499648556,
+              "sample_count": 1,
+              "p50_seconds": 0.2664077499648556,
+              "p90_seconds": 0.2664077499648556,
+              "p95_seconds": 0.2664077499648556,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.session_initialize": {
+              "count": 1,
+              "total_seconds": 1.7125043086707592e-05,
+              "max_seconds": 1.7125043086707592e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.7125043086707592e-05,
+              "p90_seconds": 1.7125043086707592e-05,
+              "p95_seconds": 1.7125043086707592e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.open": {
+              "count": 1,
+              "total_seconds": 0.26648720900993794,
+              "max_seconds": 0.26648720900993794,
+              "sample_count": 1,
+              "p50_seconds": 0.26648720900993794,
+              "p90_seconds": 0.26648720900993794,
+              "p95_seconds": 0.26648720900993794,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.pool_queue_wait": {
+              "count": 6,
+              "total_seconds": 0.0037707920419052243,
+              "max_seconds": 0.0009977919980883598,
+              "sample_count": 6,
+              "p50_seconds": 0.0004357079742476344,
+              "p90_seconds": 0.0009977919980883598,
+              "p95_seconds": 0.0009977919980883598,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.compute_admission_wait": {
+              "count": 6,
+              "total_seconds": 8.275068830698729e-05,
+              "max_seconds": 1.7999904230237007e-05,
+              "sample_count": 6,
+              "p50_seconds": 1.2791948392987251e-05,
+              "p90_seconds": 1.7999904230237007e-05,
+              "p95_seconds": 1.7999904230237007e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.executor_wait": {
+              "count": 7,
+              "total_seconds": 0.08070537389721721,
+              "max_seconds": 0.0684225409058854,
+              "sample_count": 7,
+              "p50_seconds": 0.0002521659480407834,
+              "p90_seconds": 0.0684225409058854,
+              "p95_seconds": 0.0684225409058854,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting._construct_native": {
+              "count": 1,
+              "total_seconds": 8.375034667551517e-06,
+              "max_seconds": 8.375034667551517e-06,
+              "sample_count": 1,
+              "p50_seconds": 8.375034667551517e-06,
+              "p90_seconds": 8.375034667551517e-06,
+              "p95_seconds": 8.375034667551517e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.ipc_roundtrip": {
+              "count": 7,
+              "total_seconds": 0.00413046102039516,
+              "max_seconds": 0.00081445905379951,
+              "sample_count": 7,
+              "p50_seconds": 0.0005433340556919575,
+              "p90_seconds": 0.00081445905379951,
+              "p95_seconds": 0.00081445905379951,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.2542861659312621,
+              "max_seconds": 0.2542861659312621,
+              "sample_count": 1,
+              "p50_seconds": 0.2542861659312621,
+              "p90_seconds": 0.2542861659312621,
+              "p95_seconds": 0.2542861659312621,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.session_initialize": {
+              "count": 1,
+              "total_seconds": 3.033294342458248e-05,
+              "max_seconds": 3.033294342458248e-05,
+              "sample_count": 1,
+              "p50_seconds": 3.033294342458248e-05,
+              "p90_seconds": 3.033294342458248e-05,
+              "p95_seconds": 3.033294342458248e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.open": {
+              "count": 1,
+              "total_seconds": 0.2543979160254821,
+              "max_seconds": 0.2543979160254821,
+              "sample_count": 1,
+              "p50_seconds": 0.2543979160254821,
+              "p90_seconds": 0.2543979160254821,
+              "p95_seconds": 0.2543979160254821,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.00280637398827821,
+              "max_seconds": 0.0010588329751044512,
+              "sample_count": 5,
+              "p50_seconds": 0.0004095829790458083,
+              "p90_seconds": 0.0010588329751044512,
+              "p95_seconds": 0.0010588329751044512,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 6.620795466005802e-05,
+              "max_seconds": 2.4124979972839355e-05,
+              "sample_count": 5,
+              "p50_seconds": 1.1708005331456661e-05,
+              "p90_seconds": 2.4124979972839355e-05,
+              "p95_seconds": 2.4124979972839355e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.1264163329033181,
+              "max_seconds": 0.0965298330411315,
+              "sample_count": 6,
+              "p50_seconds": 0.00022341602016240358,
+              "p90_seconds": 0.0965298330411315,
+              "p95_seconds": 0.0965298330411315,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts._construct_native": {
+              "count": 1,
+              "total_seconds": 2.8999987989664078e-05,
+              "max_seconds": 2.8999987989664078e-05,
+              "sample_count": 1,
+              "p50_seconds": 2.8999987989664078e-05,
+              "p90_seconds": 2.8999987989664078e-05,
+              "p95_seconds": 2.8999987989664078e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.008665375993587077,
+              "max_seconds": 0.005587458028458059,
+              "sample_count": 6,
+              "p50_seconds": 0.0007042089710012078,
+              "p90_seconds": 0.005587458028458059,
+              "p95_seconds": 0.005587458028458059,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.model_initialize": {
+              "count": 1,
+              "total_seconds": 1.1583520829444751,
+              "max_seconds": 1.1583520829444751,
+              "sample_count": 1,
+              "p50_seconds": 1.1583520829444751,
+              "p90_seconds": 1.1583520829444751,
+              "p95_seconds": 1.1583520829444751,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.session_initialize": {
+              "count": 1,
+              "total_seconds": 3.63329891115427e-05,
+              "max_seconds": 3.63329891115427e-05,
+              "sample_count": 1,
+              "p50_seconds": 3.63329891115427e-05,
+              "p90_seconds": 3.63329891115427e-05,
+              "p95_seconds": 3.63329891115427e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.open": {
+              "count": 1,
+              "total_seconds": 1.1584737080847844,
+              "max_seconds": 1.1584737080847844,
+              "sample_count": 1,
+              "p50_seconds": 1.1584737080847844,
+              "p90_seconds": 1.1584737080847844,
+              "p95_seconds": 1.1584737080847844,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "session.initialize": {
+              "count": 1,
+              "total_seconds": 2.7462120830314234,
+              "max_seconds": 2.7462120830314234,
+              "sample_count": 1,
+              "p50_seconds": 2.7462120830314234,
+              "p90_seconds": 2.7462120830314234,
+              "p95_seconds": 2.7462120830314234,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "input.queue_wait": {
+              "count": 11,
+              "total_seconds": 0.8554449160583317,
+              "max_seconds": 0.10160037502646446,
+              "sample_count": 11,
+              "p50_seconds": 0.08780058310367167,
+              "p90_seconds": 0.10077070898842067,
+              "p95_seconds": 0.10160037502646446,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.invoke": {
+              "count": 15,
+              "total_seconds": 0.44872395787388086,
+              "max_seconds": 0.05294883297756314,
+              "sample_count": 15,
+              "p50_seconds": 0.03786408295854926,
+              "p90_seconds": 0.04453924996778369,
+              "p95_seconds": 0.05294883297756314,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.update_context.wall": {
+              "count": 2,
+              "total_seconds": 0.0032590001355856657,
+              "max_seconds": 0.00190866703633219,
+              "sample_count": 2,
+              "p50_seconds": 0.0013503330992534757,
+              "p90_seconds": 0.00190866703633219,
+              "p95_seconds": 0.00190866703633219,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.accept_waveform": {
+              "count": 520,
+              "total_seconds": 0.011645057471469045,
+              "max_seconds": 6.216706242412329e-05,
+              "sample_count": 520,
+              "p50_seconds": 2.1332991309463978e-05,
+              "p90_seconds": 2.3415894247591496e-05,
+              "p95_seconds": 3.104202914983034e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.get_result": {
+              "count": 521,
+              "total_seconds": 0.0023336493177339435,
+              "max_seconds": 2.5041052140295506e-05,
+              "sample_count": 521,
+              "p50_seconds": 3.708992153406143e-06,
+              "p90_seconds": 6.749993190169334e-06,
+              "p95_seconds": 1.3082986697554588e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.decode_stream": {
+              "count": 33,
+              "total_seconds": 0.4218204990029335,
+              "max_seconds": 0.016923957969993353,
+              "sample_count": 33,
+              "p50_seconds": 0.012536457972601056,
+              "p90_seconds": 0.014378375024534762,
+              "p95_seconds": 0.015561249922029674,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.push_audio.wall": {
+              "count": 11,
+              "total_seconds": 0.45614383195061237,
+              "max_seconds": 0.05541141692083329,
+              "sample_count": 11,
+              "p50_seconds": 0.04176970792468637,
+              "p90_seconds": 0.046506999991834164,
+              "p95_seconds": 0.05541141692083329,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.admission_wait": {
+              "count": 3,
+              "total_seconds": 0.3210569160291925,
+              "max_seconds": 0.32087487494572997,
+              "sample_count": 3,
+              "p50_seconds": 9.216601029038429e-05,
+              "p90_seconds": 0.32087487494572997,
+              "p95_seconds": 0.32087487494572997,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.add_punct": {
+              "count": 3,
+              "total_seconds": 0.008502956945449114,
+              "max_seconds": 0.0035434579476714134,
+              "sample_count": 3,
+              "p50_seconds": 0.003264916012994945,
+              "p90_seconds": 0.0035434579476714134,
+              "p95_seconds": 0.0035434579476714134,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.invoke": {
+              "count": 4,
+              "total_seconds": 0.009232499985955656,
+              "max_seconds": 0.0037005828926339746,
+              "sample_count": 4,
+              "p50_seconds": 0.002099042059853673,
+              "p90_seconds": 0.0037005828926339746,
+              "p95_seconds": 0.0037005828926339746,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.format.wall": {
+              "count": 3,
+              "total_seconds": 0.014576457906514406,
+              "max_seconds": 0.005776250036433339,
+              "sample_count": 3,
+              "p50_seconds": 0.004887249902822077,
+              "p90_seconds": 0.005776250036433339,
+              "p95_seconds": 0.005776250036433339,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.final_backpressure_wait": {
+              "count": 2,
+              "total_seconds": 1.1669471859931946e-06,
+              "max_seconds": 6.669433787465096e-07,
+              "sample_count": 2,
+              "p50_seconds": 5.00003807246685e-07,
+              "p90_seconds": 6.669433787465096e-07,
+              "p95_seconds": 6.669433787465096e-07,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.admission_wait": {
+              "count": 2,
+              "total_seconds": 0.17297087493352592,
+              "max_seconds": 0.17231370799709111,
+              "sample_count": 2,
+              "p50_seconds": 0.0006571669364348054,
+              "p90_seconds": 0.17231370799709111,
+              "p95_seconds": 0.17231370799709111,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.finish.wall": {
+              "count": 1,
+              "total_seconds": 0.014308540965430439,
+              "max_seconds": 0.014308540965430439,
+              "sample_count": 1,
+              "p50_seconds": 0.014308540965430439,
+              "p90_seconds": 0.014308540965430439,
+              "p95_seconds": 0.014308540965430439,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.tokenize": {
+              "count": 2,
+              "total_seconds": 0.0004498329944908619,
+              "max_seconds": 0.00036049995105713606,
+              "sample_count": 2,
+              "p50_seconds": 8.933304343372583e-05,
+              "p90_seconds": 0.00036049995105713606,
+              "p95_seconds": 0.00036049995105713606,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.translate_batch": {
+              "count": 2,
+              "total_seconds": 1.0342756250174716,
+              "max_seconds": 0.5444452499505132,
+              "sample_count": 2,
+              "p50_seconds": 0.48983037506695837,
+              "p90_seconds": 0.5444452499505132,
+              "p95_seconds": 0.5444452499505132,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.detokenize": {
+              "count": 2,
+              "total_seconds": 0.0002261658664792776,
+              "max_seconds": 0.00011445791460573673,
+              "sample_count": 2,
+              "p50_seconds": 0.00011170795187354088,
+              "p90_seconds": 0.00011445791460573673,
+              "p95_seconds": 0.00011445791460573673,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.invoke": {
+              "count": 3,
+              "total_seconds": 1.0362646670546383,
+              "max_seconds": 0.5457750830100849,
+              "sample_count": 3,
+              "p50_seconds": 0.4904747500550002,
+              "p90_seconds": 0.5457750830100849,
+              "p95_seconds": 0.5457750830100849,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.translate.wall": {
+              "count": 2,
+              "total_seconds": 1.0398075829725713,
+              "max_seconds": 0.547549832961522,
+              "sample_count": 2,
+              "p50_seconds": 0.4922577500110492,
+              "p90_seconds": 0.547549832961522,
+              "p95_seconds": 0.547549832961522,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.pending_backpressure_wait": {
+              "count": 2,
+              "total_seconds": 1.7490237951278687e-06,
+              "max_seconds": 1.291045919060707e-06,
+              "sample_count": 2,
+              "p50_seconds": 4.5797787606716156e-07,
+              "p90_seconds": 1.291045919060707e-06,
+              "p95_seconds": 1.291045919060707e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.consumer_wait": {
+              "count": 2,
+              "total_seconds": 8.332892321050167e-06,
+              "max_seconds": 6.4999330788850784e-06,
+              "sample_count": 2,
+              "p50_seconds": 1.8329592421650887e-06,
+              "p90_seconds": 6.4999330788850784e-06,
+              "p95_seconds": 6.4999330788850784e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.invoke": {
+              "count": 3,
+              "total_seconds": 0.356093458016403,
+              "max_seconds": 0.1854204999981448,
+              "sample_count": 3,
+              "p50_seconds": 0.17065670795273036,
+              "p90_seconds": 0.1854204999981448,
+              "p95_seconds": 0.1854204999981448,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.synthesize.wall": {
+              "count": 2,
+              "total_seconds": 0.3592287920182571,
+              "max_seconds": 0.18680287501774728,
+              "sample_count": 2,
+              "p50_seconds": 0.1724259170005098,
+              "p90_seconds": 0.18680287501774728,
+              "p95_seconds": 0.18680287501774728,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0011560419807210565,
+              "max_seconds": 0.0011560419807210565,
+              "sample_count": 1,
+              "p50_seconds": 0.0011560419807210565,
+              "p90_seconds": 0.0011560419807210565,
+              "p95_seconds": 0.0011560419807210565,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.release": {
+              "count": 1,
+              "total_seconds": 5.666050128638744e-06,
+              "max_seconds": 5.666050128638744e-06,
+              "sample_count": 1,
+              "p50_seconds": 5.666050128638744e-06,
+              "p90_seconds": 5.666050128638744e-06,
+              "p95_seconds": 5.666050128638744e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0011830420698970556,
+              "max_seconds": 0.0011830420698970556,
+              "sample_count": 1,
+              "p50_seconds": 0.0011830420698970556,
+              "p90_seconds": 0.0011830420698970556,
+              "p95_seconds": 0.0011830420698970556,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.release": {
+              "count": 1,
+              "total_seconds": 5.041016265749931e-06,
+              "max_seconds": 5.041016265749931e-06,
+              "sample_count": 1,
+              "p50_seconds": 5.041016265749931e-06,
+              "p90_seconds": 5.041016265749931e-06,
+              "p95_seconds": 5.041016265749931e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0011617500567808747,
+              "max_seconds": 0.0011617500567808747,
+              "sample_count": 1,
+              "p50_seconds": 0.0011617500567808747,
+              "p90_seconds": 0.0011617500567808747,
+              "p95_seconds": 0.0011617500567808747,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.release": {
+              "count": 1,
+              "total_seconds": 6.875023245811462e-06,
+              "max_seconds": 6.875023245811462e-06,
+              "sample_count": 1,
+              "p50_seconds": 6.875023245811462e-06,
+              "p90_seconds": 6.875023245811462e-06,
+              "p95_seconds": 6.875023245811462e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0014015830820426345,
+              "max_seconds": 0.0014015830820426345,
+              "sample_count": 1,
+              "p50_seconds": 0.0014015830820426345,
+              "p90_seconds": 0.0014015830820426345,
+              "p95_seconds": 0.0014015830820426345,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.release": {
+              "count": 1,
+              "total_seconds": 5.500041879713535e-06,
+              "max_seconds": 5.500041879713535e-06,
+              "sample_count": 1,
+              "p50_seconds": 5.500041879713535e-06,
+              "p90_seconds": 5.500041879713535e-06,
+              "p95_seconds": 5.500041879713535e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            }
+          },
+          "resources": {
+            "scope": "bounded logical session state; model pool is global, not RSS",
+            "input_frames": 0,
+            "recent_context_units": 2,
+            "recent_context_chars": 136,
+            "context_terms": 0,
+            "context_version": 2,
+            "retained_text_units": 2,
+            "recovery": {
+              "detached": false,
+              "retained_events": 0,
+              "retained_bytes": 0,
+              "input_fingerprints": 11
+            },
+            "model_pool": {
+              "model_workers": 4,
+              "resident_mib": 3800,
+              "stage_handles": 0,
+              "active_jobs": 0,
+              "pending_jobs": 0
+            }
+          },
+          "metrics_clock": "server monotonic; first received PCM; not browser/onset TTFO",
+          "protocol": "smartvoice.stream.v1",
+          "session_id": "bd7bb58a1cd14b5cab6e40c23a09f816",
+          "event_sequence": 34,
+          "elapsed_seconds": 4.437738
+        }
+      },
+      "fixture_id": "en_02_clean",
+      "fixture_sha256": "61ee2bfd08e4851b5fda3be2776f9363df5a4fa31c5cad9af00fec32c208c30b",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "input_samples": 166400,
+      "context_version": 2,
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "scope": "Native product stages, short pinned fixture and same-process reconnect; not browser/TCP/quality/soak acceptance",
+      "raw_report": ".smartvoice-dev/full-streaming/15cbf00d3e1e476389f8b9305e4843ea/resume-spoken_interpretation-en.json",
+      "raw_report_sha256": "047a98c480c923e504abe61ae060a9dedcc87ccaa6c8f0856c0a3169fe4ada79"
+    },
+    {
+      "mode": "spoken_interpretation",
+      "language": "zh",
+      "failure": null,
+      "output": {
+        "counts": {
+          "session_ready": 1,
+          "source_partial": 8,
+          "source_unit_partial": 1,
+          "source_final": 1,
+          "utterance_complete": 2,
+          "source_unit_final": 2,
+          "target_final": 2,
+          "audio_segment": 2,
+          "session_complete": 1
+        },
+        "source_chars": 23,
+        "target_chars": 80,
+        "final_text_sha256": "4127203b53b55bde697301701217fc02311f969248027ce5f011cdac4baeb825",
+        "audio_chunks": 2,
+        "audio_seconds": 5.471020408163265,
+        "first_output_wall_seconds": {
+          "source_unit_partial": 2.4445803749840707,
+          "target_final": 2.738029042026028,
+          "audio_segment": 3.1436845420394093
+        },
+        "unspoken_targets": 0,
+        "last_source_end_sample": 126720,
+        "terminal": {
+          "type": "session_complete",
+          "status": "complete",
+          "reason": null,
+          "counts": {
+            "session_ready": 1,
+            "source_partial": 8,
+            "source_unit_partial": 1,
+            "source_final": 1,
+            "utterance_complete": 2,
+            "source_unit_final": 2,
+            "target_final": 2,
+            "audio_segment": 2
+          },
+          "first_output_seconds": {
+            "source_partial": 0.07971,
+            "source_unit_partial": 0.084396,
+            "source_final": 0.31222,
+            "source_unit_final": 0.323237,
+            "target_final": 0.377849,
+            "audio_segment": 0.783169
+          },
+          "audio_skips": {},
+          "profiling": {
+            "asr.pool_queue_wait": {
+              "count": 13,
+              "total_seconds": 0.006255292915739119,
+              "max_seconds": 0.00103554199449718,
+              "sample_count": 13,
+              "p50_seconds": 0.000406416947953403,
+              "p90_seconds": 0.000630208058282733,
+              "p95_seconds": 0.00103554199449718,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.compute_admission_wait": {
+              "count": 13,
+              "total_seconds": 0.00018049986101686954,
+              "max_seconds": 2.316699828952551e-05,
+              "sample_count": 13,
+              "p50_seconds": 1.3833981938660145e-05,
+              "p90_seconds": 1.8040998838841915e-05,
+              "p95_seconds": 2.316699828952551e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.executor_wait": {
+              "count": 14,
+              "total_seconds": 0.0858699157834053,
+              "max_seconds": 0.07099362509325147,
+              "sample_count": 14,
+              "p50_seconds": 0.00034208293072879314,
+              "p90_seconds": 0.010354041936807334,
+              "p95_seconds": 0.07099362509325147,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr._construct_native": {
+              "count": 1,
+              "total_seconds": 9.25001222640276e-06,
+              "max_seconds": 9.25001222640276e-06,
+              "sample_count": 1,
+              "p50_seconds": 9.25001222640276e-06,
+              "p90_seconds": 9.25001222640276e-06,
+              "p95_seconds": 9.25001222640276e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.ipc_roundtrip": {
+              "count": 14,
+              "total_seconds": 0.008946291753090918,
+              "max_seconds": 0.00093345798086375,
+              "sample_count": 14,
+              "p50_seconds": 0.0006216659676283598,
+              "p90_seconds": 0.0008806668920442462,
+              "p95_seconds": 0.00093345798086375,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.7594763750676066,
+              "max_seconds": 0.7594763750676066,
+              "sample_count": 1,
+              "p50_seconds": 0.7594763750676066,
+              "p90_seconds": 0.7594763750676066,
+              "p95_seconds": 0.7594763750676066,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.session_initialize": {
+              "count": 1,
+              "total_seconds": 8.695793803781271e-05,
+              "max_seconds": 8.695793803781271e-05,
+              "sample_count": 1,
+              "p50_seconds": 8.695793803781271e-05,
+              "p90_seconds": 8.695793803781271e-05,
+              "p95_seconds": 8.695793803781271e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.open": {
+              "count": 1,
+              "total_seconds": 0.7596222910797223,
+              "max_seconds": 0.7596222910797223,
+              "sample_count": 1,
+              "p50_seconds": 0.7596222910797223,
+              "p90_seconds": 0.7596222910797223,
+              "p95_seconds": 0.7596222910797223,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.002516208798624575,
+              "max_seconds": 0.0006537089357152581,
+              "sample_count": 5,
+              "p50_seconds": 0.00045012496411800385,
+              "p90_seconds": 0.0006537089357152581,
+              "p95_seconds": 0.0006537089357152581,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 6.304273847490549e-05,
+              "max_seconds": 1.645891461521387e-05,
+              "sample_count": 5,
+              "p50_seconds": 1.2249918654561043e-05,
+              "p90_seconds": 1.645891461521387e-05,
+              "p95_seconds": 1.645891461521387e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.08236354123800993,
+              "max_seconds": 0.07031179207842797,
+              "sample_count": 6,
+              "p50_seconds": 0.00023325008805841208,
+              "p90_seconds": 0.07031179207842797,
+              "p95_seconds": 0.07031179207842797,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation._construct_native": {
+              "count": 1,
+              "total_seconds": 1.2749922461807728e-05,
+              "max_seconds": 1.2749922461807728e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.2749922461807728e-05,
+              "p90_seconds": 1.2749922461807728e-05,
+              "p95_seconds": 1.2749922461807728e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.0039619969902560115,
+              "max_seconds": 0.0009168329415842891,
+              "sample_count": 6,
+              "p50_seconds": 0.0005147909978404641,
+              "p90_seconds": 0.0009168329415842891,
+              "p95_seconds": 0.0009168329415842891,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.1287902919575572,
+              "max_seconds": 0.1287902919575572,
+              "sample_count": 1,
+              "p50_seconds": 0.1287902919575572,
+              "p90_seconds": 0.1287902919575572,
+              "p95_seconds": 0.1287902919575572,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.session_initialize": {
+              "count": 1,
+              "total_seconds": 2.0791077986359596e-05,
+              "max_seconds": 2.0791077986359596e-05,
+              "sample_count": 1,
+              "p50_seconds": 2.0791077986359596e-05,
+              "p90_seconds": 2.0791077986359596e-05,
+              "p95_seconds": 2.0791077986359596e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.open": {
+              "count": 1,
+              "total_seconds": 0.12886654201429337,
+              "max_seconds": 0.12886654201429337,
+              "sample_count": 1,
+              "p50_seconds": 0.12886654201429337,
+              "p90_seconds": 0.12886654201429337,
+              "p95_seconds": 0.12886654201429337,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.002772668027319014,
+              "max_seconds": 0.0008008329896256328,
+              "sample_count": 5,
+              "p50_seconds": 0.0004909590352326632,
+              "p90_seconds": 0.0008008329896256328,
+              "p95_seconds": 0.0008008329896256328,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 7.266807369887829e-05,
+              "max_seconds": 2.1750107407569885e-05,
+              "sample_count": 5,
+              "p50_seconds": 1.3791956007480621e-05,
+              "p90_seconds": 2.1750107407569885e-05,
+              "p95_seconds": 2.1750107407569885e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.0791197910439223,
+              "max_seconds": 0.06776520796120167,
+              "sample_count": 6,
+              "p50_seconds": 0.0003055830020457506,
+              "p90_seconds": 0.06776520796120167,
+              "p95_seconds": 0.06776520796120167,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting._construct_native": {
+              "count": 1,
+              "total_seconds": 9.958981536328793e-06,
+              "max_seconds": 9.958981536328793e-06,
+              "sample_count": 1,
+              "p50_seconds": 9.958981536328793e-06,
+              "p90_seconds": 9.958981536328793e-06,
+              "p95_seconds": 9.958981536328793e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.0032926680287346244,
+              "max_seconds": 0.0007621250115334988,
+              "sample_count": 6,
+              "p50_seconds": 0.00047029193956404924,
+              "p90_seconds": 0.0007621250115334988,
+              "p95_seconds": 0.0007621250115334988,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.23852145799901336,
+              "max_seconds": 0.23852145799901336,
+              "sample_count": 1,
+              "p50_seconds": 0.23852145799901336,
+              "p90_seconds": 0.23852145799901336,
+              "p95_seconds": 0.23852145799901336,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.session_initialize": {
+              "count": 1,
+              "total_seconds": 2.545793540775776e-05,
+              "max_seconds": 2.545793540775776e-05,
+              "sample_count": 1,
+              "p50_seconds": 2.545793540775776e-05,
+              "p90_seconds": 2.545793540775776e-05,
+              "p95_seconds": 2.545793540775776e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.open": {
+              "count": 1,
+              "total_seconds": 0.23861633404158056,
+              "max_seconds": 0.23861633404158056,
+              "sample_count": 1,
+              "p50_seconds": 0.23861633404158056,
+              "p90_seconds": 0.23861633404158056,
+              "p95_seconds": 0.23861633404158056,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.0030812930781394243,
+              "max_seconds": 0.0014704579953104258,
+              "sample_count": 5,
+              "p50_seconds": 0.00042508402839303017,
+              "p90_seconds": 0.0014704579953104258,
+              "p95_seconds": 0.0014704579953104258,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 6.204191595315933e-05,
+              "max_seconds": 2.7374946512281895e-05,
+              "sample_count": 5,
+              "p50_seconds": 8.66700429469347e-06,
+              "p90_seconds": 2.7374946512281895e-05,
+              "p95_seconds": 2.7374946512281895e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.0821765421424061,
+              "max_seconds": 0.07014233293011785,
+              "sample_count": 6,
+              "p50_seconds": 0.0002775839529931545,
+              "p90_seconds": 0.07014233293011785,
+              "p95_seconds": 0.07014233293011785,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts._construct_native": {
+              "count": 1,
+              "total_seconds": 8.833012543618679e-06,
+              "max_seconds": 8.833012543618679e-06,
+              "sample_count": 1,
+              "p50_seconds": 8.833012543618679e-06,
+              "p90_seconds": 8.833012543618679e-06,
+              "p95_seconds": 8.833012543618679e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.004102250095456839,
+              "max_seconds": 0.0008635830599814653,
+              "sample_count": 6,
+              "p50_seconds": 0.0006243340903893113,
+              "p90_seconds": 0.0008635830599814653,
+              "p95_seconds": 0.0008635830599814653,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.8985212079714984,
+              "max_seconds": 0.8985212079714984,
+              "sample_count": 1,
+              "p50_seconds": 0.8985212079714984,
+              "p90_seconds": 0.8985212079714984,
+              "p95_seconds": 0.8985212079714984,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.session_initialize": {
+              "count": 1,
+              "total_seconds": 3.666698466986418e-05,
+              "max_seconds": 3.666698466986418e-05,
+              "sample_count": 1,
+              "p50_seconds": 3.666698466986418e-05,
+              "p90_seconds": 3.666698466986418e-05,
+              "p95_seconds": 3.666698466986418e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.open": {
+              "count": 1,
+              "total_seconds": 0.8986261659301817,
+              "max_seconds": 0.8986261659301817,
+              "sample_count": 1,
+              "p50_seconds": 0.8986261659301817,
+              "p90_seconds": 0.8986261659301817,
+              "p95_seconds": 0.8986261659301817,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "session.initialize": {
+              "count": 1,
+              "total_seconds": 2.3614380419021472,
+              "max_seconds": 2.3614380419021472,
+              "sample_count": 1,
+              "p50_seconds": 2.3614380419021472,
+              "p90_seconds": 2.3614380419021472,
+              "p95_seconds": 2.3614380419021472,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "input.queue_wait": {
+              "count": 8,
+              "total_seconds": 0.5688282910268754,
+              "max_seconds": 0.11690050002653152,
+              "sample_count": 8,
+              "p50_seconds": 0.08182833401951939,
+              "p90_seconds": 0.11690050002653152,
+              "p95_seconds": 0.11690050002653152,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.invoke": {
+              "count": 11,
+              "total_seconds": 0.3378575410461053,
+              "max_seconds": 0.05537262500729412,
+              "sample_count": 11,
+              "p50_seconds": 0.029052917030639946,
+              "p90_seconds": 0.05523000005632639,
+              "p95_seconds": 0.05537262500729412,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.update_context.wall": {
+              "count": 1,
+              "total_seconds": 0.0020761669147759676,
+              "max_seconds": 0.0020761669147759676,
+              "sample_count": 1,
+              "p50_seconds": 0.0020761669147759676,
+              "p90_seconds": 0.0020761669147759676,
+              "p95_seconds": 0.0020761669147759676,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.accept_waveform": {
+              "count": 396,
+              "total_seconds": 0.008433567243628204,
+              "max_seconds": 4.6749948523938656e-05,
+              "sample_count": 396,
+              "p50_seconds": 2.0499923266470432e-05,
+              "p90_seconds": 2.1625077351927757e-05,
+              "p95_seconds": 2.8000096790492535e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.get_result": {
+              "count": 397,
+              "total_seconds": 0.0007800463354215026,
+              "max_seconds": 2.2292020730674267e-05,
+              "sample_count": 397,
+              "p50_seconds": 1.2919772416353226e-06,
+              "p90_seconds": 2.125045284628868e-06,
+              "p95_seconds": 6.125075742602348e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.decode_stream": {
+              "count": 13,
+              "total_seconds": 0.3243015423649922,
+              "max_seconds": 0.027915457962080836,
+              "sample_count": 13,
+              "p50_seconds": 0.025752417044714093,
+              "p90_seconds": 0.027499167015776038,
+              "p95_seconds": 0.027915457962080836,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.push_audio.wall": {
+              "count": 8,
+              "total_seconds": 0.3506590829929337,
+              "max_seconds": 0.05713516706600785,
+              "sample_count": 8,
+              "p50_seconds": 0.04968833294697106,
+              "p90_seconds": 0.05713516706600785,
+              "p95_seconds": 0.05713516706600785,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.admission_wait": {
+              "count": 2,
+              "total_seconds": 0.00019487494137138128,
+              "max_seconds": 9.779201354831457e-05,
+              "sample_count": 2,
+              "p50_seconds": 9.708292782306671e-05,
+              "p90_seconds": 9.779201354831457e-05,
+              "p95_seconds": 9.779201354831457e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.add_punct": {
+              "count": 2,
+              "total_seconds": 0.009041832061484456,
+              "max_seconds": 0.007648166036233306,
+              "sample_count": 2,
+              "p50_seconds": 0.0013936660252511501,
+              "p90_seconds": 0.007648166036233306,
+              "p95_seconds": 0.007648166036233306,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.invoke": {
+              "count": 3,
+              "total_seconds": 0.009681249037384987,
+              "max_seconds": 0.007745957933366299,
+              "sample_count": 3,
+              "p50_seconds": 0.0019142910605296493,
+              "p90_seconds": 0.007745957933366299,
+              "p95_seconds": 0.007745957933366299,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.format.wall": {
+              "count": 2,
+              "total_seconds": 0.012999375932849944,
+              "max_seconds": 0.009503833949565887,
+              "sample_count": 2,
+              "p50_seconds": 0.003495541983284056,
+              "p90_seconds": 0.009503833949565887,
+              "p95_seconds": 0.009503833949565887,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.final_backpressure_wait": {
+              "count": 2,
+              "total_seconds": 8.749775588512421e-07,
+              "max_seconds": 5.420297384262085e-07,
+              "sample_count": 2,
+              "p50_seconds": 3.3294782042503357e-07,
+              "p90_seconds": 5.420297384262085e-07,
+              "p95_seconds": 5.420297384262085e-07,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.admission_wait": {
+              "count": 2,
+              "total_seconds": 0.4594292499823496,
+              "max_seconds": 0.4587895000586286,
+              "sample_count": 2,
+              "p50_seconds": 0.0006397499237209558,
+              "p90_seconds": 0.4587895000586286,
+              "p95_seconds": 0.4587895000586286,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.finish.wall": {
+              "count": 1,
+              "total_seconds": 0.0017262089531868696,
+              "max_seconds": 0.0017262089531868696,
+              "sample_count": 1,
+              "p50_seconds": 0.0017262089531868696,
+              "p90_seconds": 0.0017262089531868696,
+              "p95_seconds": 0.0017262089531868696,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.tokenize": {
+              "count": 2,
+              "total_seconds": 0.00013425108045339584,
+              "max_seconds": 7.208401802927256e-05,
+              "sample_count": 2,
+              "p50_seconds": 6.216706242412329e-05,
+              "p90_seconds": 7.208401802927256e-05,
+              "p95_seconds": 7.208401802927256e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.translate_batch": {
+              "count": 2,
+              "total_seconds": 0.14083054079674184,
+              "max_seconds": 0.09083924989681691,
+              "sample_count": 2,
+              "p50_seconds": 0.049991290899924934,
+              "p90_seconds": 0.09083924989681691,
+              "p95_seconds": 0.09083924989681691,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.detokenize": {
+              "count": 2,
+              "total_seconds": 7.812504190951586e-05,
+              "max_seconds": 4.9332971684634686e-05,
+              "sample_count": 2,
+              "p50_seconds": 2.8792070224881172e-05,
+              "p90_seconds": 4.9332971684634686e-05,
+              "p95_seconds": 4.9332971684634686e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.invoke": {
+              "count": 3,
+              "total_seconds": 0.1430182090261951,
+              "max_seconds": 0.09110345796216279,
+              "sample_count": 3,
+              "p50_seconds": 0.05189891706686467,
+              "p90_seconds": 0.09110345796216279,
+              "p95_seconds": 0.09110345796216279,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.translate.wall": {
+              "count": 2,
+              "total_seconds": 0.14632750011514872,
+              "max_seconds": 0.09298679209314287,
+              "sample_count": 2,
+              "p50_seconds": 0.053340708022005856,
+              "p90_seconds": 0.09298679209314287,
+              "p95_seconds": 0.09298679209314287,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.pending_backpressure_wait": {
+              "count": 2,
+              "total_seconds": 1.125037670135498e-06,
+              "max_seconds": 7.080379873514175e-07,
+              "sample_count": 2,
+              "p50_seconds": 4.169996827840805e-07,
+              "p90_seconds": 7.080379873514175e-07,
+              "p95_seconds": 7.080379873514175e-07,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.consumer_wait": {
+              "count": 2,
+              "total_seconds": 2.7081696316599846e-06,
+              "max_seconds": 1.375097781419754e-06,
+              "sample_count": 2,
+              "p50_seconds": 1.3330718502402306e-06,
+              "p90_seconds": 1.375097781419754e-06,
+              "p95_seconds": 1.375097781419754e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.invoke": {
+              "count": 3,
+              "total_seconds": 1.1356173331150785,
+              "max_seconds": 0.7328607499366626,
+              "sample_count": 3,
+              "p50_seconds": 0.4027427911059931,
+              "p90_seconds": 0.7328607499366626,
+              "p95_seconds": 0.7328607499366626,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.synthesize.wall": {
+              "count": 2,
+              "total_seconds": 1.1387412089388818,
+              "max_seconds": 0.7344545419327915,
+              "sample_count": 2,
+              "p50_seconds": 0.4042866670060903,
+              "p90_seconds": 0.7344545419327915,
+              "p95_seconds": 0.7344545419327915,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.close.wall": {
+              "count": 1,
+              "total_seconds": 0.001164000015705824,
+              "max_seconds": 0.001164000015705824,
+              "sample_count": 1,
+              "p50_seconds": 0.001164000015705824,
+              "p90_seconds": 0.001164000015705824,
+              "p95_seconds": 0.001164000015705824,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.release": {
+              "count": 1,
+              "total_seconds": 4.66697383671999e-06,
+              "max_seconds": 4.66697383671999e-06,
+              "sample_count": 1,
+              "p50_seconds": 4.66697383671999e-06,
+              "p90_seconds": 4.66697383671999e-06,
+              "p95_seconds": 4.66697383671999e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0012503749458119273,
+              "max_seconds": 0.0012503749458119273,
+              "sample_count": 1,
+              "p50_seconds": 0.0012503749458119273,
+              "p90_seconds": 0.0012503749458119273,
+              "p95_seconds": 0.0012503749458119273,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "tts.release": {
+              "count": 1,
+              "total_seconds": 7.3749106377363205e-06,
+              "max_seconds": 7.3749106377363205e-06,
+              "sample_count": 1,
+              "p50_seconds": 7.3749106377363205e-06,
+              "p90_seconds": 7.3749106377363205e-06,
+              "p95_seconds": 7.3749106377363205e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0011650830274447799,
+              "max_seconds": 0.0011650830274447799,
+              "sample_count": 1,
+              "p50_seconds": 0.0011650830274447799,
+              "p90_seconds": 0.0011650830274447799,
+              "p95_seconds": 0.0011650830274447799,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.release": {
+              "count": 1,
+              "total_seconds": 7.2499969974160194e-06,
+              "max_seconds": 7.2499969974160194e-06,
+              "sample_count": 1,
+              "p50_seconds": 7.2499969974160194e-06,
+              "p90_seconds": 7.2499969974160194e-06,
+              "p95_seconds": 7.2499969974160194e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0012188749387860298,
+              "max_seconds": 0.0012188749387860298,
+              "sample_count": 1,
+              "p50_seconds": 0.0012188749387860298,
+              "p90_seconds": 0.0012188749387860298,
+              "p95_seconds": 0.0012188749387860298,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.release": {
+              "count": 1,
+              "total_seconds": 5.249981768429279e-06,
+              "max_seconds": 5.249981768429279e-06,
+              "sample_count": 1,
+              "p50_seconds": 5.249981768429279e-06,
+              "p90_seconds": 5.249981768429279e-06,
+              "p95_seconds": 5.249981768429279e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            }
+          },
+          "resources": {
+            "scope": "bounded logical session state; model pool is global, not RSS",
+            "input_frames": 0,
+            "recent_context_units": 2,
+            "recent_context_chars": 26,
+            "context_terms": 0,
+            "context_version": 2,
+            "retained_text_units": 2,
+            "recovery": {
+              "detached": false,
+              "retained_events": 0,
+              "retained_bytes": 0,
+              "input_fingerprints": 8
+            },
+            "model_pool": {
+              "model_workers": 4,
+              "resident_mib": 2350,
+              "stage_handles": 0,
+              "active_jobs": 0,
+              "pending_jobs": 0
+            }
+          },
+          "metrics_clock": "server monotonic; first received PCM; not browser/onset TTFO",
+          "protocol": "smartvoice.stream.v1",
+          "session_id": "39d0b7e5d5e84787b136283ffb745ebc",
+          "event_sequence": 20,
+          "elapsed_seconds": 3.985429
+        }
+      },
+      "fixture_id": "zh_02_clean",
+      "fixture_sha256": "75cd95e20fd66ae458b777f1fdde2050166360563c46e71de98246d6cc895354",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "input_samples": 126720,
+      "context_version": 2,
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "scope": "Native product stages, short pinned fixture and same-process reconnect; not browser/TCP/quality/soak acceptance",
+      "raw_report": ".smartvoice-dev/full-streaming/15cbf00d3e1e476389f8b9305e4843ea/resume-spoken_interpretation-zh.json",
+      "raw_report_sha256": "7bbd4fbaf289a9e49c3acbd3a803669ff08fe8d4730a2acce2aae623947753fe"
+    },
+    {
+      "mode": "transcription",
+      "language": "en",
+      "failure": null,
+      "output": {
+        "counts": {
+          "session_ready": 1,
+          "source_partial": 21,
+          "source_unit_partial": 1,
+          "source_final": 2,
+          "utterance_complete": 2,
+          "source_unit_final": 2,
+          "session_complete": 1
+        },
+        "source_chars": 133,
+        "target_chars": 0,
+        "final_text_sha256": "f79dabb37fff89579652efe8b1a03c77593c85f7747a133e4e67e79a6f6db777",
+        "audio_chunks": 0,
+        "audio_seconds": 0.0,
+        "first_output_wall_seconds": {
+          "source_unit_partial": 1.2320536660263315
+        },
+        "unspoken_targets": 0,
+        "last_source_end_sample": 166400,
+        "terminal": {
+          "type": "session_complete",
+          "status": "complete",
+          "reason": null,
+          "counts": {
+            "session_ready": 1,
+            "source_partial": 21,
+            "source_unit_partial": 1,
+            "source_final": 2,
+            "utterance_complete": 2,
+            "source_unit_final": 2
+          },
+          "first_output_seconds": {
+            "source_partial": 0.081802,
+            "source_unit_partial": 0.08675,
+            "source_final": 0.269135,
+            "source_unit_final": 0.275024
+          },
+          "audio_skips": {},
+          "profiling": {
+            "asr.pool_queue_wait": {
+              "count": 17,
+              "total_seconds": 0.007851248956285417,
+              "max_seconds": 0.0011541250860318542,
+              "sample_count": 17,
+              "p50_seconds": 0.000407584011554718,
+              "p90_seconds": 0.0005679579917341471,
+              "p95_seconds": 0.0011541250860318542,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.compute_admission_wait": {
+              "count": 17,
+              "total_seconds": 0.00022579077631235123,
+              "max_seconds": 2.0374893210828304e-05,
+              "sample_count": 17,
+              "p50_seconds": 1.3874960131943226e-05,
+              "p90_seconds": 1.6666948795318604e-05,
+              "p95_seconds": 2.0374893210828304e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.executor_wait": {
+              "count": 18,
+              "total_seconds": 0.09432779008056968,
+              "max_seconds": 0.07923808298073709,
+              "sample_count": 18,
+              "p50_seconds": 0.00023712508846074343,
+              "p90_seconds": 0.010579625028185546,
+              "p95_seconds": 0.07923808298073709,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr._construct_native": {
+              "count": 1,
+              "total_seconds": 1.3625016435980797e-05,
+              "max_seconds": 1.3625016435980797e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.3625016435980797e-05,
+              "p90_seconds": 1.3625016435980797e-05,
+              "p95_seconds": 1.3625016435980797e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.ipc_roundtrip": {
+              "count": 18,
+              "total_seconds": 0.01127591566182673,
+              "max_seconds": 0.000922874896787107,
+              "sample_count": 18,
+              "p50_seconds": 0.0005927080055698752,
+              "p90_seconds": 0.0008028330048546195,
+              "p95_seconds": 0.000922874896787107,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.6867920840159059,
+              "max_seconds": 0.6867920840159059,
+              "sample_count": 1,
+              "p50_seconds": 0.6867920840159059,
+              "p90_seconds": 0.6867920840159059,
+              "p95_seconds": 0.6867920840159059,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.session_initialize": {
+              "count": 1,
+              "total_seconds": 0.0002490000333636999,
+              "max_seconds": 0.0002490000333636999,
+              "sample_count": 1,
+              "p50_seconds": 0.0002490000333636999,
+              "p90_seconds": 0.0002490000333636999,
+              "p95_seconds": 0.0002490000333636999,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.open": {
+              "count": 1,
+              "total_seconds": 0.6870977500220761,
+              "max_seconds": 0.6870977500220761,
+              "sample_count": 1,
+              "p50_seconds": 0.6870977500220761,
+              "p90_seconds": 0.6870977500220761,
+              "p95_seconds": 0.6870977500220761,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.pool_queue_wait": {
+              "count": 6,
+              "total_seconds": 0.0031629169825464487,
+              "max_seconds": 0.0007263750303536654,
+              "sample_count": 6,
+              "p50_seconds": 0.0004759581061080098,
+              "p90_seconds": 0.0007263750303536654,
+              "p95_seconds": 0.0007263750303536654,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.compute_admission_wait": {
+              "count": 6,
+              "total_seconds": 7.829186506569386e-05,
+              "max_seconds": 1.8874998204410076e-05,
+              "sample_count": 6,
+              "p50_seconds": 1.0124989785254002e-05,
+              "p90_seconds": 1.8874998204410076e-05,
+              "p95_seconds": 1.8874998204410076e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.executor_wait": {
+              "count": 7,
+              "total_seconds": 0.08331920893397182,
+              "max_seconds": 0.07019208301790059,
+              "sample_count": 7,
+              "p50_seconds": 0.0003141670022159815,
+              "p90_seconds": 0.07019208301790059,
+              "p95_seconds": 0.07019208301790059,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting._construct_native": {
+              "count": 1,
+              "total_seconds": 8.707982487976551e-06,
+              "max_seconds": 8.707982487976551e-06,
+              "sample_count": 1,
+              "p50_seconds": 8.707982487976551e-06,
+              "p90_seconds": 8.707982487976551e-06,
+              "p95_seconds": 8.707982487976551e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.ipc_roundtrip": {
+              "count": 7,
+              "total_seconds": 0.004219583119265735,
+              "max_seconds": 0.0008953330107033253,
+              "sample_count": 7,
+              "p50_seconds": 0.0005246249493211508,
+              "p90_seconds": 0.0008953330107033253,
+              "p95_seconds": 0.0008953330107033253,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.27935070893727243,
+              "max_seconds": 0.27935070893727243,
+              "sample_count": 1,
+              "p50_seconds": 0.27935070893727243,
+              "p90_seconds": 0.27935070893727243,
+              "p95_seconds": 0.27935070893727243,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.session_initialize": {
+              "count": 1,
+              "total_seconds": 5.1458016969263554e-05,
+              "max_seconds": 5.1458016969263554e-05,
+              "sample_count": 1,
+              "p50_seconds": 5.1458016969263554e-05,
+              "p90_seconds": 5.1458016969263554e-05,
+              "p95_seconds": 5.1458016969263554e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.open": {
+              "count": 1,
+              "total_seconds": 0.2795447079697624,
+              "max_seconds": 0.2795447079697624,
+              "sample_count": 1,
+              "p50_seconds": 0.2795447079697624,
+              "p90_seconds": 0.2795447079697624,
+              "p95_seconds": 0.2795447079697624,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "session.initialize": {
+              "count": 1,
+              "total_seconds": 1.1444857500027865,
+              "max_seconds": 1.1444857500027865,
+              "sample_count": 1,
+              "p50_seconds": 1.1444857500027865,
+              "p90_seconds": 1.1444857500027865,
+              "p95_seconds": 1.1444857500027865,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "input.queue_wait": {
+              "count": 11,
+              "total_seconds": 0.8512363717891276,
+              "max_seconds": 0.1004222909687087,
+              "sample_count": 11,
+              "p50_seconds": 0.08748645801097155,
+              "p90_seconds": 0.10010062507353723,
+              "p95_seconds": 0.1004222909687087,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.invoke": {
+              "count": 15,
+              "total_seconds": 0.448993667261675,
+              "max_seconds": 0.05127166700549424,
+              "sample_count": 15,
+              "p50_seconds": 0.03901858301833272,
+              "p90_seconds": 0.04198162502143532,
+              "p95_seconds": 0.05127166700549424,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.update_context.wall": {
+              "count": 2,
+              "total_seconds": 0.0035262079909443855,
+              "max_seconds": 0.002001665998250246,
+              "sample_count": 2,
+              "p50_seconds": 0.0015245419926941395,
+              "p90_seconds": 0.002001665998250246,
+              "p95_seconds": 0.002001665998250246,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.accept_waveform": {
+              "count": 520,
+              "total_seconds": 0.011617161799222231,
+              "max_seconds": 7.67499441280961e-05,
+              "sample_count": 520,
+              "p50_seconds": 2.1249987185001373e-05,
+              "p90_seconds": 2.3416941985487938e-05,
+              "p95_seconds": 3.1458097510039806e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.get_result": {
+              "count": 521,
+              "total_seconds": 0.002276077982969582,
+              "max_seconds": 2.1416926756501198e-05,
+              "sample_count": 521,
+              "p50_seconds": 3.750086762011051e-06,
+              "p90_seconds": 7.041962817311287e-06,
+              "p95_seconds": 1.2500095181167126e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.decode_stream": {
+              "count": 33,
+              "total_seconds": 0.42154512647539377,
+              "max_seconds": 0.018424042034894228,
+              "sample_count": 33,
+              "p50_seconds": 0.01270074991043657,
+              "p90_seconds": 0.013520583976060152,
+              "p95_seconds": 0.014243708923459053,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.push_audio.wall": {
+              "count": 11,
+              "total_seconds": 0.453210333827883,
+              "max_seconds": 0.0528067919658497,
+              "sample_count": 11,
+              "p50_seconds": 0.042330709053203464,
+              "p90_seconds": 0.04346433305181563,
+              "p95_seconds": 0.0528067919658497,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.admission_wait": {
+              "count": 3,
+              "total_seconds": 0.00026658305432647467,
+              "max_seconds": 9.279197547584772e-05,
+              "sample_count": 3,
+              "p50_seconds": 8.841603994369507e-05,
+              "p90_seconds": 9.279197547584772e-05,
+              "p95_seconds": 9.279197547584772e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.add_punct": {
+              "count": 3,
+              "total_seconds": 0.008147459011524916,
+              "max_seconds": 0.003583666984923184,
+              "sample_count": 3,
+              "p50_seconds": 0.003030334017239511,
+              "p90_seconds": 0.003583666984923184,
+              "p95_seconds": 0.003583666984923184,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.invoke": {
+              "count": 4,
+              "total_seconds": 0.008921124855987728,
+              "max_seconds": 0.003738250001333654,
+              "sample_count": 4,
+              "p50_seconds": 0.0019817919237539172,
+              "p90_seconds": 0.003738250001333654,
+              "p95_seconds": 0.003738250001333654,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.format.wall": {
+              "count": 3,
+              "total_seconds": 0.013366667903028429,
+              "max_seconds": 0.00511525000911206,
+              "sample_count": 3,
+              "p50_seconds": 0.0046232088934630156,
+              "p90_seconds": 0.00511525000911206,
+              "p95_seconds": 0.00511525000911206,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.finish.wall": {
+              "count": 1,
+              "total_seconds": 0.0132444160990417,
+              "max_seconds": 0.0132444160990417,
+              "sample_count": 1,
+              "p50_seconds": 0.0132444160990417,
+              "p90_seconds": 0.0132444160990417,
+              "p95_seconds": 0.0132444160990417,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0013243750436231494,
+              "max_seconds": 0.0013243750436231494,
+              "sample_count": 1,
+              "p50_seconds": 0.0013243750436231494,
+              "p90_seconds": 0.0013243750436231494,
+              "p95_seconds": 0.0013243750436231494,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.release": {
+              "count": 1,
+              "total_seconds": 4.958012141287327e-06,
+              "max_seconds": 4.958012141287327e-06,
+              "sample_count": 1,
+              "p50_seconds": 4.958012141287327e-06,
+              "p90_seconds": 4.958012141287327e-06,
+              "p95_seconds": 4.958012141287327e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0010237089591100812,
+              "max_seconds": 0.0010237089591100812,
+              "sample_count": 1,
+              "p50_seconds": 0.0010237089591100812,
+              "p90_seconds": 0.0010237089591100812,
+              "p95_seconds": 0.0010237089591100812,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.release": {
+              "count": 1,
+              "total_seconds": 5.999929271638393e-06,
+              "max_seconds": 5.999929271638393e-06,
+              "sample_count": 1,
+              "p50_seconds": 5.999929271638393e-06,
+              "p90_seconds": 5.999929271638393e-06,
+              "p95_seconds": 5.999929271638393e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            }
+          },
+          "resources": {
+            "scope": "bounded logical session state; model pool is global, not RSS",
+            "input_frames": 0,
+            "recent_context_units": 2,
+            "recent_context_chars": 136,
+            "context_terms": 0,
+            "context_version": 2,
+            "retained_text_units": 2,
+            "recovery": {
+              "detached": false,
+              "retained_events": 0,
+              "retained_bytes": 0,
+              "input_fingerprints": 11
+            },
+            "model_pool": {
+              "model_workers": 2,
+              "resident_mib": 700,
+              "stage_handles": 0,
+              "active_jobs": 0,
+              "pending_jobs": 0
+            }
+          },
+          "metrics_clock": "server monotonic; first received PCM; not browser/onset TTFO",
+          "protocol": "smartvoice.stream.v1",
+          "session_id": "77516d55ba9d494ab04f5848b9b48650",
+          "event_sequence": 30,
+          "elapsed_seconds": 1.666645
+        }
+      },
+      "fixture_id": "en_02_clean",
+      "fixture_sha256": "61ee2bfd08e4851b5fda3be2776f9363df5a4fa31c5cad9af00fec32c208c30b",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "input_samples": 166400,
+      "context_version": 2,
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "scope": "Native product stages, short pinned fixture and same-process reconnect; not browser/TCP/quality/soak acceptance",
+      "raw_report": ".smartvoice-dev/full-streaming/15cbf00d3e1e476389f8b9305e4843ea/resume-transcription-en.json",
+      "raw_report_sha256": "0794a94f5c74bbad9c891f5eac1d6cbb91c727877d48bf031c6a267ec89bab94"
+    },
+    {
+      "mode": "transcription",
+      "language": "zh",
+      "failure": null,
+      "output": {
+        "counts": {
+          "session_ready": 1,
+          "source_partial": 8,
+          "source_unit_partial": 1,
+          "source_final": 1,
+          "utterance_complete": 2,
+          "source_unit_final": 2,
+          "session_complete": 1
+        },
+        "source_chars": 23,
+        "target_chars": 0,
+        "final_text_sha256": "5b443ca37e7a281ee72b9fccbd1e8dbb42fb1769f9802ace89a0fadfde0c6119",
+        "audio_chunks": 0,
+        "audio_seconds": 0.0,
+        "first_output_wall_seconds": {
+          "source_unit_partial": 1.6159182080300525
+        },
+        "unspoken_targets": 0,
+        "last_source_end_sample": 126720,
+        "terminal": {
+          "type": "session_complete",
+          "status": "complete",
+          "reason": null,
+          "counts": {
+            "session_ready": 1,
+            "source_partial": 8,
+            "source_unit_partial": 1,
+            "source_final": 1,
+            "utterance_complete": 2,
+            "source_unit_final": 2
+          },
+          "first_output_seconds": {
+            "source_partial": 0.103156,
+            "source_unit_partial": 0.10983,
+            "source_final": 0.339492,
+            "source_unit_final": 0.350538
+          },
+          "audio_skips": {},
+          "profiling": {
+            "asr.pool_queue_wait": {
+              "count": 13,
+              "total_seconds": 0.008843707968480885,
+              "max_seconds": 0.002645083935931325,
+              "sample_count": 13,
+              "p50_seconds": 0.0004227920435369015,
+              "p90_seconds": 0.00150712497998029,
+              "p95_seconds": 0.002645083935931325,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.compute_admission_wait": {
+              "count": 13,
+              "total_seconds": 0.00024041917640715837,
+              "max_seconds": 4.80839516967535e-05,
+              "sample_count": 13,
+              "p50_seconds": 1.633400097489357e-05,
+              "p90_seconds": 2.9709073714911938e-05,
+              "p95_seconds": 4.80839516967535e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.executor_wait": {
+              "count": 14,
+              "total_seconds": 0.09153396019246429,
+              "max_seconds": 0.07576037500984967,
+              "sample_count": 14,
+              "p50_seconds": 0.0003544590435922146,
+              "p90_seconds": 0.010547082987613976,
+              "p95_seconds": 0.07576037500984967,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr._construct_native": {
+              "count": 1,
+              "total_seconds": 1.291697844862938e-05,
+              "max_seconds": 1.291697844862938e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.291697844862938e-05,
+              "p90_seconds": 1.291697844862938e-05,
+              "p95_seconds": 1.291697844862938e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.ipc_roundtrip": {
+              "count": 14,
+              "total_seconds": 0.008551542065106332,
+              "max_seconds": 0.0009101249743252993,
+              "sample_count": 14,
+              "p50_seconds": 0.0005565000465139747,
+              "p90_seconds": 0.0008721670601516962,
+              "p95_seconds": 0.0009101249743252993,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.9684111248934641,
+              "max_seconds": 0.9684111248934641,
+              "sample_count": 1,
+              "p50_seconds": 0.9684111248934641,
+              "p90_seconds": 0.9684111248934641,
+              "p95_seconds": 0.9684111248934641,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.session_initialize": {
+              "count": 1,
+              "total_seconds": 0.0001254579983651638,
+              "max_seconds": 0.0001254579983651638,
+              "sample_count": 1,
+              "p50_seconds": 0.0001254579983651638,
+              "p90_seconds": 0.0001254579983651638,
+              "p95_seconds": 0.0001254579983651638,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.open": {
+              "count": 1,
+              "total_seconds": 0.9688074169680476,
+              "max_seconds": 0.9688074169680476,
+              "sample_count": 1,
+              "p50_seconds": 0.9688074169680476,
+              "p90_seconds": 0.9688074169680476,
+              "p95_seconds": 0.9688074169680476,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.00544004188850522,
+              "max_seconds": 0.00275291595607996,
+              "sample_count": 5,
+              "p50_seconds": 0.0006080419989302754,
+              "p90_seconds": 0.00275291595607996,
+              "p95_seconds": 0.00275291595607996,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 8.541787974536419e-05,
+              "max_seconds": 2.837507054209709e-05,
+              "sample_count": 5,
+              "p50_seconds": 1.4042016118764877e-05,
+              "p90_seconds": 2.837507054209709e-05,
+              "p95_seconds": 2.837507054209709e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.10280808305833489,
+              "max_seconds": 0.090456249890849,
+              "sample_count": 6,
+              "p50_seconds": 0.00028233404736965895,
+              "p90_seconds": 0.090456249890849,
+              "p95_seconds": 0.090456249890849,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting._construct_native": {
+              "count": 1,
+              "total_seconds": 9.875046089291573e-06,
+              "max_seconds": 9.875046089291573e-06,
+              "sample_count": 1,
+              "p50_seconds": 9.875046089291573e-06,
+              "p90_seconds": 9.875046089291573e-06,
+              "p95_seconds": 9.875046089291573e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.0036509569035843015,
+              "max_seconds": 0.0009379590628668666,
+              "sample_count": 6,
+              "p50_seconds": 0.0005348749691620469,
+              "p90_seconds": 0.0009379590628668666,
+              "p95_seconds": 0.0009379590628668666,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.32637179095763713,
+              "max_seconds": 0.32637179095763713,
+              "sample_count": 1,
+              "p50_seconds": 0.32637179095763713,
+              "p90_seconds": 0.32637179095763713,
+              "p95_seconds": 0.32637179095763713,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.session_initialize": {
+              "count": 1,
+              "total_seconds": 3.0208961106836796e-05,
+              "max_seconds": 3.0208961106836796e-05,
+              "sample_count": 1,
+              "p50_seconds": 3.0208961106836796e-05,
+              "p90_seconds": 3.0208961106836796e-05,
+              "p95_seconds": 3.0208961106836796e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.open": {
+              "count": 1,
+              "total_seconds": 0.3264809590764344,
+              "max_seconds": 0.3264809590764344,
+              "sample_count": 1,
+              "p50_seconds": 0.3264809590764344,
+              "p90_seconds": 0.3264809590764344,
+              "p95_seconds": 0.3264809590764344,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "session.initialize": {
+              "count": 1,
+              "total_seconds": 1.5074062909698114,
+              "max_seconds": 1.5074062909698114,
+              "sample_count": 1,
+              "p50_seconds": 1.5074062909698114,
+              "p90_seconds": 1.5074062909698114,
+              "p95_seconds": 1.5074062909698114,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "input.queue_wait": {
+              "count": 8,
+              "total_seconds": 0.6251181690022349,
+              "max_seconds": 0.1132800419582054,
+              "sample_count": 8,
+              "p50_seconds": 0.08982279198244214,
+              "p90_seconds": 0.1132800419582054,
+              "p95_seconds": 0.1132800419582054,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.invoke": {
+              "count": 11,
+              "total_seconds": 0.361699624103494,
+              "max_seconds": 0.05882054101675749,
+              "sample_count": 11,
+              "p50_seconds": 0.037223792052827775,
+              "p90_seconds": 0.054678749991580844,
+              "p95_seconds": 0.05882054101675749,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.update_context.wall": {
+              "count": 1,
+              "total_seconds": 0.0026557910023257136,
+              "max_seconds": 0.0026557910023257136,
+              "sample_count": 1,
+              "p50_seconds": 0.0026557910023257136,
+              "p90_seconds": 0.0026557910023257136,
+              "p95_seconds": 0.0026557910023257136,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.accept_waveform": {
+              "count": 396,
+              "total_seconds": 0.008739833952859044,
+              "max_seconds": 0.0001782089238986373,
+              "sample_count": 396,
+              "p50_seconds": 2.054101787507534e-05,
+              "p90_seconds": 2.216699067503214e-05,
+              "p95_seconds": 3.0125025659799576e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.get_result": {
+              "count": 397,
+              "total_seconds": 0.0008447139989584684,
+              "max_seconds": 2.562499139457941e-05,
+              "sample_count": 397,
+              "p50_seconds": 1.334003172814846e-06,
+              "p90_seconds": 2.124928869307041e-06,
+              "p95_seconds": 6.417045369744301e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.decode_stream": {
+              "count": 13,
+              "total_seconds": 0.347133707953617,
+              "max_seconds": 0.03506424999795854,
+              "sample_count": 13,
+              "p50_seconds": 0.026293958886526525,
+              "p90_seconds": 0.03485583292786032,
+              "p95_seconds": 0.03506424999795854,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.push_audio.wall": {
+              "count": 8,
+              "total_seconds": 0.37426420801784843,
+              "max_seconds": 0.06026470893993974,
+              "sample_count": 8,
+              "p50_seconds": 0.04729683301411569,
+              "p90_seconds": 0.06026470893993974,
+              "p95_seconds": 0.06026470893993974,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.admission_wait": {
+              "count": 2,
+              "total_seconds": 0.0008463341509923339,
+              "max_seconds": 0.0007583340629935265,
+              "sample_count": 2,
+              "p50_seconds": 8.800008799880743e-05,
+              "p90_seconds": 0.0007583340629935265,
+              "p95_seconds": 0.0007583340629935265,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.add_punct": {
+              "count": 2,
+              "total_seconds": 0.009588250890374184,
+              "max_seconds": 0.007691666949540377,
+              "sample_count": 2,
+              "p50_seconds": 0.001896583940833807,
+              "p90_seconds": 0.007691666949540377,
+              "p95_seconds": 0.007691666949540377,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.invoke": {
+              "count": 3,
+              "total_seconds": 0.01021712482906878,
+              "max_seconds": 0.007779332925565541,
+              "sample_count": 3,
+              "p50_seconds": 0.0024215419543907046,
+              "p90_seconds": 0.007779332925565541,
+              "p95_seconds": 0.007779332925565541,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.format.wall": {
+              "count": 2,
+              "total_seconds": 0.013794083031825721,
+              "max_seconds": 0.009302583057433367,
+              "sample_count": 2,
+              "p50_seconds": 0.0044914999743923545,
+              "p90_seconds": 0.009302583057433367,
+              "p95_seconds": 0.009302583057433367,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.finish.wall": {
+              "count": 1,
+              "total_seconds": 0.0017303751083090901,
+              "max_seconds": 0.0017303751083090901,
+              "sample_count": 1,
+              "p50_seconds": 0.0017303751083090901,
+              "p90_seconds": 0.0017303751083090901,
+              "p95_seconds": 0.0017303751083090901,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0014045829884707928,
+              "max_seconds": 0.0014045829884707928,
+              "sample_count": 1,
+              "p50_seconds": 0.0014045829884707928,
+              "p90_seconds": 0.0014045829884707928,
+              "p95_seconds": 0.0014045829884707928,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.release": {
+              "count": 1,
+              "total_seconds": 8.083065040409565e-06,
+              "max_seconds": 8.083065040409565e-06,
+              "sample_count": 1,
+              "p50_seconds": 8.083065040409565e-06,
+              "p90_seconds": 8.083065040409565e-06,
+              "p95_seconds": 8.083065040409565e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0011982499854639173,
+              "max_seconds": 0.0011982499854639173,
+              "sample_count": 1,
+              "p50_seconds": 0.0011982499854639173,
+              "p90_seconds": 0.0011982499854639173,
+              "p95_seconds": 0.0011982499854639173,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.release": {
+              "count": 1,
+              "total_seconds": 5.332985892891884e-06,
+              "max_seconds": 5.332985892891884e-06,
+              "sample_count": 1,
+              "p50_seconds": 5.332985892891884e-06,
+              "p90_seconds": 5.332985892891884e-06,
+              "p95_seconds": 5.332985892891884e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            }
+          },
+          "resources": {
+            "scope": "bounded logical session state; model pool is global, not RSS",
+            "input_frames": 0,
+            "recent_context_units": 2,
+            "recent_context_chars": 26,
+            "context_terms": 0,
+            "context_version": 2,
+            "retained_text_units": 2,
+            "recovery": {
+              "detached": false,
+              "retained_events": 0,
+              "retained_bytes": 0,
+              "input_fingerprints": 8
+            },
+            "model_pool": {
+              "model_workers": 2,
+              "resident_mib": 700,
+              "stage_handles": 0,
+              "active_jobs": 0,
+              "pending_jobs": 0
+            }
+          },
+          "metrics_clock": "server monotonic; first received PCM; not browser/onset TTFO",
+          "protocol": "smartvoice.stream.v1",
+          "session_id": "a40e87613bb94ee7803953dd8a54add9",
+          "event_sequence": 16,
+          "elapsed_seconds": 1.927208
+        }
+      },
+      "fixture_id": "zh_02_clean",
+      "fixture_sha256": "75cd95e20fd66ae458b777f1fdde2050166360563c46e71de98246d6cc895354",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "input_samples": 126720,
+      "context_version": 2,
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "scope": "Native product stages, short pinned fixture and same-process reconnect; not browser/TCP/quality/soak acceptance",
+      "raw_report": ".smartvoice-dev/full-streaming/15cbf00d3e1e476389f8b9305e4843ea/resume-transcription-zh.json",
+      "raw_report_sha256": "43dffbb800f9f0109b5c64c0d3e5ff0bc7a8bd43276208d6c52432dd8b62ff69"
+    },
+    {
+      "mode": "translated_subtitles",
+      "language": "en",
+      "failure": null,
+      "output": {
+        "counts": {
+          "session_ready": 1,
+          "source_partial": 21,
+          "source_unit_partial": 1,
+          "source_final": 2,
+          "utterance_complete": 2,
+          "source_unit_final": 2,
+          "target_final": 2,
+          "session_complete": 1
+        },
+        "source_chars": 133,
+        "target_chars": 31,
+        "final_text_sha256": "6b14a02a22e46957365224194dd68891adce24c5e8ffb04ade1db137521f842e",
+        "audio_chunks": 0,
+        "audio_seconds": 0.0,
+        "first_output_wall_seconds": {
+          "source_unit_partial": 1.5969450830016285,
+          "target_final": 2.3107657911023125
+        },
+        "unspoken_targets": 0,
+        "last_source_end_sample": 166400,
+        "terminal": {
+          "type": "session_complete",
+          "status": "complete",
+          "reason": null,
+          "counts": {
+            "session_ready": 1,
+            "source_partial": 21,
+            "source_unit_partial": 1,
+            "source_final": 2,
+            "utterance_complete": 2,
+            "source_unit_final": 2,
+            "target_final": 2
+          },
+          "first_output_seconds": {
+            "source_partial": 0.076132,
+            "source_unit_partial": 0.080902,
+            "source_final": 0.260578,
+            "source_unit_final": 0.267116,
+            "target_final": 0.794438
+          },
+          "audio_skips": {},
+          "profiling": {
+            "asr.pool_queue_wait": {
+              "count": 17,
+              "total_seconds": 0.008850251091644168,
+              "max_seconds": 0.0009410420898348093,
+              "sample_count": 17,
+              "p50_seconds": 0.00047220801934599876,
+              "p90_seconds": 0.0009340840624645352,
+              "p95_seconds": 0.0009410420898348093,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.compute_admission_wait": {
+              "count": 17,
+              "total_seconds": 0.00025637121871113777,
+              "max_seconds": 2.245896030217409e-05,
+              "sample_count": 17,
+              "p50_seconds": 1.4541088603436947e-05,
+              "p90_seconds": 2.1583051420748234e-05,
+              "p95_seconds": 2.245896030217409e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.executor_wait": {
+              "count": 18,
+              "total_seconds": 0.09541308390907943,
+              "max_seconds": 0.0784920830046758,
+              "sample_count": 18,
+              "p50_seconds": 0.00028525001835078,
+              "p90_seconds": 0.011046792031265795,
+              "p95_seconds": 0.0784920830046758,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr._construct_native": {
+              "count": 1,
+              "total_seconds": 1.3292068615555763e-05,
+              "max_seconds": 1.3292068615555763e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.3292068615555763e-05,
+              "p90_seconds": 1.3292068615555763e-05,
+              "p95_seconds": 1.3292068615555763e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.ipc_roundtrip": {
+              "count": 18,
+              "total_seconds": 0.011356247821822762,
+              "max_seconds": 0.0009326249128207564,
+              "sample_count": 18,
+              "p50_seconds": 0.0006364579312503338,
+              "p90_seconds": 0.0008918329840525985,
+              "p95_seconds": 0.0009326249128207564,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.6857177920173854,
+              "max_seconds": 0.6857177920173854,
+              "sample_count": 1,
+              "p50_seconds": 0.6857177920173854,
+              "p90_seconds": 0.6857177920173854,
+              "p95_seconds": 0.6857177920173854,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.session_initialize": {
+              "count": 1,
+              "total_seconds": 0.0002370000584051013,
+              "max_seconds": 0.0002370000584051013,
+              "sample_count": 1,
+              "p50_seconds": 0.0002370000584051013,
+              "p90_seconds": 0.0002370000584051013,
+              "p95_seconds": 0.0002370000584051013,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.open": {
+              "count": 1,
+              "total_seconds": 0.6860245419666171,
+              "max_seconds": 0.6860245419666171,
+              "sample_count": 1,
+              "p50_seconds": 0.6860245419666171,
+              "p90_seconds": 0.6860245419666171,
+              "p95_seconds": 0.6860245419666171,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.0024527929490432143,
+              "max_seconds": 0.0007307919440791011,
+              "sample_count": 5,
+              "p50_seconds": 0.00043083401396870613,
+              "p90_seconds": 0.0007307919440791011,
+              "p95_seconds": 0.0007307919440791011,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 5.895807407796383e-05,
+              "max_seconds": 1.4999997802078724e-05,
+              "sample_count": 5,
+              "p50_seconds": 1.3500102795660496e-05,
+              "p90_seconds": 1.4999997802078724e-05,
+              "p95_seconds": 1.4999997802078724e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.08472104393877089,
+              "max_seconds": 0.07260833401232958,
+              "sample_count": 6,
+              "p50_seconds": 0.0002392090391367674,
+              "p90_seconds": 0.07260833401232958,
+              "p95_seconds": 0.07260833401232958,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation._construct_native": {
+              "count": 1,
+              "total_seconds": 1.5083001926541328e-05,
+              "max_seconds": 1.5083001926541328e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.5083001926541328e-05,
+              "p90_seconds": 1.5083001926541328e-05,
+              "p95_seconds": 1.5083001926541328e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.003665582975372672,
+              "max_seconds": 0.0007432079873979092,
+              "sample_count": 6,
+              "p50_seconds": 0.0005981250433251262,
+              "p90_seconds": 0.0007432079873979092,
+              "p95_seconds": 0.0007432079873979092,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.2767186670098454,
+              "max_seconds": 0.2767186670098454,
+              "sample_count": 1,
+              "p50_seconds": 0.2767186670098454,
+              "p90_seconds": 0.2767186670098454,
+              "p95_seconds": 0.2767186670098454,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.session_initialize": {
+              "count": 1,
+              "total_seconds": 1.6583013348281384e-05,
+              "max_seconds": 1.6583013348281384e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.6583013348281384e-05,
+              "p90_seconds": 1.6583013348281384e-05,
+              "p95_seconds": 1.6583013348281384e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.open": {
+              "count": 1,
+              "total_seconds": 0.2767766249598935,
+              "max_seconds": 0.2767766249598935,
+              "sample_count": 1,
+              "p50_seconds": 0.2767766249598935,
+              "p90_seconds": 0.2767766249598935,
+              "p95_seconds": 0.2767766249598935,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.pool_queue_wait": {
+              "count": 6,
+              "total_seconds": 0.0032645828323438764,
+              "max_seconds": 0.0007201660191640258,
+              "sample_count": 6,
+              "p50_seconds": 0.00043362495489418507,
+              "p90_seconds": 0.0007201660191640258,
+              "p95_seconds": 0.0007201660191640258,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.compute_admission_wait": {
+              "count": 6,
+              "total_seconds": 8.199899457395077e-05,
+              "max_seconds": 1.670804340392351e-05,
+              "sample_count": 6,
+              "p50_seconds": 1.1249911040067673e-05,
+              "p90_seconds": 1.670804340392351e-05,
+              "p95_seconds": 1.670804340392351e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.executor_wait": {
+              "count": 7,
+              "total_seconds": 0.08198366512078792,
+              "max_seconds": 0.07036287500523031,
+              "sample_count": 7,
+              "p50_seconds": 0.00026050000451505184,
+              "p90_seconds": 0.07036287500523031,
+              "p95_seconds": 0.07036287500523031,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting._construct_native": {
+              "count": 1,
+              "total_seconds": 8.790986612439156e-06,
+              "max_seconds": 8.790986612439156e-06,
+              "sample_count": 1,
+              "p50_seconds": 8.790986612439156e-06,
+              "p90_seconds": 8.790986612439156e-06,
+              "p95_seconds": 8.790986612439156e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.ipc_roundtrip": {
+              "count": 7,
+              "total_seconds": 0.004478667047806084,
+              "max_seconds": 0.0008948330068960786,
+              "sample_count": 7,
+              "p50_seconds": 0.0006632079603150487,
+              "p90_seconds": 0.0008948330068960786,
+              "p95_seconds": 0.0008948330068960786,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.28950245794840157,
+              "max_seconds": 0.28950245794840157,
+              "sample_count": 1,
+              "p50_seconds": 0.28950245794840157,
+              "p90_seconds": 0.28950245794840157,
+              "p95_seconds": 0.28950245794840157,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.session_initialize": {
+              "count": 1,
+              "total_seconds": 6.262504030019045e-05,
+              "max_seconds": 6.262504030019045e-05,
+              "sample_count": 1,
+              "p50_seconds": 6.262504030019045e-05,
+              "p90_seconds": 6.262504030019045e-05,
+              "p95_seconds": 6.262504030019045e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.open": {
+              "count": 1,
+              "total_seconds": 0.2897237919969484,
+              "max_seconds": 0.2897237919969484,
+              "sample_count": 1,
+              "p50_seconds": 0.2897237919969484,
+              "p90_seconds": 0.2897237919969484,
+              "p95_seconds": 0.2897237919969484,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "session.initialize": {
+              "count": 1,
+              "total_seconds": 1.5148891248973086,
+              "max_seconds": 1.5148891248973086,
+              "sample_count": 1,
+              "p50_seconds": 1.5148891248973086,
+              "p90_seconds": 1.5148891248973086,
+              "p95_seconds": 1.5148891248973086,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "input.queue_wait": {
+              "count": 11,
+              "total_seconds": 0.8422605849336833,
+              "max_seconds": 0.09917566692456603,
+              "sample_count": 11,
+              "p50_seconds": 0.08752016699872911,
+              "p90_seconds": 0.09880779206287116,
+              "p95_seconds": 0.09917566692456603,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.invoke": {
+              "count": 15,
+              "total_seconds": 0.44308220699895173,
+              "max_seconds": 0.05069254199042916,
+              "sample_count": 15,
+              "p50_seconds": 0.038855207967571914,
+              "p90_seconds": 0.04325208393856883,
+              "p95_seconds": 0.05069254199042916,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.update_context.wall": {
+              "count": 2,
+              "total_seconds": 0.003400999936275184,
+              "max_seconds": 0.0019112499430775642,
+              "sample_count": 2,
+              "p50_seconds": 0.00148974999319762,
+              "p90_seconds": 0.0019112499430775642,
+              "p95_seconds": 0.0019112499430775642,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.accept_waveform": {
+              "count": 520,
+              "total_seconds": 0.011813462129794061,
+              "max_seconds": 7.38329254090786e-05,
+              "sample_count": 520,
+              "p50_seconds": 2.1332991309463978e-05,
+              "p90_seconds": 2.7041067369282246e-05,
+              "p95_seconds": 3.245798870921135e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.get_result": {
+              "count": 521,
+              "total_seconds": 0.0025423464830964804,
+              "max_seconds": 6.116705480962992e-05,
+              "sample_count": 521,
+              "p50_seconds": 3.875000402331352e-06,
+              "p90_seconds": 8.66700429469347e-06,
+              "p95_seconds": 1.2874952517449856e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.decode_stream": {
+              "count": 33,
+              "total_seconds": 0.41495483450125903,
+              "max_seconds": 0.01615262497216463,
+              "sample_count": 33,
+              "p50_seconds": 0.012446291046217084,
+              "p90_seconds": 0.01361362508032471,
+              "p95_seconds": 0.014398250030353665,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.push_audio.wall": {
+              "count": 11,
+              "total_seconds": 0.44910779199562967,
+              "max_seconds": 0.05283404199872166,
+              "sample_count": 11,
+              "p50_seconds": 0.04189404100179672,
+              "p90_seconds": 0.04533925000578165,
+              "p95_seconds": 0.05283404199872166,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.admission_wait": {
+              "count": 3,
+              "total_seconds": 0.301536000915803,
+              "max_seconds": 0.3013492919271812,
+              "sample_count": 3,
+              "p50_seconds": 9.78340394794941e-05,
+              "p90_seconds": 0.3013492919271812,
+              "p95_seconds": 0.3013492919271812,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.add_punct": {
+              "count": 3,
+              "total_seconds": 0.008521416108123958,
+              "max_seconds": 0.0038329160306602716,
+              "sample_count": 3,
+              "p50_seconds": 0.003313375054858625,
+              "p90_seconds": 0.0038329160306602716,
+              "p95_seconds": 0.0038329160306602716,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.invoke": {
+              "count": 4,
+              "total_seconds": 0.009352166904136539,
+              "max_seconds": 0.0039952920051291585,
+              "sample_count": 4,
+              "p50_seconds": 0.0018506250344216824,
+              "p90_seconds": 0.0039952920051291585,
+              "p95_seconds": 0.0039952920051291585,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.format.wall": {
+              "count": 3,
+              "total_seconds": 0.014241333119571209,
+              "max_seconds": 0.005687375087291002,
+              "sample_count": 3,
+              "p50_seconds": 0.005143083049915731,
+              "p90_seconds": 0.005687375087291002,
+              "p95_seconds": 0.005687375087291002,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.final_backpressure_wait": {
+              "count": 2,
+              "total_seconds": 7.920898497104645e-07,
+              "max_seconds": 4.169996827840805e-07,
+              "sample_count": 2,
+              "p50_seconds": 3.7509016692638397e-07,
+              "p90_seconds": 4.169996827840805e-07,
+              "p95_seconds": 4.169996827840805e-07,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.admission_wait": {
+              "count": 2,
+              "total_seconds": 0.0007480839267373085,
+              "max_seconds": 0.000494041945785284,
+              "sample_count": 2,
+              "p50_seconds": 0.00025404198095202446,
+              "p90_seconds": 0.000494041945785284,
+              "p95_seconds": 0.000494041945785284,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.finish.wall": {
+              "count": 1,
+              "total_seconds": 0.013751249993219972,
+              "max_seconds": 0.013751249993219972,
+              "sample_count": 1,
+              "p50_seconds": 0.013751249993219972,
+              "p90_seconds": 0.013751249993219972,
+              "p95_seconds": 0.013751249993219972,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.tokenize": {
+              "count": 2,
+              "total_seconds": 0.0002775411121547222,
+              "max_seconds": 0.0001396660227328539,
+              "sample_count": 2,
+              "p50_seconds": 0.00013787508942186832,
+              "p90_seconds": 0.0001396660227328539,
+              "p95_seconds": 0.0001396660227328539,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.translate_batch": {
+              "count": 2,
+              "total_seconds": 0.9945932920090854,
+              "max_seconds": 0.5233824170427397,
+              "sample_count": 2,
+              "p50_seconds": 0.4712108749663457,
+              "p90_seconds": 0.5233824170427397,
+              "p95_seconds": 0.5233824170427397,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.detokenize": {
+              "count": 2,
+              "total_seconds": 9.358301758766174e-05,
+              "max_seconds": 5.4625095799565315e-05,
+              "sample_count": 2,
+              "p50_seconds": 3.895792178809643e-05,
+              "p90_seconds": 5.4625095799565315e-05,
+              "p95_seconds": 5.4625095799565315e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.invoke": {
+              "count": 3,
+              "total_seconds": 0.9961376250721514,
+              "max_seconds": 0.5245900830486789,
+              "sample_count": 3,
+              "p50_seconds": 0.4715323339914903,
+              "p90_seconds": 0.5245900830486789,
+              "p95_seconds": 0.5245900830486789,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.translate.wall": {
+              "count": 2,
+              "total_seconds": 0.9991786249447614,
+              "max_seconds": 0.5262384999077767,
+              "sample_count": 2,
+              "p50_seconds": 0.4729401250369847,
+              "p90_seconds": 0.5262384999077767,
+              "p95_seconds": 0.5262384999077767,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0013299999991431832,
+              "max_seconds": 0.0013299999991431832,
+              "sample_count": 1,
+              "p50_seconds": 0.0013299999991431832,
+              "p90_seconds": 0.0013299999991431832,
+              "p95_seconds": 0.0013299999991431832,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.release": {
+              "count": 1,
+              "total_seconds": 7.00005330145359e-06,
+              "max_seconds": 7.00005330145359e-06,
+              "sample_count": 1,
+              "p50_seconds": 7.00005330145359e-06,
+              "p90_seconds": 7.00005330145359e-06,
+              "p95_seconds": 7.00005330145359e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0010368339717388153,
+              "max_seconds": 0.0010368339717388153,
+              "sample_count": 1,
+              "p50_seconds": 0.0010368339717388153,
+              "p90_seconds": 0.0010368339717388153,
+              "p95_seconds": 0.0010368339717388153,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.release": {
+              "count": 1,
+              "total_seconds": 7.665948942303658e-06,
+              "max_seconds": 7.665948942303658e-06,
+              "sample_count": 1,
+              "p50_seconds": 7.665948942303658e-06,
+              "p90_seconds": 7.665948942303658e-06,
+              "p95_seconds": 7.665948942303658e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0011566249886527658,
+              "max_seconds": 0.0011566249886527658,
+              "sample_count": 1,
+              "p50_seconds": 0.0011566249886527658,
+              "p90_seconds": 0.0011566249886527658,
+              "p95_seconds": 0.0011566249886527658,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.release": {
+              "count": 1,
+              "total_seconds": 6.082933396100998e-06,
+              "max_seconds": 6.082933396100998e-06,
+              "sample_count": 1,
+              "p50_seconds": 6.082933396100998e-06,
+              "p90_seconds": 6.082933396100998e-06,
+              "p95_seconds": 6.082933396100998e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            }
+          },
+          "resources": {
+            "scope": "bounded logical session state; model pool is global, not RSS",
+            "input_frames": 0,
+            "recent_context_units": 2,
+            "recent_context_chars": 136,
+            "context_terms": 0,
+            "context_version": 2,
+            "retained_text_units": 2,
+            "recovery": {
+              "detached": false,
+              "retained_events": 0,
+              "retained_bytes": 0,
+              "input_fingerprints": 11
+            },
+            "model_pool": {
+              "model_workers": 3,
+              "resident_mib": 1800,
+              "stage_handles": 0,
+              "active_jobs": 0,
+              "pending_jobs": 0
+            }
+          },
+          "metrics_clock": "server monotonic; first received PCM; not browser/onset TTFO",
+          "protocol": "smartvoice.stream.v1",
+          "session_id": "ec210b25065e4aada416336ae4342bc7",
+          "event_sequence": 32,
+          "elapsed_seconds": 2.804308
+        }
+      },
+      "fixture_id": "en_02_clean",
+      "fixture_sha256": "61ee2bfd08e4851b5fda3be2776f9363df5a4fa31c5cad9af00fec32c208c30b",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "input_samples": 166400,
+      "context_version": 2,
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "scope": "Native product stages, short pinned fixture and same-process reconnect; not browser/TCP/quality/soak acceptance",
+      "raw_report": ".smartvoice-dev/full-streaming/15cbf00d3e1e476389f8b9305e4843ea/resume-translated_subtitles-en.json",
+      "raw_report_sha256": "f99572d105d298d2813d6ff06e6028effa9401b1159293d1ebbe2b0694111aa6"
+    },
+    {
+      "mode": "translated_subtitles",
+      "language": "zh",
+      "failure": null,
+      "output": {
+        "counts": {
+          "session_ready": 1,
+          "source_partial": 8,
+          "source_unit_partial": 1,
+          "source_final": 1,
+          "utterance_complete": 2,
+          "source_unit_final": 2,
+          "target_final": 2,
+          "session_complete": 1
+        },
+        "source_chars": 23,
+        "target_chars": 80,
+        "final_text_sha256": "4127203b53b55bde697301701217fc02311f969248027ce5f011cdac4baeb825",
+        "audio_chunks": 0,
+        "audio_seconds": 0.0,
+        "first_output_wall_seconds": {
+          "source_unit_partial": 1.5607112920843065,
+          "target_final": 1.8644494169857353
+        },
+        "unspoken_targets": 0,
+        "last_source_end_sample": 126720,
+        "terminal": {
+          "type": "session_complete",
+          "status": "complete",
+          "reason": null,
+          "counts": {
+            "session_ready": 1,
+            "source_partial": 8,
+            "source_unit_partial": 1,
+            "source_final": 1,
+            "utterance_complete": 2,
+            "source_unit_final": 2,
+            "target_final": 2
+          },
+          "first_output_seconds": {
+            "source_partial": 0.09006,
+            "source_unit_partial": 0.09613,
+            "source_final": 0.324172,
+            "source_unit_final": 0.335061,
+            "target_final": 0.399858
+          },
+          "audio_skips": {},
+          "profiling": {
+            "asr.pool_queue_wait": {
+              "count": 13,
+              "total_seconds": 0.0070290411822497845,
+              "max_seconds": 0.0015250410651788116,
+              "sample_count": 13,
+              "p50_seconds": 0.00043812498915940523,
+              "p90_seconds": 0.0006494999397546053,
+              "p95_seconds": 0.0015250410651788116,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.compute_admission_wait": {
+              "count": 13,
+              "total_seconds": 0.00018683169037103653,
+              "max_seconds": 3.0082999728620052e-05,
+              "sample_count": 13,
+              "p50_seconds": 1.3791024684906006e-05,
+              "p90_seconds": 1.9749975763261318e-05,
+              "p95_seconds": 3.0082999728620052e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.executor_wait": {
+              "count": 14,
+              "total_seconds": 0.08724925410933793,
+              "max_seconds": 0.07235170900821686,
+              "sample_count": 14,
+              "p50_seconds": 0.0002435420174151659,
+              "p90_seconds": 0.010517666931264102,
+              "p95_seconds": 0.07235170900821686,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr._construct_native": {
+              "count": 1,
+              "total_seconds": 9.541050530970097e-06,
+              "max_seconds": 9.541050530970097e-06,
+              "sample_count": 1,
+              "p50_seconds": 9.541050530970097e-06,
+              "p90_seconds": 9.541050530970097e-06,
+              "p95_seconds": 9.541050530970097e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.ipc_roundtrip": {
+              "count": 14,
+              "total_seconds": 0.008278916007839143,
+              "max_seconds": 0.0007925829850137234,
+              "sample_count": 14,
+              "p50_seconds": 0.0005971670616418123,
+              "p90_seconds": 0.0007330829976126552,
+              "p95_seconds": 0.0007925829850137234,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.7604384169680998,
+              "max_seconds": 0.7604384169680998,
+              "sample_count": 1,
+              "p50_seconds": 0.7604384169680998,
+              "p90_seconds": 0.7604384169680998,
+              "p95_seconds": 0.7604384169680998,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.session_initialize": {
+              "count": 1,
+              "total_seconds": 8.570798672735691e-05,
+              "max_seconds": 8.570798672735691e-05,
+              "sample_count": 1,
+              "p50_seconds": 8.570798672735691e-05,
+              "p90_seconds": 8.570798672735691e-05,
+              "p95_seconds": 8.570798672735691e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.open": {
+              "count": 1,
+              "total_seconds": 0.7605957080377266,
+              "max_seconds": 0.7605957080377266,
+              "sample_count": 1,
+              "p50_seconds": 0.7605957080377266,
+              "p90_seconds": 0.7605957080377266,
+              "p95_seconds": 0.7605957080377266,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.0024008750915527344,
+              "max_seconds": 0.000683500082232058,
+              "sample_count": 5,
+              "p50_seconds": 0.00039008306339383125,
+              "p90_seconds": 0.000683500082232058,
+              "p95_seconds": 0.000683500082232058,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 5.770695861428976e-05,
+              "max_seconds": 1.5332945622503757e-05,
+              "sample_count": 5,
+              "p50_seconds": 1.0541058145463467e-05,
+              "p90_seconds": 1.5332945622503757e-05,
+              "p95_seconds": 1.5332945622503757e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.08140300097875297,
+              "max_seconds": 0.07045750005636364,
+              "sample_count": 6,
+              "p50_seconds": 0.00020895793568342924,
+              "p90_seconds": 0.07045750005636364,
+              "p95_seconds": 0.07045750005636364,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation._construct_native": {
+              "count": 1,
+              "total_seconds": 1.0082963854074478e-05,
+              "max_seconds": 1.0082963854074478e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.0082963854074478e-05,
+              "p90_seconds": 1.0082963854074478e-05,
+              "p95_seconds": 1.0082963854074478e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.0035038330825045705,
+              "max_seconds": 0.0006933750119060278,
+              "sample_count": 6,
+              "p50_seconds": 0.0005819170037284493,
+              "p90_seconds": 0.0006933750119060278,
+              "p95_seconds": 0.0006933750119060278,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.14726158301346004,
+              "max_seconds": 0.14726158301346004,
+              "sample_count": 1,
+              "p50_seconds": 0.14726158301346004,
+              "p90_seconds": 0.14726158301346004,
+              "p95_seconds": 0.14726158301346004,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.session_initialize": {
+              "count": 1,
+              "total_seconds": 1.579197123646736e-05,
+              "max_seconds": 1.579197123646736e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.579197123646736e-05,
+              "p90_seconds": 1.579197123646736e-05,
+              "p95_seconds": 1.579197123646736e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.open": {
+              "count": 1,
+              "total_seconds": 0.14733745891135186,
+              "max_seconds": 0.14733745891135186,
+              "sample_count": 1,
+              "p50_seconds": 0.14733745891135186,
+              "p90_seconds": 0.14733745891135186,
+              "p95_seconds": 0.14733745891135186,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.pool_queue_wait": {
+              "count": 5,
+              "total_seconds": 0.0033591670216992497,
+              "max_seconds": 0.001293207984417677,
+              "sample_count": 5,
+              "p50_seconds": 0.0004938750062137842,
+              "p90_seconds": 0.001293207984417677,
+              "p95_seconds": 0.001293207984417677,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.compute_admission_wait": {
+              "count": 5,
+              "total_seconds": 7.12081091478467e-05,
+              "max_seconds": 1.7542042769491673e-05,
+              "sample_count": 5,
+              "p50_seconds": 1.4542019926011562e-05,
+              "p90_seconds": 1.7542042769491673e-05,
+              "p95_seconds": 1.7542042769491673e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.executor_wait": {
+              "count": 6,
+              "total_seconds": 0.07988262490835041,
+              "max_seconds": 0.0683703749673441,
+              "sample_count": 6,
+              "p50_seconds": 0.0002934170188382268,
+              "p90_seconds": 0.0683703749673441,
+              "p95_seconds": 0.0683703749673441,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting._construct_native": {
+              "count": 1,
+              "total_seconds": 1.0792049579322338e-05,
+              "max_seconds": 1.0792049579322338e-05,
+              "sample_count": 1,
+              "p50_seconds": 1.0792049579322338e-05,
+              "p90_seconds": 1.0792049579322338e-05,
+              "p95_seconds": 1.0792049579322338e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.ipc_roundtrip": {
+              "count": 6,
+              "total_seconds": 0.0035302918404340744,
+              "max_seconds": 0.0008619999280199409,
+              "sample_count": 6,
+              "p50_seconds": 0.0004373339470475912,
+              "p90_seconds": 0.0008619999280199409,
+              "p95_seconds": 0.0008619999280199409,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.model_initialize": {
+              "count": 1,
+              "total_seconds": 0.3049132500309497,
+              "max_seconds": 0.3049132500309497,
+              "sample_count": 1,
+              "p50_seconds": 0.3049132500309497,
+              "p90_seconds": 0.3049132500309497,
+              "p95_seconds": 0.3049132500309497,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.session_initialize": {
+              "count": 1,
+              "total_seconds": 3.5665929317474365e-05,
+              "max_seconds": 3.5665929317474365e-05,
+              "sample_count": 1,
+              "p50_seconds": 3.5665929317474365e-05,
+              "p90_seconds": 3.5665929317474365e-05,
+              "p95_seconds": 3.5665929317474365e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.open": {
+              "count": 1,
+              "total_seconds": 0.305066250031814,
+              "max_seconds": 0.305066250031814,
+              "sample_count": 1,
+              "p50_seconds": 0.305066250031814,
+              "p90_seconds": 0.305066250031814,
+              "p95_seconds": 0.305066250031814,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "session.initialize": {
+              "count": 1,
+              "total_seconds": 1.4635482500307262,
+              "max_seconds": 1.4635482500307262,
+              "sample_count": 1,
+              "p50_seconds": 1.4635482500307262,
+              "p90_seconds": 1.4635482500307262,
+              "p95_seconds": 1.4635482500307262,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "input.queue_wait": {
+              "count": 8,
+              "total_seconds": 0.5955287071410567,
+              "max_seconds": 0.11859487497713417,
+              "sample_count": 8,
+              "p50_seconds": 0.08731158298905939,
+              "p90_seconds": 0.11859487497713417,
+              "p95_seconds": 0.11859487497713417,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.invoke": {
+              "count": 11,
+              "total_seconds": 0.3459882898023352,
+              "max_seconds": 0.056161082931794226,
+              "sample_count": 11,
+              "p50_seconds": 0.030882874969393015,
+              "p90_seconds": 0.055980667006224394,
+              "p95_seconds": 0.056161082931794226,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.update_context.wall": {
+              "count": 1,
+              "total_seconds": 0.0026107500307261944,
+              "max_seconds": 0.0026107500307261944,
+              "sample_count": 1,
+              "p50_seconds": 0.0026107500307261944,
+              "p90_seconds": 0.0026107500307261944,
+              "p95_seconds": 0.0026107500307261944,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.accept_waveform": {
+              "count": 396,
+              "total_seconds": 0.008701488142833114,
+              "max_seconds": 0.00011587503831833601,
+              "sample_count": 396,
+              "p50_seconds": 2.0915991626679897e-05,
+              "p90_seconds": 2.279097680002451e-05,
+              "p95_seconds": 2.9540969990193844e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.get_result": {
+              "count": 397,
+              "total_seconds": 0.0008984649321064353,
+              "max_seconds": 8.01669666543603e-05,
+              "sample_count": 397,
+              "p50_seconds": 1.374981366097927e-06,
+              "p90_seconds": 2.374988980591297e-06,
+              "p95_seconds": 6.124959327280521e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.decode_stream": {
+              "count": 13,
+              "total_seconds": 0.33188371069263667,
+              "max_seconds": 0.028936624992638826,
+              "sample_count": 13,
+              "p50_seconds": 0.026493833982385695,
+              "p90_seconds": 0.028898999909870327,
+              "p95_seconds": 0.028936624992638826,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.push_audio.wall": {
+              "count": 8,
+              "total_seconds": 0.3583170009078458,
+              "max_seconds": 0.05771091708447784,
+              "sample_count": 8,
+              "p50_seconds": 0.046781167038716376,
+              "p90_seconds": 0.05771091708447784,
+              "p95_seconds": 0.05771091708447784,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.admission_wait": {
+              "count": 2,
+              "total_seconds": 0.0001886248355731368,
+              "max_seconds": 9.658292401582003e-05,
+              "sample_count": 2,
+              "p50_seconds": 9.204191155731678e-05,
+              "p90_seconds": 9.658292401582003e-05,
+              "p95_seconds": 9.658292401582003e-05,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.add_punct": {
+              "count": 2,
+              "total_seconds": 0.009178041014820337,
+              "max_seconds": 0.007484083063900471,
+              "sample_count": 2,
+              "p50_seconds": 0.0016939579509198666,
+              "p90_seconds": 0.007484083063900471,
+              "p95_seconds": 0.007484083063900471,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.invoke": {
+              "count": 3,
+              "total_seconds": 0.0099812081316486,
+              "max_seconds": 0.007582625024951994,
+              "sample_count": 3,
+              "p50_seconds": 0.0023790410486981273,
+              "p90_seconds": 0.007582625024951994,
+              "p95_seconds": 0.007582625024951994,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.format.wall": {
+              "count": 2,
+              "total_seconds": 0.013806459144689143,
+              "max_seconds": 0.009362625074572861,
+              "sample_count": 2,
+              "p50_seconds": 0.0044438340701162815,
+              "p90_seconds": 0.009362625074572861,
+              "p95_seconds": 0.009362625074572861,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.final_backpressure_wait": {
+              "count": 2,
+              "total_seconds": 2.4990877136588097e-06,
+              "max_seconds": 1.91607978194952e-06,
+              "sample_count": 2,
+              "p50_seconds": 5.830079317092896e-07,
+              "p90_seconds": 1.91607978194952e-06,
+              "p95_seconds": 1.91607978194952e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.admission_wait": {
+              "count": 2,
+              "total_seconds": 0.06455891602672637,
+              "max_seconds": 0.06382045801728964,
+              "sample_count": 2,
+              "p50_seconds": 0.0007384580094367266,
+              "p90_seconds": 0.06382045801728964,
+              "p95_seconds": 0.06382045801728964,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.finish.wall": {
+              "count": 1,
+              "total_seconds": 0.0017757090972736478,
+              "max_seconds": 0.0017757090972736478,
+              "sample_count": 1,
+              "p50_seconds": 0.0017757090972736478,
+              "p90_seconds": 0.0017757090972736478,
+              "p95_seconds": 0.0017757090972736478,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.tokenize": {
+              "count": 2,
+              "total_seconds": 0.00019266607705503702,
+              "max_seconds": 0.00013691606000065804,
+              "sample_count": 2,
+              "p50_seconds": 5.5750017054378986e-05,
+              "p90_seconds": 0.00013691606000065804,
+              "p95_seconds": 0.00013691606000065804,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.translate_batch": {
+              "count": 2,
+              "total_seconds": 0.15366275003179908,
+              "max_seconds": 0.09458062495104969,
+              "sample_count": 2,
+              "p50_seconds": 0.05908212508074939,
+              "p90_seconds": 0.09458062495104969,
+              "p95_seconds": 0.09458062495104969,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.detokenize": {
+              "count": 2,
+              "total_seconds": 0.0006152499699965119,
+              "max_seconds": 0.0005732499994337559,
+              "sample_count": 2,
+              "p50_seconds": 4.199997056275606e-05,
+              "p90_seconds": 0.0005732499994337559,
+              "p95_seconds": 0.0005732499994337559,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.invoke": {
+              "count": 3,
+              "total_seconds": 0.15663595800288022,
+              "max_seconds": 0.09482166601810604,
+              "sample_count": 3,
+              "p50_seconds": 0.06179887498728931,
+              "p90_seconds": 0.09482166601810604,
+              "p95_seconds": 0.09482166601810604,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.translate.wall": {
+              "count": 2,
+              "total_seconds": 0.15953025000635535,
+              "max_seconds": 0.09611662500537932,
+              "sample_count": 2,
+              "p50_seconds": 0.06341362500097603,
+              "p90_seconds": 0.09611662500537932,
+              "p95_seconds": 0.09611662500537932,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0012316249776631594,
+              "max_seconds": 0.0012316249776631594,
+              "sample_count": 1,
+              "p50_seconds": 0.0012316249776631594,
+              "p90_seconds": 0.0012316249776631594,
+              "p95_seconds": 0.0012316249776631594,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "formatting.release": {
+              "count": 1,
+              "total_seconds": 5.582929588854313e-06,
+              "max_seconds": 5.582929588854313e-06,
+              "sample_count": 1,
+              "p50_seconds": 5.582929588854313e-06,
+              "p90_seconds": 5.582929588854313e-06,
+              "p95_seconds": 5.582929588854313e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.close.wall": {
+              "count": 1,
+              "total_seconds": 0.0011409580474719405,
+              "max_seconds": 0.0011409580474719405,
+              "sample_count": 1,
+              "p50_seconds": 0.0011409580474719405,
+              "p90_seconds": 0.0011409580474719405,
+              "p95_seconds": 0.0011409580474719405,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "translation.release": {
+              "count": 1,
+              "total_seconds": 6.3749030232429504e-06,
+              "max_seconds": 6.3749030232429504e-06,
+              "sample_count": 1,
+              "p50_seconds": 6.3749030232429504e-06,
+              "p90_seconds": 6.3749030232429504e-06,
+              "p95_seconds": 6.3749030232429504e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.close.wall": {
+              "count": 1,
+              "total_seconds": 0.000993583002127707,
+              "max_seconds": 0.000993583002127707,
+              "sample_count": 1,
+              "p50_seconds": 0.000993583002127707,
+              "p90_seconds": 0.000993583002127707,
+              "p95_seconds": 0.000993583002127707,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            },
+            "asr.release": {
+              "count": 1,
+              "total_seconds": 4.915986210107803e-06,
+              "max_seconds": 4.915986210107803e-06,
+              "sample_count": 1,
+              "p50_seconds": 4.915986210107803e-06,
+              "p90_seconds": 4.915986210107803e-06,
+              "p95_seconds": 4.915986210107803e-06,
+              "percentile_scope": "last bounded samples; aggregate count/total/max include all calls"
+            }
+          },
+          "resources": {
+            "scope": "bounded logical session state; model pool is global, not RSS",
+            "input_frames": 0,
+            "recent_context_units": 2,
+            "recent_context_chars": 26,
+            "context_terms": 0,
+            "context_version": 2,
+            "retained_text_units": 2,
+            "recovery": {
+              "detached": false,
+              "retained_events": 0,
+              "retained_bytes": 0,
+              "input_fingerprints": 8
+            },
+            "model_pool": {
+              "model_workers": 3,
+              "resident_mib": 1150,
+              "stage_handles": 0,
+              "active_jobs": 0,
+              "pending_jobs": 0
+            }
+          },
+          "metrics_clock": "server monotonic; first received PCM; not browser/onset TTFO",
+          "protocol": "smartvoice.stream.v1",
+          "session_id": "00e4e2e6dd254a3db86a4cfdd0beb33a",
+          "event_sequence": 18,
+          "elapsed_seconds": 1.975023
+        }
+      },
+      "fixture_id": "zh_02_clean",
+      "fixture_sha256": "75cd95e20fd66ae458b777f1fdde2050166360563c46e71de98246d6cc895354",
+      "model_manifests": {
+        "streaming-ct-transformer-zh-en": "fe3070e8815a0d88eef0272e07b3d3dd0f761745ed29fd3978b8aaf23a947e4a",
+        "streaming-mt-m2m100-zh-en-int8": "247042ff89230149ac4c550f646ac514acb4e079f3c5bd828d9c858041fc7d7f",
+        "streaming-mt-opus-zh-en-int8": "3c23540f32a8c08e7e4391e58df5ad29ff285b7017b7430b0854baec347484e0",
+        "streaming-stt-paraformer-zh-en-int8": "d549c07535a9b601e84670671f86309283b74354e5dc719070d6466f7c3427e3",
+        "streaming-stt-zipformer-en-int8": "89205b0145bb28e2ec748bae34803a6d578ade02960ab4d1f2f5db09622cfa7c",
+        "tts-kokoro-multilingual-v1-1-zh-en": "ef47c433c8e8d0d8198561f82922df192f4079ea4229893fdc7cbb3ad9a2a0ab",
+        "tts-matcha-zh-baker": "c09b872be36db4d24ed55e654b8df4d78adc0f5db95668cb5a56e064f08d3a95",
+        "tts-supertonic-v3-multilingual-int8": "275d27952069246f4050073536dfa5a844ca9a15677cf208e2a04186335ec82a"
+      },
+      "input_samples": 126720,
+      "context_version": 2,
+      "pool_after_close": {
+        "model_workers": 0,
+        "resident_mib": 0,
+        "stage_handles": 0,
+        "active_jobs": 0,
+        "pending_jobs": 0
+      },
+      "owned_workers_still_alive": [],
+      "scope": "Native product stages, short pinned fixture and same-process reconnect; not browser/TCP/quality/soak acceptance",
+      "raw_report": ".smartvoice-dev/full-streaming/15cbf00d3e1e476389f8b9305e4843ea/resume-translated_subtitles-zh.json",
+      "raw_report_sha256": "128f4f74c69b90302d7a5be069dcf68020fb91f0ce580516ac7974246e1fed0e"
+    }
+  ],
+  "protocol_coverage": [
+    "six ASGI routes",
+    "real TCP abort between descriptor and payload with simulated stages",
+    "lost input ACK and frame deduplication",
+    "unplayed audio replay and lost played ACK reconciliation",
+    "invalid token/cursor and concurrent attach",
+    "idle grace, expiry/admission and shutdown",
+    "unacknowledged terminal replay",
+    "bounded frame fingerprints and output cache",
+    "Node browser-client simulation with lost input ACK"
+  ],
+  "scope": "Native recovery cases use short pinned fixtures through production sessions. Real TCP uses simulated stages; Node is a client simulation. This is not real browser playback, physical audibility, service-restart recovery, concurrent capacity, latency acceptance or wall-hour soak.",
+  "evidence_note": "Raw native reports are run-local ignored artifacts; references are repository-relative with SHA-256. No resume token is included."
+}

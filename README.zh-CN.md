@@ -25,9 +25,9 @@ SmartVoice 是面向开发者的本地语音转文字（STT）和文字转语音
 - **一个 API 同时支持 STT 和 TTS：** 通过统一的音频 API 接入兼容的智能体和应用。
 - **自由选择和迁移模型：** 只安装需要的模型，可直接指定模型，也可导出模型包以便离线传输。
 
-**流式预览：** 默认提供版本化 WebSocket 和浏览器页面，支持中文/英文原文字幕、中英双向译文字幕及译文语音；浏览器入口 `/console/streaming`，实时接口 `WS /v1/audio/stream`，能力查询 `GET /v1/audio/stream/capabilities`。使用各场景前需安装所需模型资产。当前实测平台为 macOS arm64；参阅[接口契约与安装](doc/streaming.md)及[迁移证据和剩余验收](doc/streaming-migration.md)。
+**流式预览：** 默认提供版本化 WebSocket 和浏览器页面，支持中文/英文原文字幕、中英双向译文字幕及译文语音；浏览器入口 `/console/streaming`，实时接口 `WS /v1/audio/stream`，能力查询 `GET /v1/audio/stream/capabilities`。使用各场景前需安装所需模型资产。当前实测平台为 macOS arm64；参阅[接口契约与安装](doc/streaming.md)及[迁移证据和剩余验收](doc/streaming.md#产品迁移记录与阶段状态)。
 
-流式会话使用共享模型 worker 和私有有界状态；默认不限制会话墙钟或累计音频时长，暂停输入时应继续发送心跳。参阅[长会话资源边界](doc/streaming-shared-workers.md)。
+流式会话使用共享模型 worker、私有在线 ASR 状态和有界上下文；默认不限制会话墙钟或累计音频时长，暂停输入时应继续发送心跳。会话准入、模型驻留、队列和计算仍有边界，默认会话上限和计算许可均为 2。上下文存储已实现，但当前 greedy ASR 不使用历史文本提示或热词偏置；显式启用恢复的会话可在有限宽限期内于同一服务进程续传。浏览器默认启用恢复；未播完音频块可能重播，服务重启后不能恢复。参阅[长会话设计与资源边界](doc/streaming.md#共享模型-worker长会话与容错)。
 
 **当前范围：** 支持 CPU 推理；暂不支持 GPU 推理、打包安装程序和 Android。安装或更新模型需要从配置的数据源下载文件。服务默认绑定到 `127.0.0.1`；对外开放网络时没有 API 身份验证，因此请仅在可信网络中使用并配置防火墙访问限制。
 
@@ -334,6 +334,12 @@ Full 还要求默认流式模型链路及固定 FLEURS 语料，在六条真实�
 `python scripts/test.py full --streaming-only` 独立执行流式部分。
 该测试验证长输入、输出完整性及资源回收，不等同于一小时墙钟 soak 或实时延迟验收。
 详见[完整流式回归](scripts/README.md#full-streaming-regression)。
+
+本机 macOS 平台的六条真实模型一小时音频回归已通过，包括输出顺序、完整排空
+和原生 worker 回收。2026-10-12 最新 CI 353 项通过；六条链路的真实模型同进程续传验证通过；浏览器矩阵中 14/14 条正向断言通过，另有 1 条预期负向 Safari 超时匹配。见[实测结果与剩余验证](doc/streaming.md#测试覆盖与评测结果)。
+可提交报告采用可迁移的证据引用，CI 拒绝绝对路径和越界路径；一小时摘要使用
+[固定导出脚本](scripts/README.md#export-a-portable-hour-summary)。
+实时延迟、新模型池并发容量、小时墙钟 soak 和真实浏览器播放仍需独立验收。
 
 版本管理、GitHub Release 和可选的 PyPI 发布流程请参阅 [`doc/releasing.md`](doc/releasing.md)。
 
