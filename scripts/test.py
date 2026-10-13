@@ -12,8 +12,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TESTS = ROOT / "tests"
+SDK_TESTS = ROOT / "sdk" / "python" / "tests"
+SDK_SOURCE = ROOT / "sdk" / "python" / "src"
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(SDK_SOURCE))
 
 
 def _regression_prerequisites() -> list[str]:
@@ -29,7 +32,10 @@ def _without_real_inference(suite: unittest.TestSuite) -> unittest.TestSuite:
     for test in suite:
         if isinstance(test, unittest.TestSuite):
             filtered.addTests(_without_real_inference(test))
-        elif not test.__class__.__module__.endswith(("test_real_inference", "test_stt_audio_regression", "test_streaming_real_long", "test_streaming_resume_native")):
+        elif not test.__class__.__module__.endswith((
+            "test_real_inference", "test_stt_audio_regression", "test_streaming_real_long",
+            "test_streaming_resume_native", "test_sdk_regression", "test_sdk_full_streaming",
+        )):
             filtered.addTest(test)
     return filtered
 
@@ -102,6 +108,11 @@ def main() -> int:
         start_dir=str(TESTS), pattern="test_streaming*.py" if args.streaming_only else "test_*.py",
         top_level_dir=str(ROOT)
     )
+    # Keep SDK recovery contracts in every suite. The CI filter removes the
+    # SDK model-backed test modules; regression/full exercise real SDK calls.
+    suite.addTests(unittest.defaultTestLoader.discover(
+        start_dir=str(SDK_TESTS), pattern="test_*.py",
+    ))
     if mode == "ci":
         suite = _without_real_inference(suite)
     result = unittest.TextTestRunner(verbosity=2).run(suite)

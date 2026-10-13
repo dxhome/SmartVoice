@@ -19,6 +19,16 @@ The command starts the selected focused runner in a fresh Python process. This k
 | `build_qwen3_tts_linux.py` | Build/package the native Qwen3-TTS runtime for Linux. |
 | `build_qwen3_tts_windows.py` | Build/package the native Qwen3-TTS runtime for Windows. |
 
+The standard `ci`, `regression`, and `full` suites all include the deterministic,
+model-free Python SDK tests in `sdk/python/tests`. They cover resumable streaming
+disconnects, input replay and acknowledgement reconciliation, and duplicate
+audio event delivery. CI also installs `sdk/python` in editable mode to validate
+the separately packaged client and its declared dependencies. Regression adds
+real SDK STT/TTS and a short streaming session with an injected WebSocket drop;
+these cases run when their models are installed. Full adds a real-time, one-hour
+SDK stream with two injected transport drops and records replay-buffer/resource
+measurements under `.smartvoice-dev/sdk-full/`.
+
 ### Full streaming regression
 
 `python scripts/test.py full` now also requires all default streaming chain models

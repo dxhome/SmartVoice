@@ -14,6 +14,17 @@ python scripts/test.py ci
 
 This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The CI entry point excludes `test_real_inference.py` and `test_stt_audio_regression.py` so it remains fast and does not depend on local models.
 
+All three modes also run the model-free Python SDK tests from
+`sdk/python/tests`. These validate WebSocket disconnect recovery, replay of
+unacknowledged input, cursor reconciliation, and duplicate audio event handling.
+GitHub Actions installs the SDK as an editable package before running CI, so the
+same job checks its install metadata and dependencies alongside recovery behavior.
+
+Regression also runs SDK calls against an isolated loopback service backed by
+installed models: capability/language discovery, real STT and TTS, and a short
+transcription stream interrupted at the WebSocket transport and resumed by the
+SDK. These model-backed cases skip when the required assets are absent.
+
 The CI entry point also excludes `test_streaming_real_long.py`. It retains shared
 worker fault tests and the bounded long-audio generator/output-audit tests without
 loading speech models.
@@ -72,6 +83,14 @@ python scripts/test.py full
 Full discovers and runs the same complete test tree as CI and default regression, then adds 300- and 590-second English and Chinese recordings for each of the three STT models (12 long model-language-duration inferences). The recordings are created deterministically from the committed reference utterances, separated by silence, and padded to the exact target duration. Full mode requires all three STT models to be installed and runtime-available, plus the validated `sherpa-onnx 1.13.8+smartvoice.whisper2` wheel. Missing prerequisites fail the run rather than skipping long-audio coverage. It stays out of routine CI and default regression because its long-audio inferences are substantially more expensive.
 
 The `ci` mode remains the lightweight test set used by GitHub Actions. The `regression` mode contains the full existing functional suite and its inference checks with the quick and boundary STT cases; `full` contains all CI and regression cases plus long-audio expansion.
+
+Full additionally runs `sdk/python/tests/test_sdk_full_streaming.py`: one hour of
+real-time pinned PCM through the public SDK and a local service, with two
+transport interruptions, event/input continuity checks, bounded SDK replay
+buffers, and periodic process RSS sampling. Its JSON report is written under
+`.smartvoice-dev/sdk-full/`. This is intentionally full-only because it takes at
+least one hour of wall time; CI and regression retain short deterministic and
+short real-model recovery coverage, respectively.
 
 ### Real streaming hour cases
 
