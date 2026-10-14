@@ -23,6 +23,8 @@ jobs:
           python-version: "3.11"
       - name: Install project and development dependencies
         run: python -m pip install -e '.[dev]'
+      - name: Verify SDK versions match product version
+        run: python scripts/check_sdk_versions.py
       - name: Verify tag matches package version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash

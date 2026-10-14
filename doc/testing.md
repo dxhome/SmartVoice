@@ -15,15 +15,26 @@ python scripts/test.py ci
 This suite covers settings, CLI behavior, REST API contracts and validation, routing, model catalog and file handling, download jobs, provider contracts, inference queue behavior, language detection, spoken-language asset management, and host metrics. External downloads and inference engines are mocked where needed. The CI entry point excludes `test_real_inference.py` and `test_stt_audio_regression.py` so it remains fast and does not depend on local models.
 
 All three modes also run the model-free Python SDK tests from
-`sdk/python/tests`. These validate WebSocket disconnect recovery, replay of
+`sdk/python/tests` and the TypeScript/JavaScript SDK tests from
+`sdk/typescript/tests`. Their contract tests exercise capability and route
+discovery, STT byte/path uploads and response formats, structured HTTP errors,
+TTS binary metadata/defaults, input validation, stream configuration for all
+three workflows, playback acknowledgements, cancellation/heartbeat/finish,
+malformed event/audio handling, and invalid input acknowledgement cursors.
+Recovery tests validate WebSocket disconnect handling, replay of
 unacknowledged input, cursor reconciliation, and duplicate audio event handling.
-GitHub Actions installs the SDK as an editable package before running CI, so the
-same job checks its install metadata and dependencies alongside recovery behavior.
+These deterministic tests do not require models. Install Node.js 20+ and run
+`npm ci --prefix sdk/typescript` before using `python scripts/test.py` to include
+the JavaScript suite locally. GitHub Actions performs that setup in CI.
+The SDK interface list and runnable consumer examples are maintained in the
+[SDK specification](sdk-spec.md).
 
-Regression also runs SDK calls against an isolated loopback service backed by
-installed models: capability/language discovery, real STT and TTS, and a short
-transcription stream interrupted at the WebSocket transport and resumed by the
-SDK. These model-backed cases skip when the required assets are absent.
+Regression also runs Python and JavaScript SDK calls against an isolated loopback
+service backed by installed models: capability/language discovery, real STT and
+TTS, and a short transcription stream interrupted at the WebSocket transport and
+resumed by each SDK. The JavaScript real-inference checks require Node.js 20+ and
+the installed `sdk/typescript` dependencies. Model-backed cases skip when the
+required assets are absent.
 
 The CI entry point also excludes `test_streaming_real_long.py`. It retains shared
 worker fault tests and the bounded long-audio generator/output-audit tests without
@@ -84,13 +95,13 @@ Full discovers and runs the same complete test tree as CI and default regression
 
 The `ci` mode remains the lightweight test set used by GitHub Actions. The `regression` mode contains the full existing functional suite and its inference checks with the quick and boundary STT cases; `full` contains all CI and regression cases plus long-audio expansion.
 
-Full additionally runs `sdk/python/tests/test_sdk_full_streaming.py`: one hour of
-real-time pinned PCM through the public SDK and a local service, with two
-transport interruptions, event/input continuity checks, bounded SDK replay
-buffers, and periodic process RSS sampling. Its JSON report is written under
-`.smartvoice-dev/sdk-full/`. This is intentionally full-only because it takes at
-least one hour of wall time; CI and regression retain short deterministic and
-short real-model recovery coverage, respectively.
+Full additionally runs the Python and JavaScript SDKs through one hour of
+real-time pinned PCM against local services, with two transport interruptions,
+event/input continuity checks, bounded SDK replay buffers, and periodic process
+RSS sampling. JSON reports are written under `.smartvoice-dev/sdk-full/`. The
+JavaScript case requires Node.js 20+ and installed SDK dependencies. These cases
+are full-only because each takes at least one hour; CI and regression retain
+short deterministic and short real-model recovery coverage, respectively.
 
 ### Real streaming hour cases
 
@@ -258,7 +269,7 @@ The models are stored under the SmartVoice data directory. Set `SMARTVOICE_HOME`
 Elastic runtime concurrency and lifecycle tests are included in the fast suite. The [production fixed-arrival HTTP benchmark](../benchmarks/elastic-pool/README.md) tests the real application path, validates responses, checks for queue buildup and drain, and records latency, CPU, RSS, and instance warm-up costs. Formal reports use one model per platform JSON and keep this same-model capacity category alongside that model's quality and serial performance results. Current macOS results are available for [SenseVoice](../benchmarks/result/macos-arm64-stt-sensevoice-small-int8-fleurs-standard-2026-09-29.json), [Matcha](../benchmarks/result/macos-arm64-tts-matcha-zh-baker-fleurs-standard-2026-09-29.json), and [Supertonic](../benchmarks/result/macos-arm64-tts-supertonic-v3-multilingual-int8-fleurs-standard-2026-09-29.json). SenseVoice passed at 14 req/s and Matcha at 8 req/s under the tested configuration; Supertonic's 1.9 req/s run met observed latency/success checks but has only 1,000 requests, so its report remains pending formal confirmation at the 3,000-request minimum. These are measured rates on one machine and workload, not general service guarantees. See the [benchmark criteria](../benchmarks/README.md#concurrency-and-request-experience) before comparing models.
 
 
-## Product streaming preview
+## Streaming service tests
 
 `tests/test_streaming.py` covers plan resolution, protocol validation, lifecycle/cancellation, admission, model leases, shared inference scheduling, native worker termination, ordered audio and metric accounting. Run the standard CI suite with `scripts/test.py ci`. Real six-route replay is available through `scripts/validate_speech.py streaming`; see [benchmark procedure](../benchmarks/streaming/README.md). Explicit pinned local bundles can be prepared with `scripts/prepare_streaming_bundle.py`; it never downloads or converts assets. Real model, playback, platform and resource acceptance are separate from fake-stage CI.
 

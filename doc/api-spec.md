@@ -1,6 +1,6 @@
 # SmartVoice API Specification
 
-This document describes the HTTP API implemented by the current source code. The interactive OpenAPI UI is available at `/docs` while the service is running. The service has no API authentication in the current release and binds to loopback by default. An operator can explicitly configure a non-loopback HTTP bind address; such access is unencrypted and unauthenticated. HTTPS is not supported.
+This document describes the HTTP API implemented by the current source code. Client examples for Python, Node.js/TypeScript, and browsers are in the [SDK specification](sdk-spec.md). The interactive OpenAPI UI is available at `/docs` while the service is running. The service has no API authentication in the current release and binds to loopback by default. An operator can explicitly configure a non-loopback HTTP bind address; such access is unencrypted and unauthenticated. HTTPS is not supported.
 
 ## Conventions
 
@@ -163,9 +163,9 @@ For routed auto-language requests, only recoverable identifier inference failure
 The shared policy addresses bounded long-input handling, not equal model accuracy. Digital silence may produce an empty result; this is not a general noise-rejection claim. See [validation and rollout decisions](archive/stt/audio-optimization-validation.md).
 
 
-## Streaming preview (smartvoice.stream.v1)
+## Streaming WebSocket (smartvoice.stream.v1)
 
-Explicitly enabled `WS /v1/audio/stream` provides original subtitles (zh/en), translated subtitles and spoken interpretation (zh↔en). `GET /v1/audio/stream/capabilities` reports complete plans, unavailable reasons and bounds. The browser client is `/console/streaming`. See [streaming contract](streaming.md) for configure fields, PCM frames, revision/commit semantics, JSON audio descriptor followed by binary WAV, delivery/playback ACKs and terminal errors. Existing one-shot endpoint contracts remain unchanged. This preview is not formal quality/performance acceptance.
+`WS /v1/audio/stream` provides original subtitles (zh/en), translated subtitles and spoken interpretation (zh↔en). `GET /v1/audio/stream/capabilities` reports complete plans, unavailable reasons and bounds. The browser workspace is `/console/streaming`. See the [streaming contract](streaming.md) for configure fields, PCM frames, revision/commit semantics, JSON audio descriptors followed by binary WAV, delivery/playback ACKs and terminal errors. The Python and JavaScript SDKs wrap this protocol with managed sessions and optional same-process recovery; see the [SDK specification](sdk-spec.md).
 
 ### Model categories and installation
 

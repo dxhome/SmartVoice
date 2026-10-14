@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-import os
 import unittest
 import wave
 from pathlib import Path
@@ -17,6 +16,7 @@ from smartvoice_sdk import SmartVoiceClient
 
 from tests.streaming_long_audio import configuration, ROOT
 from ._real_service import RealService
+from ._javascript_sdk import NODE_SDK_READY, run_node_test
 
 
 SETTINGS = Settings.from_env()
@@ -90,6 +90,22 @@ class SDKRegressionTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(speech.audio.startswith(b"RIFF"))
             self.assertGreater(len(speech.audio), 44)
             self.assertGreater(speech.duration_seconds or 0, 0)
+
+    @unittest.skipUnless(NODE_SDK_READY, "Install Node.js and run npm ci --prefix sdk/typescript for JavaScript SDK regression")
+    async def test_javascript_sdk_runs_real_capability_stt_tts_and_recoverable_streaming(self):
+        result = run_node_test(
+            "real-inference.test.mjs",
+            service_url=self.service.base_url,
+            wav_path=SAMPLE,
+            env={
+                "SMARTVOICE_TS_API": "1" if _API_MODELS_READY else "0",
+                "SMARTVOICE_TS_STREAMING": "1" if _STREAM_MODELS_READY else "0",
+                "SMARTVOICE_TS_STT_MODEL": STT_MODEL,
+                "SMARTVOICE_TS_TTS_MODEL": TTS_MODEL,
+            },
+            timeout=360,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
 
     @unittest.skipUnless(_STREAM_MODELS_READY, "Install the zh streaming transcription chain for SDK stream regression")
     async def test_sdk_streams_real_audio_and_recovers_after_transport_drop(self):

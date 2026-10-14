@@ -9,6 +9,7 @@ Keep only the current, maintained descriptions of the product and its developmen
 | Document | Purpose |
 | --- | --- |
 | `api-spec.md` | HTTP endpoints, request/response contracts, errors, and limits. |
+| `sdk-spec.md` | Public Python, Node.js, and browser SDK interfaces with installation and integration examples. |
 | `architecture-guidelines.md` | Architecture principles plus the current implementation/platform snapshot. |
 | `implementation-plan.md` | Prioritized product roadmap and open implementation/acceptance work. |
 | `industry-research.md` | Durable external research and model/technology comparisons. |

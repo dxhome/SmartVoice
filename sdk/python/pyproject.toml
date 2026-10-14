@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smartvoice-sdk"
-version = "0.1.0"
-description = "Experimental asynchronous Python client for SmartVoice STT, TTS, and Streaming"
+version = "0.3.0"
+description = "Asynchronous Python SDK for SmartVoice STT, TTS, and Streaming"
 requires-python = ">=3.11"
 dependencies = ["httpx>=0.27,<1.0", "websockets>=13,<17"]
 

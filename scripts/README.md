@@ -19,15 +19,22 @@ The command starts the selected focused runner in a fresh Python process. This k
 | `build_qwen3_tts_linux.py` | Build/package the native Qwen3-TTS runtime for Linux. |
 | `build_qwen3_tts_windows.py` | Build/package the native Qwen3-TTS runtime for Windows. |
 
-The standard `ci`, `regression`, and `full` suites all include the deterministic,
-model-free Python SDK tests in `sdk/python/tests`. They cover resumable streaming
-disconnects, input replay and acknowledgement reconciliation, and duplicate
-audio event delivery. CI also installs `sdk/python` in editable mode to validate
-the separately packaged client and its declared dependencies. Regression adds
-real SDK STT/TTS and a short streaming session with an injected WebSocket drop;
-these cases run when their models are installed. Full adds a real-time, one-hour
-SDK stream with two injected transport drops and records replay-buffer/resource
-measurements under `.smartvoice-dev/sdk-full/`.
+The standard `ci`, `regression`, and `full` suites include deterministic,
+model-free tests for both SDKs. Python coverage lives in `sdk/python/tests`;
+TypeScript/JavaScript coverage lives in `sdk/typescript/tests`. GitHub Actions
+installs Node.js 22 and the JavaScript SDK dependencies. For local runs, install
+Node.js 20+ and run `npm ci --prefix sdk/typescript` before running `python
+scripts/test.py ci`, `python scripts/test.py regression`, or
+`python scripts/test.py full`. Without the Node dependencies, the runner reports
+that the JavaScript unit suite was skipped.
+
+The model-backed regression exercises real STT/TTS, capability/language
+discovery, and a short streaming session with an injected WebSocket drop for
+both SDKs when their model prerequisites are installed. Full adds one-hour,
+real-time streams through each SDK with two injected transport drops, bounded
+replay-buffer checks, and RSS measurements under `.smartvoice-dev/sdk-full/`.
+For the public methods, options, installation steps, and consumer examples, see
+[`doc/sdk-spec.md`](../doc/sdk-spec.md).
 
 ### Full streaming regression
 

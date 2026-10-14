@@ -14,6 +14,8 @@
 
 访问 `/console/streaming` 选择三个场景、语言和音频文件。页面支持实时重放、修订字幕、按顺序播放译文语音和动态首输出指标；当前没有麦克风采集 UI。SDK 可发送实时 PCM。先查询 `GET /v1/audio/stream/capabilities`；兼容字段 `enabled` 固定为 `true`，还需确认所选链路的 `available`，并考虑即时容量限制。
 
+Python、Node.js/TypeScript 和浏览器 SDK 可用于应用集成，提供能力发现、PCM 分帧、事件处理及可选的同进程断线恢复。安装方式和客户端示例见 [SDK 接口规范](sdk-spec.md)；完整消息级约定见本页下方的 `smartvoice.stream.v1` 章节。
+
 ## 最小安装与启动流程
 
 在项目根目录、已创建的 Python 虚拟环境中执行：
@@ -157,7 +159,11 @@ configure 可增加 `"context":{"terms":["SmartVoice","GPU"]}`，最多 64 个�
 质量、性能、并发分开评估。字幕性能目标为原文 partial P90<1s、译文 target partial P90<2s。双向语音 TTFO 报告 P50/P90/P95 供观察和定位，不设延迟通过门槛；计时从客户端发送首帧 PCM 到收到首个音频块。浏览器同时观测首显示、音频到达及播放调度。服务 profiling 不能与客户端时钟直接相减。语音 TTFO 分位数按成功出音频会话计算，同时报告全量成功率/无音频率/跳过原因。
 
 
-## 最小 Python 客户端示例
+## 原始 WebSocket Python 示例
+
+本示例直接演示消息级协议。编写应用时，建议使用 [SDK 接口规范](sdk-spec.md)
+和 [Python SDK 指南](../sdk/python/README.md)中的 Python SDK；SDK 会管理分帧、事件、
+心跳、确认以及可选的断线恢复。
 
 将下面代码保存为本地 `stream_client.py`。依赖已包含在 `streaming` extra 中。示例输入必须已经是 **16kHz、单声道、16-bit WAV**；浏览器页面可以解码重采样其他支持的音频格式。示例通过 `delivery` 确认接收，将语音块按顺序保存为独立 WAV，不承担播放 ACK 或物理可听计时。
 

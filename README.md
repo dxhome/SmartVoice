@@ -7,11 +7,11 @@
 
 # SmartVoice
 
-SmartVoice is a local speech recognition, speech synthesis, and streaming service for developers building voice-enabled apps and agents. Install the models you want, run inference on your machine, and connect through an OpenAI-style REST audio API or the versioned streaming WebSocket.
+SmartVoice is a local speech recognition, speech synthesis, and streaming service for developers building voice-enabled apps and agents. Install the models you want, run inference on your machine, and connect through the REST API, versioned streaming WebSocket, or Python and JavaScript SDKs.
 
 **Audio stays on your machine during inference.** Once the models are installed, supported workflows can run offline, with no cloud account or per-request inference fee. SmartVoice supports CPU inference on Windows x64, macOS Apple Silicon, and Linux x86_64.
 
-[Get started](#quick-start) · [Explore models](#model-management) · [Try the API](#api) · [Architecture](#architecture) · [Report an issue](https://github.com/dxhome/SmartVoice/issues)
+[Get started](#quick-start) · [Explore models](#model-management) · [Connect an application](#application-integration) · [Architecture](#architecture) · [Report an issue](https://github.com/dxhome/SmartVoice/issues)
 
 ## What can you build?
 
@@ -39,7 +39,7 @@ SmartVoice supports CPU inference on Windows x64, macOS Apple Silicon, and Linux
 | Smart routing | Editable, task- and language-aware model priorities; `smartvoice-auto` routes both transcription and speech synthesis |
 | Console | Browser-based model management, speech testing, routing configuration, and streaming workspace |
 | Model management | Install, refresh, and uninstall models; download jobs; offline model import/export |
-| API | Versioned REST API, streaming WebSocket, OpenAPI documentation, and runtime/capability status |
+| Application integration | Versioned REST API, streaming WebSocket, Python SDK, Node.js/browser SDK, OpenAPI docs, and runtime capabilities |
 
 For architecture principles, platform compatibility, and model availability semantics, see [Architecture Summary and Guidelines](doc/architecture-guidelines.md). SmartVoice implements a supported subset of OpenAI Audio API conventions, not full API compatibility; see the [API specification](doc/api-spec.md).
 
@@ -290,13 +290,26 @@ In your agent or application's settings, choose **OpenAI-compatible API** and se
 http://127.0.0.1:8000/v1
 ```
 
-The API supports a subset of the OpenAI Audio API conventions. Copy an STT or TTS example from the Console, or use the examples in [API](#api). The API base URL ends in `/v1`; the Console and interactive API docs are served from the same local SmartVoice instance.
+The API supports a subset of the OpenAI Audio API conventions. Copy an STT or TTS example from the Console, or choose an integration method in [Application integration](#application-integration). The API base URL ends in `/v1`; the Console and interactive API docs are served from the same local SmartVoice instance.
 
-## API
+## Application integration
 
-The audio endpoints follow a supported subset of the OpenAI Audio API conventions. For request fields, response formats, and errors, see the [API specification](doc/api-spec.md).
+Choose the interface that fits your app:
 
-### Transcribe audio with routing
+| Method | Use it when |
+|---|---|
+| Console | You want to try speech features manually or copy a ready-made request. |
+| REST API | Your language or framework can send HTTP requests, or it already supports OpenAI-style audio endpoints. |
+| Python SDK | Your application is asynchronous Python and you want typed results and managed streaming sessions. |
+| TypeScript/JavaScript SDK | Your application runs on Node.js, or you need the browser-specific client and audio conversion helpers. |
+
+The SDKs call the same local service as REST and WebSocket clients. They do not install models or change routing. The Python SDK is installed from this checkout with `python -m pip install -e ./sdk/python`; the Node package is installed with `npm install ./sdk/typescript`. The standalone SDK packages are not currently published to PyPI or npm. See the [SDK interface specification and samples](doc/sdk-spec.md) for full method details and browser setup.
+
+### REST API
+
+The audio endpoints follow a supported subset of the OpenAI Audio API conventions. The API base URL is `http://127.0.0.1:8000/v1` by default. For request fields, response formats, and errors, see the [API specification](doc/api-spec.md) or the interactive `/docs` page.
+
+#### Transcribe audio with routing
 
 ```powershell
 curl.exe -F "file=@sample.wav" -F "model=smartvoice-auto" -F "language=auto" `
@@ -305,7 +318,7 @@ curl.exe -F "file=@sample.wav" -F "model=smartvoice-auto" -F "language=auto" `
 
 Supported upload formats include WAV, MP3, M4A, and FLAC. Audio is limited to 25 MiB and 10 minutes by default.
 
-### Synthesize speech with routing
+#### Synthesize speech with routing
 
 ```powershell
 curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
@@ -316,7 +329,7 @@ curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
 
 TTS defaults to mono MP3 (96 kbps); set `"response_format":"wav"` to request WAV. See `/docs` or the [API specification](doc/api-spec.md) for request parameters, supported languages, response formats, limits, and errors.
 
-### Stream audio
+#### Stream audio over WebSocket
 
 Check the available model chains before opening a streaming session:
 
@@ -324,7 +337,58 @@ Check the available model chains before opening a streaming session:
 curl http://127.0.0.1:8000/v1/audio/stream/capabilities
 ```
 
-Connect to `ws://127.0.0.1:8000/v1/audio/stream` using protocol `smartvoice.stream.v1`. Configure a `transcription`, `translated_subtitles`, or `spoken_interpretation` session, then stream 16 kHz mono PCM16 audio frames. Clients receive incremental transcript and translation events; spoken interpretation also returns ordered audio chunks. The [streaming setup and API contract](doc/streaming.md) includes the client protocol and examples.
+Connect to `ws://127.0.0.1:8000/v1/audio/stream` using protocol `smartvoice.stream.v1`. Configure a `transcription`, `translated_subtitles`, or `spoken_interpretation` session, then stream 16 kHz mono PCM16 audio frames. Clients receive incremental transcript and translation events; spoken interpretation also returns ordered audio chunks. For application-managed sessions and automatic reconnect, use one of the SDKs below. The [streaming setup and API contract](doc/streaming.md) describes the wire protocol.
+
+### Python SDK
+
+Install the SDK from the repository checkout:
+
+```bash
+python -m pip install -e ./sdk/python
+```
+
+```python
+import asyncio
+from smartvoice_sdk import SmartVoiceClient
+
+async def main():
+    async with SmartVoiceClient("http://127.0.0.1:8000") as client:
+        transcript = await client.transcribe("speech.wav", language="auto")
+        print(transcript.text, transcript.model)
+
+        speech = await client.synthesize("Hello from SmartVoice", language="en")
+        with open("speech.mp3", "wb") as output:
+            output.write(speech.audio)
+
+asyncio.run(main())
+```
+
+The asynchronous SDK also provides capability discovery, streaming sessions, revision-aware subtitles, and opt-in same-process recovery. See the [Python SDK guide](sdk/python/README.md).
+
+### TypeScript / JavaScript SDK
+
+Install the Node.js package from the checkout (`Node.js 20+`):
+
+```bash
+npm install ./sdk/typescript
+```
+
+```js
+import { writeFile } from "node:fs/promises";
+import { SmartVoiceClient } from "@smartvoice/sdk";
+
+const client = new SmartVoiceClient("http://127.0.0.1:8000");
+try {
+  const transcript = await client.transcribe("speech.wav", { language: "auto" });
+  console.log(transcript.text, transcript.model);
+  const speech = await client.synthesize("Hello from SmartVoice", { language: "en" });
+  await writeFile("speech.mp3", speech.audio);
+} finally {
+  await client.close();
+}
+```
+
+For browser apps, import `@smartvoice/sdk/browser`; it accepts `File`/`Blob` inputs and exports `decodeAudioToPCM16()` for Streaming. See the [TypeScript/JavaScript SDK guide](sdk/typescript/README.md) and [SDK interface specification](doc/sdk-spec.md).
 
 ## Architecture
 
@@ -362,6 +426,8 @@ python scripts/test.py ci
 
 `python scripts/test.py regression` runs functional tests and real inference for models installed in the current environment. `python scripts/test.py full` adds long-input STT and real-model streaming regression; it requires the selected model assets and fixtures. See [`doc/testing.md`](doc/testing.md) for test modes and prerequisites.
 
+For SDK test commands and prerequisites, see [`doc/testing.md`](doc/testing.md). For the API contract, see [`doc/api-spec.md`](doc/api-spec.md); for SDK interfaces and code samples, see [`doc/sdk-spec.md`](doc/sdk-spec.md).
+
 See [`doc/releasing.md`](doc/releasing.md) for versioning, GitHub Releases, and optional PyPI publishing.
 
 ## Repository layout
@@ -372,7 +438,7 @@ assets/        Project logo and browser icons
 benchmarks/    Speech quality, performance, and streaming evaluation tools and reports
 catalog/       Model catalog, default routing table, and streaming workflows
 config/        Example service configuration
-doc/           API, architecture, testing, release, and product documentation
+doc/           API, SDK, architecture, testing, release, and product documentation
 native/        Native Qwen3-TTS runtime source and build support
 samples/       Multilingual speech samples and transcripts
 scripts/       Build, test, model preparation, and validation commands

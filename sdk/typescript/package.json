@@ -1,0 +1,33 @@
+{
+  "name": "@smartvoice/sdk",
+  "version": "0.3.0",
+  "description": "TypeScript and JavaScript client for SmartVoice speech APIs and streaming",
+  "type": "module",
+  "main": "./dist/node.js",
+  "types": "./dist/node.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "files": ["dist", "README.md", "examples"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
+    "test": "npm run build && node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.8.3"
+  }
+}

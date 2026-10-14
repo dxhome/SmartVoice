@@ -21,6 +21,7 @@ from smartvoice_sdk import SmartVoiceClient
 
 from tests.streaming_long_audio import ROOT, MANIFEST, configuration, fixture, repeated_blocks
 from ._real_service import RealService
+from ._javascript_sdk import NODE_SDK_READY, run_node_test
 
 
 class _Catalog:
@@ -206,6 +207,23 @@ class SDKFullStreamingTests(unittest.IsolatedAsyncioTestCase):
             }
             report_path.write_text(json.dumps(result, ensure_ascii=False, indent=2))
             print(f"SDK full streaming report: {report_path}", flush=True)
+
+    @unittest.skipUnless(NODE_SDK_READY, "Install Node.js and run npm ci --prefix sdk/typescript for JavaScript SDK full coverage")
+    async def test_javascript_sdk_one_hour_stream_recovers_twice_with_bounded_buffers(self):
+        case, _ = fixture("zh")
+        report_path = self.report_dir / f"javascript-sdk-hour-{uuid.uuid4().hex}.json"
+        result = run_node_test(
+            "full-streaming.test.mjs",
+            service_url=self.service.base_url,
+            wav_path=ROOT / "benchmarks" / "streaming" / case["path"],
+            env={
+                "SMARTVOICE_TS_FULL": "1",
+                "SMARTVOICE_TS_REPORT": str(report_path),
+            },
+            timeout=4_300,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
+        self.assertTrue(report_path.is_file(), result.stdout + "\n" + result.stderr)
 
 
 if __name__ == "__main__":

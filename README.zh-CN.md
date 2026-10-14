@@ -7,11 +7,11 @@
 
 # SmartVoice
 
-SmartVoice 是面向开发者的本地语音识别、语音合成与流式语音服务。安装所需模型，在自己的设备上运行推理，并通过 OpenAI 风格 REST 音频 API 或版本化流式 WebSocket 接入应用。
+SmartVoice 是面向开发者的本地语音识别、语音合成与流式语音服务。安装所需模型，在自己的设备上运行推理，并通过 REST API、版本化流式 WebSocket 或 Python/JavaScript SDK 接入应用。
 
 **推理过程中的音频保留在本机。** 安装模型后，支持的工作流可离线运行，无需云端账号，也没有按请求收取的推理费用。SmartVoice 支持 Windows x64、macOS Apple Silicon 和 Linux x86_64 上的 CPU 推理。
 
-[快速开始](#快速开始) · [浏览模型](#模型管理) · [试用 API](#api) · [架构](#架构) · [报告问题](https://github.com/dxhome/SmartVoice/issues)
+[快速开始](#快速开始) · [浏览模型](#模型管理) · [接入应用](#应用接入) · [架构](#架构) · [报告问题](https://github.com/dxhome/SmartVoice/issues)
 
 ## 可以用它构建什么？
 
@@ -39,7 +39,7 @@ SmartVoice 支持 Windows x64、macOS Apple Silicon 和 Linux x86_64 上的 CPU 
 | 智能路由 | 可编辑的任务和语言模型优先级；`smartvoice-auto` 同时路由转录和语音合成 |
 | Console | 浏览器模型管理、语音试用、路由配置和流式工作区 |
 | 模型管理 | 安装、刷新、卸载、下载任务、离线导入/导出 |
-| API | 版本化 REST API、流式 WebSocket、OpenAPI 文档及运行状态/能力查询 |
+| 应用接入 | 版本化 REST API、流式 WebSocket、Python SDK、Node.js/浏览器 SDK、OpenAPI 文档及运行能力查询 |
 
 架构原则、平台兼容性和模型可用性说明请参阅[架构总结与指南](doc/architecture-guidelines.md)。SmartVoice 支持 OpenAI Audio API 的一部分约定，并非完全兼容；详情请见 [API 规范](doc/api-spec.md)。
 
@@ -290,13 +290,26 @@ python -m smartvoice models install tts-qwen3-0-6b-customvoice
 http://127.0.0.1:8000/v1
 ```
 
-API 支持 OpenAI Audio API 的一部分约定。从 Console 复制 STT 或 TTS 示例，也可以查看 [API](#api) 中的示例。API 基础地址以 `/v1` 结尾；Console 和交互式 API 文档由同一个本地 SmartVoice 实例提供。
+API 支持 OpenAI Audio API 的一部分约定。从 Console 复制 STT 或 TTS 示例，也可以在[应用接入](#应用接入)章节选择接入方式。API 基础地址以 `/v1` 结尾；Console 和交互式 API 文档由同一个本地 SmartVoice 实例提供。
 
-## API
+## 应用接入
 
-音频接口支持 OpenAI Audio API 的一部分约定。请求字段、响应格式和错误码请参阅 [API 规范](doc/api-spec.md)。
+根据应用场景选择接入方式：
 
-### 使用智能路由转录音频
+| 方式 | 适用场景 |
+|---|---|
+| Console | 手动试用语音功能，或复制可直接使用的请求示例。 |
+| REST API | 应用可发送 HTTP 请求，或已支持 OpenAI 风格音频接口。 |
+| Python SDK | 异步 Python 应用，需要类型化结果和托管式流式会话。 |
+| TypeScript/JavaScript SDK | Node.js 应用，或需要浏览器专用客户端和音频转换工具。 |
+
+SDK 与 REST/WebSocket 客户端连接同一个本地服务，不负责安装模型或修改路由。Python SDK 从本仓库安装：`python -m pip install -e ./sdk/python`；Node 包通过 `npm install ./sdk/typescript` 安装。目前两个独立 SDK 包尚未发布到 PyPI 或 npm。完整接口和浏览器接入示例见 [SDK 接口规范](doc/sdk-spec.md)。
+
+### REST API
+
+音频接口支持 OpenAI Audio API 的一部分约定。默认 API 基础地址为 `http://127.0.0.1:8000/v1`。请求字段、响应格式和错误码请参阅 [API 规范](doc/api-spec.md)或运行服务后的 `/docs` 页面。
+
+#### 使用智能路由转录音频
 
 ```powershell
 curl.exe -F "file=@sample.wav" -F "model=smartvoice-auto" -F "language=auto" `
@@ -305,7 +318,7 @@ curl.exe -F "file=@sample.wav" -F "model=smartvoice-auto" -F "language=auto" `
 
 支持上传 WAV、MP3、M4A 和 FLAC 格式。默认音频大小上限为 25 MiB，时长上限为 10 分钟。
 
-### 使用智能路由合成语音
+#### 使用智能路由合成语音
 
 ```powershell
 curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
@@ -316,7 +329,7 @@ curl.exe -X POST http://127.0.0.1:8000/v1/audio/speech `
 
 TTS 默认返回单声道 MP3（96 kbps）；如需 WAV，请设置 `"response_format":"wav"`。请求参数、支持语言、响应格式、限制和错误码请参阅 `/docs` 或 [API 规范](doc/api-spec.md)。
 
-### 流式音频
+#### 通过 WebSocket 流式处理音频
 
 建立流式会话前，先查询本机可用的模型链路：
 
@@ -324,7 +337,58 @@ TTS 默认返回单声道 MP3（96 kbps）；如需 WAV，请设置 `"response_f
 curl http://127.0.0.1:8000/v1/audio/stream/capabilities
 ```
 
-客户端连接 `ws://127.0.0.1:8000/v1/audio/stream`，使用 `smartvoice.stream.v1` 协议配置 `transcription`、`translated_subtitles` 或 `spoken_interpretation` 场景，再发送 16 kHz、单声道 PCM16 音频帧。客户端会收到增量转录和翻译事件；译文语音场景还会返回按序排列的音频块。协议和客户端示例请参阅[流式安装与 API 契约](doc/streaming.md)。
+客户端连接 `ws://127.0.0.1:8000/v1/audio/stream`，使用 `smartvoice.stream.v1` 协议配置 `transcription`、`translated_subtitles` 或 `spoken_interpretation` 场景，再发送 16 kHz、单声道 PCM16 音频帧。客户端会收到增量转录和翻译事件；译文语音场景还会返回按序排列的音频块。需要由 SDK 管理会话和自动重连时，可使用下面的 SDK。协议详见[流式安装与 API 契约](doc/streaming.md)。
+
+### Python SDK
+
+从仓库安装 SDK：
+
+```bash
+python -m pip install -e ./sdk/python
+```
+
+```python
+import asyncio
+from smartvoice_sdk import SmartVoiceClient
+
+async def main():
+    async with SmartVoiceClient("http://127.0.0.1:8000") as client:
+        transcript = await client.transcribe("speech.wav", language="auto")
+        print(transcript.text, transcript.model)
+
+        speech = await client.synthesize("你好，来自 SmartVoice。", language="zh")
+        with open("speech.mp3", "wb") as output:
+            output.write(speech.audio)
+
+asyncio.run(main())
+```
+
+异步 SDK 还提供能力发现、流式会话、修订字幕和可选的同进程断线恢复。详见 [Python SDK 指南](sdk/python/README.md)。
+
+### TypeScript / JavaScript SDK
+
+从仓库安装 Node.js 包（需要 `Node.js 20+`）：
+
+```bash
+npm install ./sdk/typescript
+```
+
+```js
+import { writeFile } from "node:fs/promises";
+import { SmartVoiceClient } from "@smartvoice/sdk";
+
+const client = new SmartVoiceClient("http://127.0.0.1:8000");
+try {
+  const transcript = await client.transcribe("speech.wav", { language: "auto" });
+  console.log(transcript.text, transcript.model);
+  const speech = await client.synthesize("你好，来自 SmartVoice。", { language: "zh" });
+  await writeFile("speech.mp3", speech.audio);
+} finally {
+  await client.close();
+}
+```
+
+浏览器应用可导入 `@smartvoice/sdk/browser`；该入口接受 `File`/`Blob`，并提供 `decodeAudioToPCM16()` 以转换流式输入音频。详见 [TypeScript/JavaScript SDK 指南](sdk/typescript/README.md)和 [SDK 接口规范](doc/sdk-spec.md)。
 
 ## 架构
 
@@ -361,7 +425,7 @@ python scripts/test.py ci
 
 `python scripts/test.py regression` 运行功能测试及当前环境已安装模型的真实推理测试。`python scripts/test.py full` 还会运行长音频 STT 和真实模型流式回归，要求安装相应模型资产和语料。测试模式及前置条件请参阅 [`doc/testing.md`](doc/testing.md)。
 
-版本管理、GitHub Release 和可选的 PyPI 发布流程请参阅 [`doc/releasing.md`](doc/releasing.md)。
+SDK 测试命令和前置条件请参阅 [`doc/testing.md`](doc/testing.md)。API 契约见 [`doc/api-spec.md`](doc/api-spec.md)，SDK 接口和代码示例见 [`doc/sdk-spec.md`](doc/sdk-spec.md)。版本管理、GitHub Release 和可选的 PyPI 发布流程请参阅 [`doc/releasing.md`](doc/releasing.md)。
 
 ## 仓库目录
 
@@ -371,7 +435,7 @@ assets/        项目标志和浏览器图标
 benchmarks/    语音质量、性能与流式评测工具和报告
 catalog/       模型目录、默认路由表和流式工作流配置
 config/        服务配置示例
-doc/           API、架构、测试、发布和产品文档
+doc/           API、SDK、架构、测试、发布和产品文档
 native/        Qwen3-TTS 原生运行时源码和构建支持
 samples/       多语言语音样本和转录文本
 scripts/       构建、测试、模型准备和验证命令

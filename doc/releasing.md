@@ -4,6 +4,13 @@
 
 The release version is defined once in `src/smartvoice/_version.py`. Package metadata, the Python API, `/health`, and OpenAPI read that value. Use Semantic Versioning: increment the patch for compatible fixes, minor for compatible features, and major for breaking changes. While the major version is `0`, minor releases may still contain breaking changes; call those out in the GitHub release notes.
 
+The standalone Python and TypeScript/JavaScript SDK metadata must match the
+product version. CI and the Release workflow verify these values with
+`scripts/check_sdk_versions.py`. The current Release workflow publishes the
+SmartVoice application distributions; it does not publish the standalone SDKs
+to PyPI or npm. See the [SDK specification](sdk-spec.md) for current SDK install
+instructions.
+
 ## Release notes guidelines and templates
 
 Release notes describe what users can do differently after upgrading. Generate them from the changes between the previous published tag and the release candidate, not by copying commit subjects. Commit messages can help locate work, but are not reliable evidence of product behavior.

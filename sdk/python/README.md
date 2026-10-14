@@ -1,7 +1,10 @@
-# SmartVoice Python async SDK prototype
+# SmartVoice Python SDK
 
-An experimental asynchronous client for the supported speech APIs: STT, TTS,
-and Streaming. Capability discovery reports currently installed runtime models
+For the cross-SDK interface reference and additional application integration
+examples, see [`../../doc/sdk-spec.md`](../../doc/sdk-spec.md).
+
+An asynchronous client for the supported speech APIs: STT, TTS, and Streaming.
+Capability discovery reports currently installed runtime models
 and usable language routes. This SDK intentionally has no model installation,
 import/export, catalog-management, or router-configuration APIs.
 
@@ -38,6 +41,15 @@ asyncio.run(main())
 read-only runtime router status. `include_auto=True` adds the API's `auto`
 request option. Streaming mode/language pairs and their current readiness come
 from `/v1/audio/stream/capabilities`.
+
+### Connection configuration
+
+Pass `headers=` for REST authentication or tracing headers. An existing
+`httpx.AsyncClient` can be supplied with `http_client=` to reuse custom TLS,
+proxy, transport, or connection-pool configuration; the SDK will not close an
+injected client. `websocket_headers=` and `websocket_options=` configure the
+WebSocket transport, including TLS/proxy options supported by `websockets`.
+The SDK closes only the HTTP client it creates itself.
 
 ## STT and TTS
 
@@ -116,10 +128,42 @@ to the server-advertised input replay window until `input_ack` arrives; it raise
 Recovery is limited to the same live SDK object and server process, and must
 complete within the server's advertised grace period. It doesn't survive process
 restarts. The server also bounds replayable output events and audio bytes.
+Leaving a `StreamingSession` context before a terminal event sends `cancel`
+before closing the socket, releasing a resumable session promptly. Call
+`await session.close(cancel_if_incomplete=False)` only when intentionally
+leaving the server-side session detached for its recovery grace period.
 
 The file example enables this behavior with `--resumable`.
 
-## Prototype limits
+For live or generated audio, `send_audio_stream()` accepts an
+`AsyncIterable[bytes]` of normalized PCM16 chunks, frames them incrementally,
+and avoids buffering the complete recording:
+
+```python
+async def microphone_chunks():
+    while chunk := await capture_next_pcm_chunk():
+        yield chunk
+
+await session.send_audio_stream(microphone_chunks(), realtime=True)
+await session.finish()
+```
+
+`SubtitleState` applies `source_unit_*` and `target_*` events, ignores stale
+revisions, handles draft retractions, and keeps committed text immutable:
+it retains at most 1,000 units per kind by default. Set `max_units=` to tune
+that bound, or periodically archive `units()` and call `clear()` for a fresh
+display window.
+
+```python
+from smartvoice_sdk import SubtitleState
+
+subtitles = SubtitleState()
+async for event in session.events():
+    if subtitles.apply(event):
+        print(subtitles.text(), subtitles.text("target"))
+```
+
+## Integration scope
 
 - Audio capture, resampling, and playback-device integration remain application
   responsibilities.

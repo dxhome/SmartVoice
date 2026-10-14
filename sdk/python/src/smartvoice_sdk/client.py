@@ -13,7 +13,7 @@ import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Mapping
+from typing import Any, AsyncIterable, AsyncIterator, Mapping
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -41,6 +41,20 @@ class StreamProtocolError(SmartVoiceError):
 
 class StreamRecoveryError(SmartVoiceError):
     """A resumable stream could not be restored without losing client state."""
+
+
+class StreamingUnavailableError(SmartVoiceError):
+    """A supported streaming combination cannot run with the installed models."""
+
+    def __init__(self, chain: Mapping[str, Any]):
+        self.reason = str(chain.get("reason") or "model_unavailable")
+        missing = chain.get("missing_models", ())
+        self.missing_models = tuple(str(model) for model in missing) if isinstance(missing, (list, tuple)) else ()
+        self.chain = dict(chain)
+        detail = f"Streaming chain is unavailable: {self.reason}"
+        if self.missing_models:
+            detail += f" (missing models: {', '.join(self.missing_models)})"
+        super().__init__(detail)
 
 
 class ServerError(SmartVoiceError):
@@ -153,6 +167,10 @@ class SmartVoiceClient:
         request_timeout: float = 120,
         resume_attempts: int = 3,
         resume_backoff: float = 0.25,
+        http_client: httpx.AsyncClient | None = None,
+        headers: Mapping[str, str] | None = None,
+        websocket_headers: Mapping[str, str] | None = None,
+        websocket_options: Mapping[str, Any] | None = None,
     ):
         if type(resume_attempts) is not int or resume_attempts < 1:
             raise ValueError("resume_attempts must be a positive integer")
@@ -162,7 +180,11 @@ class SmartVoiceClient:
         self.open_timeout = open_timeout
         self.resume_attempts = resume_attempts
         self.resume_backoff = resume_backoff
-        self._http = httpx.AsyncClient(base_url=self.base_url, timeout=request_timeout)
+        self._owns_http = http_client is None
+        self._http = http_client or httpx.AsyncClient(base_url=self.base_url, timeout=request_timeout)
+        self._headers = dict(headers or {})
+        self._websocket_headers = dict(websocket_headers or {})
+        self._websocket_options = dict(websocket_options or {})
 
     async def __aenter__(self) -> "SmartVoiceClient":
         return self
@@ -171,13 +193,14 @@ class SmartVoiceClient:
         await self.aclose()
 
     async def aclose(self) -> None:
-        await self._http.aclose()
+        if self._owns_http:
+            await self._http.aclose()
 
     async def capabilities(self, *, task: str | None = None) -> ServiceCapabilities:
         """Fetch installed STT/TTS runtime capabilities and language support."""
         if task is not None and task not in {"transcription", "speech"}:
             raise ValueError("task must be 'transcription' (STT), 'speech' (TTS), or None")
-        response = await self._http.get("/v1/capabilities", params={"task": task} if task else None)
+        response = await self._http.get(f"{self.base_url}/v1/capabilities", params={"task": task} if task else None, headers=self._headers)
         if response.is_error:
             raise _http_error(response)
         return ServiceCapabilities.from_dict(_response_json(response))
@@ -196,7 +219,7 @@ class SmartVoiceClient:
 
     async def streaming_capabilities(self) -> StreamingCapabilities:
         """Fetch supported streaming modes, language pairs, and chain readiness."""
-        response = await self._http.get("/v1/audio/stream/capabilities")
+        response = await self._http.get(f"{self.base_url}/v1/audio/stream/capabilities", headers=self._headers)
         if response.is_error:
             raise _http_error(response)
         return StreamingCapabilities.from_dict(_response_json(response))
@@ -224,7 +247,7 @@ class SmartVoiceClient:
         data, upload_name = await self._audio_data(audio, filename)
         requested_language = language or "auto"
         response = await self._http.post(
-            "/v1/audio/transcriptions",
+            f"{self.base_url}/v1/audio/transcriptions",
             data={
                 "model": model,
                 "language": requested_language,
@@ -232,6 +255,7 @@ class SmartVoiceClient:
                 "timestamps": str(timestamps).lower(),
             },
             files={"file": (upload_name, data, content_type)},
+            headers=self._headers,
         )
         if response.is_error:
             raise _http_error(response)
@@ -278,7 +302,7 @@ class SmartVoiceClient:
             "speed": speed,
             "response_format": response_format,
         }
-        response = await self._http.post("/v1/audio/speech", json=request)
+        response = await self._http.post(f"{self.base_url}/v1/audio/speech", json=request, headers=self._headers)
         if response.is_error:
             raise _http_error(response)
         headers = dict(response.headers)
@@ -320,11 +344,14 @@ class SmartVoiceClient:
     ) -> "StreamingSession":
         """Open a stream and wait for its validated ``session_ready`` event."""
         streaming = await self.streaming_capabilities()
-        if streaming.chain(mode, source_language, target_language) is None:
+        chain = streaming.chain(mode, source_language, target_language)
+        if chain is None:
             raise ValueError(
                 f"Unsupported streaming mode/language combination: "
                 f"{mode!r}, {source_language!r} -> {target_language!r}"
             )
+        if chain.get("available") is False:
+            raise StreamingUnavailableError(chain)
         config = self._make_config(
             mode=mode,
             source_language=source_language,
@@ -337,12 +364,7 @@ class SmartVoiceClient:
             models=models,
             include_source_text=include_source_text,
         )
-        socket = await connect(
-            _websocket_url(self.base_url),
-            open_timeout=self.open_timeout,
-            max_size=8 * 1024 * 1024,
-            max_queue=4,
-        )
+        socket = await self._connect_websocket(self.open_timeout)
         session = StreamingSession(
             socket,
             config,
@@ -350,6 +372,8 @@ class SmartVoiceClient:
             open_timeout=self.open_timeout,
             resume_attempts=self.resume_attempts,
             resume_backoff=self.resume_backoff,
+            websocket_headers=self._websocket_headers,
+            websocket_options=self._websocket_options,
         )
         try:
             await socket.send(json.dumps(config, separators=(",", ":")))
@@ -372,6 +396,17 @@ class SmartVoiceClient:
         except BaseException:
             await socket.close()
             raise
+
+    async def _connect_websocket(self, timeout: float) -> ClientConnection:
+        options: dict[str, Any] = {
+            "open_timeout": timeout,
+            "max_size": 8 * 1024 * 1024,
+            "max_queue": 4,
+            **self._websocket_options,
+        }
+        if self._websocket_headers:
+            options["additional_headers"] = self._websocket_headers
+        return await connect(_websocket_url(self.base_url), **options)
 
     @staticmethod
     def _make_config(
@@ -432,6 +467,8 @@ class StreamingSession:
         open_timeout: float = 10,
         resume_attempts: int = 3,
         resume_backoff: float = 0.25,
+        websocket_headers: Mapping[str, str] | None = None,
+        websocket_options: Mapping[str, Any] | None = None,
     ):
         self._socket = socket
         self.config = dict(config)
@@ -439,6 +476,8 @@ class StreamingSession:
         self.open_timeout = open_timeout
         self.resume_attempts = resume_attempts
         self.resume_backoff = resume_backoff
+        self._websocket_headers = dict(websocket_headers or {})
+        self._websocket_options = dict(websocket_options or {})
         self.ready: StreamEvent | None = None
         self._recovery: Mapping[str, Any] | None = None
         self._last_event_sequence = 0
@@ -454,6 +493,7 @@ class StreamingSession:
         self._pending_input: OrderedDict[int, tuple[int, bytes]] = OrderedDict()
         self._input_history_limit = 128
         self._closed = False
+        self._terminal_received = False
         self._events_active = False
         self._send_lock = asyncio.Lock()
         self._recovery_lock = asyncio.Lock()
@@ -484,7 +524,7 @@ class StreamingSession:
         return self
 
     async def __aexit__(self, *_: object) -> None:
-        await self.close()
+        await self.close(cancel_if_incomplete=True)
 
     async def send_audio_frame(self, pcm16: bytes) -> None:
         """Send one mono PCM16 frame (normally 640 bytes / 20 ms).
@@ -567,6 +607,33 @@ class StreamingSession:
                 if delay > 0:
                     await asyncio.sleep(delay)
 
+    async def send_audio_stream(
+        self, chunks: AsyncIterable[bytes], *, frame_bytes: int = FRAME_BYTES, realtime: bool = True,
+    ) -> None:
+        """Send incrementally produced PCM16 chunks without buffering the whole recording."""
+        if frame_bytes < 2 or frame_bytes > MAX_FRAME_BYTES or frame_bytes % 2:
+            raise ValueError("frame_bytes must be even and between 2 and 32000")
+        started = time.monotonic()
+        sample_cursor = 0
+        pending = bytearray()
+        async for chunk in chunks:
+            if not isinstance(chunk, (bytes, bytearray, memoryview)):
+                raise TypeError("audio chunks must be bytes-like PCM16 data")
+            pending.extend(chunk)
+            while len(pending) >= frame_bytes:
+                frame = bytes(pending[:frame_bytes])
+                del pending[:frame_bytes]
+                await self.send_audio_frame(frame)
+                sample_cursor += len(frame) // 2
+                if realtime:
+                    delay = started + sample_cursor / SAMPLE_RATE - time.monotonic()
+                    if delay > 0:
+                        await asyncio.sleep(delay)
+        if len(pending) % 2:
+            raise ValueError("PCM16 stream ended with an incomplete sample")
+        if pending:
+            await self.send_audio_frame(bytes(pending))
+
     async def finish(self) -> None:
         await self._send_control({"type": "finish"})
 
@@ -620,6 +687,8 @@ class StreamingSession:
                 if event.type == "input_ack":
                     self._ack_input(event.data)
                     continue
+                if event.terminal:
+                    self._terminal_received = True
                 yield event
                 await self._ack(event.data)
                 if event.terminal:
@@ -705,7 +774,7 @@ class StreamingSession:
                 del self._pending_input[old_sequence]
         self._input_window_changed.set()
 
-    async def _send_control(self, message: Mapping[str, Any]) -> None:
+    async def _send_control(self, message: Mapping[str, Any], *, recover: bool = True) -> None:
         if self._closed:
             raise SmartVoiceError("Session is closed")
         payload = json.dumps(dict(message), separators=(",", ":"))
@@ -716,7 +785,7 @@ class StreamingSession:
                 return
             except ConnectionClosed:
                 pass
-        if not self.resumable:
+        if not recover or not self.resumable:
             raise SmartVoiceError("WebSocket closed while sending a control message")
         await self._recover(socket)
         async with self._send_lock:
@@ -753,12 +822,15 @@ class StreamingSession:
                 attempt_timeout = min(self.open_timeout, remaining)
                 candidate: ClientConnection | None = None
                 try:
-                    candidate = await connect(
-                        _websocket_url(self.base_url),
-                        open_timeout=attempt_timeout,
-                        max_size=8 * 1024 * 1024,
-                        max_queue=4,
-                    )
+                    options: dict[str, Any] = {
+                        "open_timeout": attempt_timeout,
+                        "max_size": 8 * 1024 * 1024,
+                        "max_queue": 4,
+                        **self._websocket_options,
+                    }
+                    if self._websocket_headers:
+                        options["additional_headers"] = self._websocket_headers
+                    candidate = await connect(_websocket_url(self.base_url), **options)
                     request = {
                         "type": "resume",
                         "protocol": PROTOCOL,
@@ -847,8 +919,13 @@ class StreamingSession:
         except (ConnectionClosed, SmartVoiceError, asyncio.CancelledError):
             return
 
-    async def close(self) -> None:
+    async def close(self, *, cancel_if_incomplete: bool = True) -> None:
         if not self._closed:
+            if cancel_if_incomplete and not self._terminal_received:
+                try:
+                    await self._send_control({"type": "cancel"}, recover=False)
+                except (ConnectionClosed, SmartVoiceError):
+                    pass
             self._closed = True
             if self._heartbeat_task:
                 self._heartbeat_task.cancel()

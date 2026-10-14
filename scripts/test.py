@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib.util
 import argparse
 import os
+import shutil
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -14,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TESTS = ROOT / "tests"
 SDK_TESTS = ROOT / "sdk" / "python" / "tests"
 SDK_SOURCE = ROOT / "sdk" / "python" / "src"
+TYPESCRIPT_SDK = ROOT / "sdk" / "typescript"
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(SDK_SOURCE))
@@ -38,6 +41,21 @@ def _without_real_inference(suite: unittest.TestSuite) -> unittest.TestSuite:
         )):
             filtered.addTest(test)
     return filtered
+
+
+def _run_javascript_sdk_tests() -> bool:
+    """Run the model-free JS SDK contract/recovery tests when dependencies exist."""
+    npm = shutil.which("npm")
+    ready = (TYPESCRIPT_SDK / "node_modules" / ".bin" / "tsc").exists()
+    if not npm or not ready:
+        print(
+            "Skipping JavaScript SDK tests: install Node.js 20+ and run "
+            "'npm ci --prefix sdk/typescript'.",
+            flush=True,
+        )
+        return True
+    completed = subprocess.run([npm, "test", "--prefix", str(TYPESCRIPT_SDK)], check=False)
+    return completed.returncode == 0
 
 
 def main() -> int:
@@ -116,7 +134,8 @@ def main() -> int:
     if mode == "ci":
         suite = _without_real_inference(suite)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
-    return 0 if result.wasSuccessful() else 1
+    js_success = _run_javascript_sdk_tests()
+    return 0 if result.wasSuccessful() and js_success else 1
 
 
 if __name__ == "__main__":
