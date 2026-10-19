@@ -10,7 +10,8 @@ import threading
 import time
 from typing import Sequence
 
-from smartvoice.domain.contracts import InstalledModel, LanguageIdentificationResult, ProviderCapabilityDocument, SynthesizedSpeech, TranscriptionResult
+from smartvoice.domain.capabilities import ProviderCapabilities, TaskCapability
+from smartvoice.domain.contracts import InstalledModel, LanguageIdentificationResult, SynthesizedSpeech, TranscriptionResult
 from smartvoice.domain.errors import UnsupportedFeatureError
 from smartvoice.ports.inference import (
     InferenceProvider,
@@ -238,8 +239,8 @@ class CompositeInferenceProvider:
             "installed_model_count": len(models),
         }
 
-    def capabilities(self) -> ProviderCapabilityDocument:
-        tasks: list[dict[str, object]] = []
+    def capabilities(self) -> ProviderCapabilities:
+        tasks: list[TaskCapability] = []
         models = self.installed_models()
         for backend, provider in self.providers.items():
             backend_models = [model for model in models if model.get("backend") == backend]
@@ -249,22 +250,17 @@ class CompositeInferenceProvider:
                 if callable(capabilities_for_models)
                 else provider.capabilities()
             )
-            for task in capabilities.get("tasks", []):
-                task_document = dict(task)
-                task_document.setdefault("backend", backend)
-                tasks.append(task_document)
-        return {
-            "api_version": "v1",
-            "capability_schema_version": "1.0",
-            "backend": "multi-adapter",
-            "backends": list(self.providers),
-            "tasks": tasks,
-        }
+            tasks.extend(capabilities.tasks)
+        return ProviderCapabilities(
+            backend="multi-adapter", backends=tuple(self.providers), tasks=tuple(tasks),
+        )
 
     def segment_limits(self, model_id):
         provider = self._provider_for_model(model_id)
         method = getattr(provider, "segment_limits", None)
-        return method(model_id) if callable(method) else {}
+        from smartvoice.domain.capabilities import SegmentLimits
+
+        return method(model_id) if callable(method) else SegmentLimits()
 
     def transcribe(
         self, audio: bytes, language: str = "auto", model_id: str | None = None,

@@ -37,18 +37,20 @@ snapshot. If the refresh fails, it retries after 5, 10, and 15 seconds. After
 three failed retries, automatic retries stop until a manual refresh or a
 model-management operation triggers another scan. The matching environment
 variable is `SMARTVOICE_MODEL_AVAILABILITY_TTL_SECONDS`.
-| `GET /v1/catalog` | Optional `task`: `transcription` or `speech` | `{ "data": [...], "storage": {...} }`. Catalog entries include model ID, task, languages, backend, install status, source/archive metadata, estimated and installed sizes, required files and license note. Storage reports installed, free and total bytes. |
+| `GET /v1/catalog` | Optional `task`: `transcription` or `speech` | `{ "data": [...], "storage": {...} }`. Catalog entries include model ID, task, languages, backend, install status, source/archive metadata, estimated payload/download sizes, required files and license note. Storage reports installed, free and total bytes. |
+| `GET /v1/model-packages` | None | Returns `static-speech`, `streaming`, and `all` packages derived from the active router and default streaming plans. Each package includes deduplicated assets, installation state, missing assets, estimated download size and whether that estimate is complete. |
+| `POST /v1/language-identification/install` | None | Installs the Whisper Tiny language-identification resource and returns its resource ID and status. |
 | `POST /v1/router/reload` | Empty JSON object | Reloads `router.json`; invalid configuration returns an error and leaves the active configuration unchanged. Intended for local CLI use. |
 
 The `task` query parameter is a SmartVoice extension; omit it to list all tasks. Task names are `transcription` for STT and `speech` for TTS.
 
 `GET /v1/models` only returns models available through the active inference adapters; catalog entries that are uninstalled or unavailable are omitted. Use `/v1/catalog` to inspect installation status for every catalog entry.
 
-`estimated_size_bytes` is the catalog's approximate unpacked model payload size. `installed_size_bytes`, when present, is measured from the installed model directory.
+`estimated_size_bytes` is the catalog's approximate installed model payload size. `estimated_download_size_bytes` estimates bytes fetched during installation; `estimated_download_size_complete` indicates whether the estimate covers every source file. Package `estimated_size_bytes` is the deduplicated download estimate and `estimated_size_basis` is `download`. `estimated_installed_size_bytes` is null when any dependency lacks an installed-payload estimate. `installed_size_bytes`, when present, is measured from the installed model directory.
 
 The router reads `<data_dir>/router.json`, initializing it from the built-in `catalog/router.json` on first run. Edit the JSON directly, then run `python -m smartvoice router reload`. The command accepts the same `--config` option as the service and optional `--host`/`--port` overrides. Routing candidates are ordered per task and language code declared by the model catalog; the first installed and verified candidate is selected. Requests using `smartvoice-auto` use routing for either audio endpoint. Requests using a concrete model ID continue to invoke that model directly. A model inference failure does not cause a second candidate to be tried.
 
-The dedicated Whisper Tiny spoken-language detector is installed by `python -m smartvoice models install all` and by the Quick Start model installation steps. The service does not download it during startup. When it is unavailable, routed STT falls back to an installed model that supports automatic language detection, if one is available.
+The dedicated Whisper Tiny spoken-language detector is included in the `static-speech` and `all` packages, and can also be installed individually with `python -m smartvoice models install-language-id`. The service does not download it during startup. When it is unavailable, routed STT falls back to an installed model that supports automatic language detection, if one is available.
 
 The total inference deadline and client cancellation also apply during language identification. A deadline expiry returns `504` and does not start fallback transcription; a client disconnect stops future work. An already-running native call retains its lease until it finishes.
 

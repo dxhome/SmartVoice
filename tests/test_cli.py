@@ -8,10 +8,46 @@ import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
-from smartvoice.__main__ import _format_model_list, _models, _router, _serve
+from smartvoice.__main__ import _format_model_list, _format_model_packages, _models, _router, _serve
 
 
 class ModelListOutputTests(unittest.TestCase):
+    def test_package_list_includes_membership_status_and_size(self):
+        output = _format_model_packages([{
+            "id": "static-speech",
+            "name": "Static speech (STT + TTS)",
+            "status": "partial",
+            "estimated_size_bytes": 1048576,
+            "estimated_size_complete": False,
+            "estimated_installed_size_bytes": 2097152,
+            "assets": [{"id": "stt-example", "name": "Example STT", "status": "installed"}],
+        }])
+        self.assertIn("static-speech", output)
+        self.assertIn("1 MiB download (incomplete estimate)", output)
+        self.assertIn("Example STT (stt-example) | Installed", output)
+
+    def test_list_can_select_a_package_without_changing_default_view(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {"SMARTVOICE_HOME": temporary}), patch(
+            "smartvoice.__main__.ModelManagementService"
+        ) as management, patch(
+            "smartvoice.adapters.inference.factory.create_inference_provider"
+        ) as provider_factory, patch(
+            "smartvoice.services.model_storage.catalog_models", return_value=[]
+        ), patch(
+            "smartvoice.services.model_router.ModelRouter"
+        ):
+            provider_factory.return_value.runtime.return_value = {"backends": {}}
+            management.return_value.packages.return_value = {"data": [{
+                "id": "streaming", "name": "Streaming", "status": "not_installed",
+                "estimated_size_bytes": 1024, "estimated_size_complete": True,
+                "assets": [{"id": "streaming-stt-example", "name": "Example ASR", "status": "uninstalled"}],
+            }]}
+            output = io.StringIO()
+            with redirect_stdout(output):
+                _models(["list", "--package", "streaming"])
+            self.assertIn("Example ASR (streaming-stt-example)", output.getvalue())
+            management.return_value.packages.assert_called_once()
+
     def test_model_list_groups_by_install_state_then_task_compactly(self):
         output = _format_model_list([
             {
@@ -63,6 +99,9 @@ class ModelListOutputTests(unittest.TestCase):
                 'smartvoice.services.spoken_language_identifier.ensure_language_id_model', return_value=temporary) as language_id:
             service = management.return_value
             service.catalog.return_value = {'data': entries}
+            service.packages.return_value = {'data': [{
+                'id': 'all', 'model_ids': [spec.id for spec in specs], 'estimated_size_bytes': 0,
+            }]}
             service.get_spec.side_effect = lambda mid: next(spec for spec in specs if spec.id == mid)
             service.install.return_value = temporary
             with redirect_stdout(io.StringIO()): _models(['install', 'all'])

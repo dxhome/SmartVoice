@@ -35,6 +35,8 @@ class SpeechPipeline:
         if self.task and self.task.done(): self.task.result()
 
     async def submit(self, unit, event):
+        if not unit.committed or not event.get('committed') or not event.get('final'):
+            raise StageError('tts_input_not_committed', 'Synthesis requires a finalized sentence and translation')
         # At explicit end-of-input there can be no continuation to complete a
         # semantic tail. Speak the committed tail as heard; keep the boundary
         # uncertainty observable on the audio event. In-session forced cuts
@@ -88,8 +90,9 @@ class SpeechPipeline:
             try:
                 parts = list(chunks(target.text, self.owner.plan.tts_chunk_chars, target.language))
                 for index, (start, end, text) in enumerate(parts):
-                    # Reserve before inference; never hold compute while waiting for playback.
-                    await self.wait_capacity(10)
+                    # Synthesize ahead of playback. Reserving the maximum chunk
+                    # duration here can consume the entire buffer budget and
+                    # serialize TTS behind playback, creating audible gaps.
                     queued = time.monotonic()
                     async with self.owner.translation_gate.permit(0):
                         audio = await self.worker.call(self.adapter.synthesize, replace(target, text=text),
@@ -99,7 +102,8 @@ class SpeechPipeline:
                     if not audio.pcm or audio.channels != 1 or audio.sample_rate <= 0 or len(audio.pcm) % 2:
                         raise StageError('invalid_stage_output', 'Expected nonempty PCM16 mono output')
                     duration = len(audio.pcm) / (audio.sample_rate * 2)
-                    if duration > 10: raise StageError('tts_output_limit', 'Audio chunk exceeds duration limit')
+                    if duration > 15: raise StageError('tts_output_limit', 'Audio chunk exceeds duration limit')
+                    await self.wait_capacity(duration)
                     payload = self.packager(audio.pcm, audio.sample_rate)
                     self.sequence += 1
                     self.total_audio_seconds += duration

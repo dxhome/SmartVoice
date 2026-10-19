@@ -77,7 +77,7 @@ class TranscriptionService:
             return self.provider.transcribe(audio, language, model_id)
         maximum = DEFAULT_TRANSCRIPTION_WINDOW_SECONDS
         if isinstance(self.provider, SegmentPlanning):
-            declared = self.provider.segment_limits(model_id).get("audio_seconds", 0)
+            declared = self.provider.segment_limits(model_id).audio_seconds or 0
             if declared:
                 maximum = float(declared)
         if prepared.duration <= maximum:

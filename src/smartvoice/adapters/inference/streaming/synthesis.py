@@ -6,8 +6,11 @@ from smartvoice.domain.streaming import CommittedTarget,SynthesizedAudio,StageEr
 class SpeechAdapter:
     def __init__(self,settings,spec,plan):
         from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
-        self.provider=SherpaOnnxProvider(replace(settings,num_threads=plan.tts_threads,max_tts_audio_seconds=10,
-            max_tts_internal_bytes=882044,max_tts_output_bytes=882044))
+        # Allow one complete, confirmed English sentence (up to the plan's
+        # bounded text size) to be synthesized as one chunk. A 15-second cap
+        # still bounds native memory and each playback-ledger entry.
+        self.provider=SherpaOnnxProvider(replace(settings,num_threads=plan.tts_threads,max_tts_audio_seconds=15,
+            max_tts_internal_bytes=1_323_044,max_tts_output_bytes=1_323_044))
         self.fallback=plan.tts_fallback_model_id;self.fallback_sid=plan.tts_fallback_speaker_id
         self.spec=spec;self.language=plan.target_language;self.speed=plan.tts_speed;self.sid=plan.tts_speaker_id
         self.plan={'model_id':spec.id,'profile':spec.id,'chunk_max_chars':plan.tts_chunk_chars,'sample_rate':44100 if spec.model_type=='supertonic' else 22050,
@@ -34,7 +37,7 @@ class SpeechAdapter:
             rate=wav.getframerate();channels=wav.getnchannels();width=wav.getsampwidth();pcm=wav.readframes(wav.getnframes())
         if mixed and rate != 22050:
             pcm=resample_pcm16_mono(pcm,rate,22050);rate=22050
-        if not pcm or (channels,width)!=(1,2) or len(pcm)>rate*2*10:
+        if not pcm or (channels,width)!=(1,2) or len(pcm)>rate*2*15:
             raise StageError('tts_output_limit','Generated audio exceeds the chunk format or duration limit')
         return SynthesizedAudio(target.translation_id,target.language,pcm,rate,channels,profile=self.fallback if mixed else self.spec.id)
     def close(self):

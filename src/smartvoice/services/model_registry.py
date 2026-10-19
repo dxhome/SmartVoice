@@ -66,6 +66,12 @@ def load_catalog() -> list[ModelSpec]:
                     raise RuntimeError(f"Invalid extra file metadata for {item['id']}: {name}")
         characters = item.get("speech_segment_characters", 0)
         seconds = item.get("transcription_segment_seconds", 0)
+        download_size = item.get("estimated_download_size_bytes")
+        download_complete = item.get("estimated_download_size_complete", False)
+        if download_size is not None and (type(download_size) is not int or download_size < 0):
+            raise RuntimeError(f"Invalid estimated download size for {model_id}")
+        if type(download_complete) is not bool or (download_complete and download_size is None):
+            raise RuntimeError(f"Invalid estimated download size completeness for {model_id}")
         if (type(seconds) is not int or not (seconds == 0 or 2 <= seconds <= 29)
                 or (seconds and item["task"] != "transcription")):
             raise RuntimeError(f"Invalid transcription segment policy for {item['id']}")
@@ -122,6 +128,8 @@ def load_catalog() -> list[ModelSpec]:
             extra_files=extra_files, voices_file=item.get("voices_file"),
             vocoder_file=item.get("vocoder_file"), voice_count=item.get("voice_count"),
             estimated_size_bytes=item.get("estimated_size_bytes"),
+            estimated_download_size_bytes=item.get("estimated_download_size_bytes"),
+            estimated_download_size_complete=item.get("estimated_download_size_complete", False),
             minimum_free_bytes=item.get("minimum_free_bytes"),
             rule_fsts=item.get("rule_fsts"),
             speech_segment_characters=item.get("speech_segment_characters", 0),

@@ -14,6 +14,7 @@ from typing import Any
 
 from smartvoice.config.settings import Settings
 from smartvoice.domain.errors import InvalidRequestError, UnsupportedFeatureError
+from smartvoice.domain.capabilities import TaskCapability
 from smartvoice.services.model_catalog_constants import MODEL_ID_PATTERN
 from smartvoice.services.model_registry import load_catalog
 from smartvoice.services.builtin_resources import read_builtin_json
@@ -50,7 +51,14 @@ def _parse_router_config(raw: Any) -> RouterConfig:
     if not isinstance(tasks, dict) or set(tasks) != {"transcription", "speech"}:
         raise RouterConfigError("Router configuration tasks must contain transcription and speech maps.")
     specs = {spec.id: spec for spec in load_catalog()}
-    supported_languages = {language for spec in specs.values() for language in spec.languages if language != "auto"}
+    model_capabilities = {
+        model_id: TaskCapability.from_model_spec(spec)
+        for model_id, spec in specs.items() if spec.task in ("transcription", "speech")
+    }
+    supported_languages = {
+        language for capability in model_capabilities.values()
+        for language in capability.languages if language != "auto"
+    }
     normalized: dict[str, dict[str, tuple[str, ...]]] = {}
     for task, languages in tasks.items():
         if not isinstance(languages, dict):
@@ -71,9 +79,10 @@ def _parse_router_config(raw: Any) -> RouterConfig:
                 spec = specs.get(model_id)
                 if spec is None:
                     raise RouterConfigError(f"Unknown model ID {model_id!r} in router configuration.")
-                if spec.task != task or spec.category == "streaming":
+                capability = model_capabilities[model_id]
+                if capability.task != task or spec.category == "streaming":
                     raise RouterConfigError(f"Model {model_id!r} does not support task {task!r}.")
-                if language not in spec.languages:
+                if not capability.supports_language(language):
                     raise RouterConfigError(f"Model {model_id!r} does not declare support for language {language!r}.")
             normalized[task][language] = tuple(model_ids)
     canonical = json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":"))

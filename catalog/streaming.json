@@ -31,7 +31,7 @@
     "en": {
       "speed": 1.1,
       "speaker_id": 0,
-      "max_chunk_chars": 100
+      "max_chunk_chars": 180
     },
     "zh": {
       "speed": 1.0,

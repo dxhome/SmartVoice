@@ -172,6 +172,8 @@ def installed_models(
                 "installed": True,
                 "installed_size_bytes": installed_size,
                 "estimated_size_bytes": spec.estimated_size_bytes,
+                "estimated_download_size_bytes": spec.estimated_download_size_bytes,
+                "estimated_download_size_complete": spec.estimated_download_size_complete,
                 "license_note": spec.license_note,
             })
         else:
@@ -232,6 +234,8 @@ def catalog_models(
         "archive_sha256": spec.archive_sha256,
         "installed_size_bytes": installed_by_id.get(spec.id, {}).get("installed_size_bytes"),
         "estimated_size_bytes": spec.estimated_size_bytes,
+        "estimated_download_size_bytes": spec.estimated_download_size_bytes,
+        "estimated_download_size_complete": spec.estimated_download_size_complete,
         "required_files": list(spec.required_files),
         "license_note": spec.license_note,
         "extra_files": spec.extra_files,

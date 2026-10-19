@@ -17,6 +17,8 @@ logger = logging.getLogger("smartvoice.language_id")
 
 MODEL_REVISION = "65176e2deb88badc814a94058666cadccc29b61c"
 MODEL_ID = "whisper-tiny-int8"
+LANGUAGE_ID_RESOURCE_ID = "sherpa-onnx-whisper-tiny-int8-language-id"
+LANGUAGE_ID_ESTIMATED_SIZE_BYTES = 103609903
 _HF_RESOLVE = f"https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/{MODEL_REVISION}/"
 _LFS_SHA256 = {
     "tiny-encoder.int8.onnx": "d24fb083ae3b1041fc24e97971d60e280c9342201fbb67b0ab428a8b4a51a434",

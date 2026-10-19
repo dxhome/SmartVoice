@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 from smartvoice.adapters.inference.composite_provider import CompositeInferenceProvider
 from smartvoice.adapters.storage.catalog_model_repository import CatalogModelRepository
 from smartvoice.config.settings import Settings
+from smartvoice.domain.capabilities import ProviderCapabilities, TaskCapability
 
 
 MODEL = {
@@ -44,7 +45,12 @@ class Provider:
                 "installed_model_count": len(models)}
 
     def capabilities_for_models(self, models):
-        return {"tasks": [{"task": m["task"], "model": m["id"]} for m in models]}
+        return ProviderCapabilities(backend="test", tasks=tuple(
+            TaskCapability(
+                task=m["task"], model_id=m["id"], backend="test",
+                languages=tuple(m.get("languages", ())),
+            ) for m in models
+        ))
 
 
 class ThreadStub:
@@ -72,7 +78,7 @@ class ModelAvailabilityTests(unittest.TestCase):
         models[0]["id"] = "mutated-by-caller"
 
         self.assertEqual(self.provider.inference_models()[0]["id"], MODEL["id"])
-        self.assertEqual(self.provider.capabilities()["tasks"][0]["model"], MODEL["id"])
+        self.assertEqual(self.provider.capabilities().tasks[0].model_id, MODEL["id"])
         self.assertEqual(self.provider.runtime()["installed_model_count"], 1)
         self.assertEqual(self.backend.scan_calls, before)
         self.assertEqual(self.repository.refresh_calls, 1)

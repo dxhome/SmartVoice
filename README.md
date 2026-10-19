@@ -74,7 +74,7 @@ For each request, SmartVoice applies the route table's task and language rules, 
 
 ## Streaming
 
-Streaming is a supported SmartVoice feature for processing audio as it arrives. It offers three workflows: live transcription with original subtitles, Chinese↔English translated subtitles, and spoken interpretation with translated speech. Use the browser workspace at `/console/streaming` to process an audio file, or connect a client that sends real-time PCM audio through `WS /v1/audio/stream`. The Console reports which model chains are ready for the selected workflow.
+Streaming is a supported SmartVoice feature for processing audio as it arrives. It offers three workflows: live transcription with original subtitles, Chinese↔English translated subtitles, and spoken interpretation with translated speech. Use the browser workspace at `/console/streaming` with a local audio file or microphone, or connect a client that sends real-time PCM audio through `WS /v1/audio/stream`. Microphone access requires browser permission and a `localhost` or HTTPS page. The Console reports which model chains are ready for the selected workflow.
 
 For API clients, check `GET /v1/audio/stream/capabilities` before starting a session. The WebSocket contract is versioned as `smartvoice.stream.v1`; clients send 16 kHz, mono PCM16 frames and receive incremental transcript/translation events and, for spoken interpretation, ordered audio chunks. The browser workspace includes subtitle revision handling, ordered playback, and reconnect support while the service process remains active. Reconnection does not survive a service restart.
 
@@ -83,6 +83,8 @@ Install the required streaming model components for the language direction and m
 ## Model management
 
 SmartVoice keeps application code and model files separate. Browse and install models in the Console, with the CLI, or through model download jobs in the API. Availability checks validate both model files and the active runtime. Model downloads need internet access; inference with installed models can run offline. Model and voice licenses may differ from SmartVoice's license.
+
+Model management offers Packages and Individual modes. `static-speech` installs Chinese and English static STT/TTS using the active router’s first choices, plus automatic spoken-language identification. `streaming` installs the dependencies for Chinese and English streaming transcription, both translation directions, and spoken interpretation. `all` installs the full catalog plus language-identification assets. Install both `static-speech` and `streaming` for the complete bilingual feature set, or install individual models as needed. Package cards show deduplicated estimated download size; conversion-source estimates can be incomplete.
 
 ### Speech models
 
@@ -116,12 +118,19 @@ Sizes are approximate unpacked model-file sizes; see [`catalog/models.json`](cat
 
 ### Install and manage
 
-Install a model by ID, or use `all` to install the full catalog and language detector (this may require several gigabytes of disk space):
+Choose the packages or individual models you need. Install both feature packages for the full bilingual feature set; use `all` only when you want the entire catalog, which may require several gigabytes of disk space:
 
 ```bash
 python -m smartvoice models list
-python -m smartvoice models install stt-sensevoice-small-int8
-python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
+# Optional package view; without --package the current catalog view is unchanged:
+python -m smartvoice models list --package static-speech
+# Complete bilingual static and streaming features:
+python -m smartvoice models install static-speech
+python -m smartvoice models install streaming
+# Or install the entire catalog:
+# python -m smartvoice models install all
+# Or install one model:
+# python -m smartvoice models install stt-qwen3-asr-600m-int8
 python -m smartvoice models refresh
 python -m smartvoice models export stt-sensevoice-small-int8 ./sensevoice.smartvoice.zip
 python -m smartvoice models import ./sensevoice.smartvoice.zip
@@ -264,16 +273,15 @@ Open the [SmartVoice Console](http://127.0.0.1:8000/console). Use **Models** to 
 
 In the Console workspace, try speech recognition and synthesis with installed models. Use the generated API examples for your selected models and settings, and edit Smart Router priorities in the Console; saved routing changes take effect immediately. The interactive [API docs](http://127.0.0.1:8000/docs) are also available.
 
-To try streaming, install the model components for a workflow and open [Streaming](http://127.0.0.1:8000/console/streaming). The page can stream a local audio file through transcription, translated subtitles, or spoken interpretation. For translation models, first install `smartvoice[streaming,model-preparation]` as described in [Model management](#model-management).
+To try streaming, install the model components for a workflow and open [Streaming](http://127.0.0.1:8000/console/streaming). The page can stream a local audio file or microphone input through transcription, translated subtitles, or spoken interpretation. Microphone access requires browser permission on `localhost` or HTTPS. For translation models, first install `smartvoice[streaming,model-preparation]` as described in [Model management](#model-management).
 
 Service settings are stored in `<data_dir>/smartvoice.json`; router priorities are stored separately in `<data_dir>/router.json`.
 
-You can manage models from the CLI as well. For example, install a basic STT and TTS pair and the language detector:
+You can manage models from the CLI as well. For example, install the bilingual static speech and streaming packages:
 
 ```bash
-python -m smartvoice models install stt-sensevoice-small-int8
-python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
-python -m smartvoice models install-language-id
+python -m smartvoice models install static-speech
+python -m smartvoice models install streaming
 ```
 
 On macOS Apple Silicon, Windows x64, and Linux x86_64 PyPI installations, the Qwen3-TTS runtime is bundled. From a source checkout, build the runtime on Windows and Linux as described above; the macOS source install compiles it automatically. Then install Qwen3-TTS:

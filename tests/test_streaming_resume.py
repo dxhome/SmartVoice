@@ -494,6 +494,20 @@ class RecoveryTCPTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(thread.is_alive(),'Owned test server did not exit')
 
 class RecoveryBrowserClientTests(unittest.TestCase):
+    def test_browser_microphone_capture_and_stop_drain_contract(self):
+        import shutil
+        import subprocess
+        from tests.streaming_long_audio import ROOT
+        node=shutil.which('node')
+        if not node:self.skipTest('Node.js is required for the browser-client simulation')
+        import os
+        for sample_rate in ('48000','16000'):
+            with self.subTest(sample_rate=sample_rate):
+                env={**os.environ,'MIC_SAMPLE_RATE':sample_rate}
+                result=subprocess.run([node,'tests/streaming_microphone_browser.js'],cwd=ROOT,env=env,
+                                      capture_output=True,text=True,timeout=8)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+
     def test_browser_reconnect_and_lost_input_ack_contract(self):
         import shutil
         import subprocess

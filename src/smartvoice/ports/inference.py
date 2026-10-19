@@ -2,10 +2,10 @@
 
 from typing import Protocol, Sequence, runtime_checkable
 
+from smartvoice.domain.capabilities import ProviderCapabilities, SegmentLimits
 from smartvoice.domain.contracts import (
     InstalledModel,
     LanguageIdentificationResult,
-    ProviderCapabilityDocument,
     SynthesizedSpeech,
     TranscriptionResult,
 )
@@ -14,7 +14,7 @@ from smartvoice.domain.contracts import (
 @runtime_checkable
 class SegmentPlanning(Protocol):
     """Measured segment policy, also published in model capability documents."""
-    def segment_limits(self, model_id: str) -> dict[str, float | int]: ...
+    def segment_limits(self, model_id: str) -> SegmentLimits: ...
 
 
 class InferenceProvider(Protocol):
@@ -31,7 +31,7 @@ class InferenceProvider(Protocol):
         language: str = "auto",
     ) -> SynthesizedSpeech: ...
 
-    def capabilities(self) -> ProviderCapabilityDocument: ...
+    def capabilities(self) -> ProviderCapabilities: ...
 
 
 @runtime_checkable

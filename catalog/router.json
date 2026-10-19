@@ -106,8 +106,8 @@
     },
     "speech": {
       "zh": [
-        "tts-qwen3-0-6b-customvoice",
         "tts-matcha-zh-baker",
+        "tts-qwen3-0-6b-customvoice",
         "tts-kokoro-multilingual-v1-1-zh-en"
       ],
       "en": [

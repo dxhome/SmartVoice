@@ -118,8 +118,8 @@ class SpeechService:
             )
             model_id, states = self.model_router.choose("speech", resolved, available, config=router_config)
             candidates = tuple(states)
-        limits = self.provider.segment_limits(model_id) if isinstance(self.provider, SegmentPlanning) else {}
-        maximum = int(limits.get("characters", 0))
+        limits = self.provider.segment_limits(model_id) if isinstance(self.provider, SegmentPlanning) else None
+        maximum = int(limits.characters or 0) if limits is not None else 0
         chunks = split_text(text, maximum) if maximum and self.assembler is not None else [text]
         # A hard character cut can leave a whitespace-only tail. It carries no
         # speech and some runtimes return empty audio for it.

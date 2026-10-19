@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import SynthesizedSpeech
+from smartvoice.domain.capabilities import ProviderCapabilities, TaskCapability
 
 TRANSCRIPTION_FIXTURE = wav_audio(rate=16000, seconds=0.001)
 
@@ -39,7 +40,16 @@ class FakeProvider:
         return {"backend": "test-double", "actual_device": "cpu"}
 
     def capabilities(self):
-        return {"api_version": "v1", "tasks": ["transcription", "speech"]}
+        return ProviderCapabilities(
+            backend="test-double",
+            tasks=tuple(
+                TaskCapability(
+                    task=model["task"], model_id=model["id"], backend="test-double",
+                    languages=("zh", "en"),
+                )
+                for model in self.installed_models()
+            ),
+        )
 
     def transcribe(self, audio, language="auto", model_id=None):
         self.transcribe_calls.append((language, model_id))
@@ -234,6 +244,19 @@ class ApiTests(unittest.TestCase):
             self.assertTrue(response.json()["data"])
             self.assertIn("available_disk_bytes", response.json()["storage"])
 
+    def test_model_packages_expose_router_and_streaming_dependencies_with_estimates(self):
+        with self.make_client() as client:
+            response = client.get("/v1/model-packages")
+            self.assertEqual(response.status_code, 200, response.text)
+            packages = {item["id"]: item for item in response.json()["data"]}
+            self.assertEqual(set(packages), {"static-speech", "streaming", "all"})
+            self.assertIn("stt-sensevoice-small-int8", packages["static-speech"]["model_ids"])
+            self.assertIn("tts-matcha-zh-baker", packages["static-speech"]["model_ids"])
+            self.assertIn("tts-supertonic-v3-multilingual-int8", packages["static-speech"]["model_ids"])
+            self.assertIn("streaming-mt-m2m100-zh-en-int8", packages["streaming"]["model_ids"])
+            self.assertIsInstance(packages["static-speech"]["estimated_size_bytes"], int)
+            self.assertIsInstance(packages["streaming"]["estimated_size_bytes"], int)
+
     def test_openai_model_list_shape_and_task_filters_on_smartvoice_extensions(self):
         with self.make_client() as client:
             installed = client.get("/v1/models")
@@ -255,7 +278,8 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(catalog.json()["data"])
         self.assertTrue(all(item["task"] == "speech" for item in catalog.json()["data"]))
         self.assertIn("available_disk_bytes", catalog.json()["storage"])
-        self.assertEqual(capabilities.json()["tasks"], ["transcription"])
+        self.assertTrue(capabilities.json()["tasks"])
+        self.assertTrue(all(item["task"] == "transcription" for item in capabilities.json()["tasks"]))
         self.assertEqual(schema["paths"]["/v1/models"]["get"]["parameters"][0]["name"], "category")
         for path in ("/v1/catalog", "/v1/capabilities"):
             parameters = schema["paths"][path]["get"]["parameters"]

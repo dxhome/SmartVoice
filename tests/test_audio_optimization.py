@@ -16,6 +16,7 @@ from tests.audio_fixtures import wav_audio
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import SynthesizedSpeech
+from smartvoice.domain.capabilities import ProviderCapabilities, SegmentLimits
 from smartvoice.domain.errors import InferenceTimeoutError, SpeechOutputTooLargeError, InferenceError
 from smartvoice.adapters.audio.encoding import AudioEncoder, AudioAssembler
 from smartvoice.adapters.audio.input import BoundedAudioInput
@@ -27,9 +28,9 @@ class Provider:
     def installed_models(self):
         return [{'id':'tts-supertonic-v3-multilingual-int8','task':'speech','languages':['en'],'backend':'fixture'},
                 {'id':'stt-sensevoice-small-int8','task':'transcription','languages':['auto','en','zh'],'backend':'fixture'}]
-    def segment_limits(self,model):return {'characters':200} if model.startswith('tts') else {'audio_seconds':15}
+    def segment_limits(self,model):return SegmentLimits(characters=200) if model.startswith('tts') else SegmentLimits(audio_seconds=15)
     def runtime(self):return {'backend':'fixture','actual_device':'cpu','provider_status':'available'}
-    def capabilities(self):return {'api_version':'v1','tasks':[]}
+    def capabilities(self):return ProviderCapabilities(backend='fixture',tasks=())
     def synthesize(self,text,voice='default',speed=1,model_id=None,language='auto'):
         self.speech.append(text)
         if self.cancel:self.cancel.set()
@@ -152,7 +153,7 @@ class AudioOptimizationTests(unittest.TestCase):
         finally:request_cancelled.reset(token)
         self.assertEqual(self.provider.stt,[])
     def test_stt_uses_declared_window_policy(self):
-        self.provider.segment_limits=lambda model: {'audio_seconds':25}
+        self.provider.segment_limits=lambda model: SegmentLimits(audio_seconds=25)
         result=self.client.post('/v1/audio/transcriptions',files={'file':('long.wav',wav_audio(16000,70),'audio/wav')},data={'model':'stt-sensevoice-small-int8','language':'en','response_format':'verbose_json'})
         self.assertEqual(result.status_code,200,result.text)
         self.assertEqual(result.json()['chunk_count'],3)

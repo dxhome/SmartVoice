@@ -8,12 +8,19 @@ from smartvoice.domain.stream_text import lexical,source_offsets
 
 OPEN_END=re.compile(r'(尽管|虽然|如果|因为|但是|但|而且|以及|当|例如|包括|不|没|未|无|非|whether|although|because|if|and|but|not|never|no|don\x27t|doesn\x27t|didn\x27t|isn\x27t|aren\x27t|wasn\x27t|weren\x27t|haven\x27t|hasn\x27t|hadn\x27t|cannot|can\x27t|won\x27t|wouldn\x27t|shouldn\x27t|couldn\x27t|such as)$',re.I)
 SENTENCE_BOUNDARY=re.compile(r'[。！？!?]|(?<!\d)\.(?!\d)')
+ARRIVAL_TIME=re.compile(
+    r'\b(?P<verb>arrived?|came|reached|left|departed)\s*[.!?]?\s*'
+    r'(?P<time>(?:only\s+)?(?:a few|several)\s+(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?))',re.I)
+ARRIVAL_TIME_LATER=re.compile(ARRIVAL_TIME.pattern+r'\s*[.!?]?\s*later\b[,.]?',re.I)
 
 def boundary_incomplete(raw,language):
     if language=='en':
         # Word boundaries matter: "candy" is not an unfinished "and".
         value=raw.strip().rstrip('.!? ')
-        return bool(re.search(r'\b(?:and|but|or|because|although|if|whether|by|with|of|to|from|for|a|an|the|not|never|no|don\x27t|doesn\x27t|didn\x27t|isn\x27t|aren\x27t|wasn\x27t|weren\x27t|haven\x27t|hasn\x27t|hadn\x27t|cannot|can\x27t|won\x27t|wouldn\x27t|shouldn\x27t|couldn\x27t|provided by|such as)\s*$',value,re.I))
+        dangling_arrival_time=bool(re.search(
+            r'\b(?:arrived?|came|reached|left|departed)\s*[.!?]?\s*(?:only\s+)?(?:a few|several)\s+'
+            r'(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?)$',value,re.I))
+        return dangling_arrival_time or bool(re.search(r'\b(?:and|but|or|because|although|if|whether|by|with|of|to|from|for|a|an|the|not|never|no|don\x27t|doesn\x27t|didn\x27t|isn\x27t|aren\x27t|wasn\x27t|weren\x27t|haven\x27t|hasn\x27t|hadn\x27t|cannot|can\x27t|won\x27t|wouldn\x27t|shouldn\x27t|couldn\x27t|provided by|such as)\s*$',value,re.I))
     value=lexical(raw)
     paired=bool((value.startswith(('虽然','尽管')) and not re.search(r'但是|但|可是|仍|还是|却',value[2:])) or (value.startswith(('如果','假如','假使')) and not re.search(r'那么|则|就|将|会',value[2:])))
     return bool(paired or OPEN_END.search(value) or re.search(r'(不是|并不是|不能|不会|没有|直到|才)$',value))
@@ -93,6 +100,13 @@ class TextCoordinator:
         restoration inserts a period there. A later real sentence boundary may
         confirm the full phrase across that cut.
         """
+        # Punctuation restoration can split a forced decoder fragment as
+        # "The train arrived. Only a few minutes.". Keep the temporal adjunct
+        # attached until its continuation (for example "later") arrives.
+        if self.language=='en' and re.search(
+            r'\b(?:arrived?|came|reached|left|departed)\s*[.!?]\s*(?:only\s+)?(?:a few|several)\s+'
+            r'(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?)[.!?]?\s*$',formatted,re.I):
+            return 0
         offsets=source_offsets(self.raw_text(),formatted);end=0;begin=0
         for match in SENTENCE_BOUNDARY.finditer(formatted):
             raw_end=offsets[match.end()-1]
@@ -240,6 +254,18 @@ class TextCoordinator:
         self.common='';self.agreements=0
     def update(self,formatted,now=None,finish=False):
         now=time.monotonic() if now is None else now
+        if self.language=='en':
+            # The punctuation model can split "arrived only a few minutes later"
+            # into three sentences. Restore this narrow, high-impact phrase
+            # before sentence commitment so it reaches translation intact.
+            arrival_match=ARRIVAL_TIME_LATER.search(formatted)
+            if arrival_match:
+                tail=formatted[arrival_match.end():].lstrip(' ,;:.!?')
+                if tail:
+                    tail=tail[0].upper()+tail[1:]
+                time_phrase=arrival_match.group('time').lower()
+                replacement=f"{arrival_match.group('verb')} {time_phrase} later."
+                formatted=formatted[:arrival_match.start()]+replacement+(' '+tail if tail else '')
         raw=self.raw_text()
         if not raw.strip():return []
         confirmed=self.current is None and bool(self.pending)
@@ -250,7 +276,10 @@ class TextCoordinator:
         # A new utterance's revisable tail must not postpone the already
         # confirmed prefix forever. Apply the cap to confirmed text separately.
         pending_raw=('' if self.language=='zh' else ' ').join(e['text'] for e in self.pending)
-        forced_open=forced and boundary_incomplete(pending_raw,self.language)
+        # A forced cut may start the open clause while the current ASR final
+        # is an endpoint. Keep such clauses until a continuation arrives (or
+        # explicit input finish), rather than timing them out as standalone.
+        forced_open=has_forced_boundary and boundary_incomplete(pending_raw,self.language)
         # Commit confirmed complete sentences immediately, retaining a forced
         # tail across decoder resets. Previously every sentence in the reset
         # fragment inherited incomplete=True and was silently unspoken.

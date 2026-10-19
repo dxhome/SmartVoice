@@ -11,6 +11,7 @@ from smartvoice.adapters.inference.composite_provider import CompositeInferenceP
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import SynthesizedSpeech
+from smartvoice.domain.capabilities import ProviderCapabilities, TaskCapability
 from smartvoice.domain.errors import UnsupportedFeatureError
 from smartvoice.__main__ import _models_with_availability
 
@@ -37,11 +38,13 @@ class StubInferenceProvider:
         }
 
     def capabilities(self):
-        return {
-            "api_version": "v1",
-            "capability_schema_version": "1.0",
-            "tasks": [{"task": "transcription", "model": f"{self.backend}-model", "available": self.status == "available"}],
-        }
+        return ProviderCapabilities(
+            backend=self.backend,
+            tasks=(TaskCapability(
+                task="transcription", model_id=f"{self.backend}-model", backend=self.backend,
+                languages=(), available=self.status == "available",
+            ),),
+        )
 
     def transcribe(self, audio: bytes, language: str = "auto", model_id: str | None = None):
         self.transcription_calls.append((audio, language, model_id))
@@ -96,8 +99,8 @@ class InferenceBoundaryTests(unittest.TestCase):
         self.assertEqual(runtime["provider_status"], "unavailable")
         self.assertEqual(runtime["backends"]["backend-a"]["reason"], "Sherpa runtime dependency is missing.")
         self.assertIn("Sherpa runtime dependency is missing.", runtime["reason"])
-        self.assertEqual(capabilities["tasks"][0]["available"], False)
-        self.assertEqual(capabilities["tasks"][0]["backend"], "backend-a")
+        self.assertEqual(capabilities.tasks[0].available, False)
+        self.assertEqual(capabilities.tasks[0].backend, "backend-a")
 
     def test_cli_model_availability_uses_public_backend_runtime_status(self):
         models = [

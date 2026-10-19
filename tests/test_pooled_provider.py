@@ -15,6 +15,7 @@ from smartvoice.adapters.inference.factory import create_inference_provider
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import SynthesizedSpeech
+from smartvoice.domain.capabilities import ProviderCapabilities, TaskCapability
 
 
 class FakeRuntime:
@@ -51,7 +52,9 @@ class SpeechMetadata:
         return {"backend": "sherpa-onnx", "provider_status": "available", "actual_device": "cpu"}
 
     def capabilities(self):
-        return {"api_version": "v1", "tasks": [{"task": "speech", "available": True}]}
+        return ProviderCapabilities(backend="sherpa-onnx", tasks=(TaskCapability(
+            task="speech", model_id="fixture-tts", backend="sherpa-onnx", languages=("zh",), available=True,
+        ),))
 
     def language_identification_available(self):
         return False

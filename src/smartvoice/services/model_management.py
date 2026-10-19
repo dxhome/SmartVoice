@@ -17,11 +17,15 @@ class ModelManagementService:
         model_repository: ModelRepository,
         lifecycle: ModelLifecycle | None = None,
         on_model_change=None,
+        model_router=None,
+        settings=None,
     ) -> None:
         self.jobs = jobs
         self.model_repository = model_repository
         self.lifecycle = lifecycle
         self.on_model_change = on_model_change
+        self.model_router = model_router
+        self.settings = settings
 
     def _model_changed(self) -> None:
         if self.on_model_change is not None:
@@ -41,6 +45,13 @@ class ModelManagementService:
         if category is not None:
             entries = [model for model in entries if model.get("category") == category]
         return {"data": entries, "storage": self.model_repository.storage_summary()}
+
+    def packages(self) -> dict[str, object]:
+        if self.model_router is None or self.settings is None:
+            raise RuntimeError("Model packages require the active router and application settings")
+        from smartvoice.services.model_packages import resolve_packages
+
+        return {"data": resolve_packages(self.model_repository, self.model_router, self.settings)}
 
     def get_spec(self, model_id: str):
         return self.model_repository.get_spec(model_id)

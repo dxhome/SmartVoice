@@ -316,6 +316,7 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
     app.state.model_management = ModelManagementService(
         app.state.model_jobs, model_repository, model_lifecycle,
         on_model_change=refresh_model_availability,
+        model_router=app.state.model_router, settings=settings,
     )
     from smartvoice.adapters.inference.streaming.factory import StageWorkers
     from smartvoice.adapters.inference.runtime.stream_profile import Profiler
@@ -347,12 +348,12 @@ def create_app(settings: Settings | None = None, provider=None, *, debug_http: b
 
     @app.get("/console/streaming", response_class=HTMLResponse, include_in_schema=False)
     async def streaming_page() -> FileResponse:
-        return FileResponse(Path(__file__).resolve().parent / "web" / "streaming.html", media_type="text/html")
+        return FileResponse(Path(__file__).resolve().parent / "web" / "streaming.html", media_type="text/html", headers={"Cache-Control": "no-cache"})
 
     @app.get("/console", response_class=HTMLResponse, include_in_schema=False)
     async def console_page() -> FileResponse:
         page_path = Path(__file__).resolve().parent / "web" / "console.html"
-        return FileResponse(page_path, media_type="text/html; charset=utf-8")
+        return FileResponse(page_path, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-cache"})
 
     @app.get("/test", include_in_schema=False)
     async def legacy_test_page() -> RedirectResponse:

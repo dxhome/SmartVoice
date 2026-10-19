@@ -45,6 +45,22 @@ class ModelRouterTests(unittest.TestCase):
             {"model": "tts-qwen3-0-6b-customvoice", "installed": False},
         ])
 
+    def test_chinese_speech_route_prefers_matcha_then_qwen_then_kokoro(self):
+        self.assertEqual(
+            self.router.snapshot().tasks["speech"]["zh"],
+            (
+                "tts-matcha-zh-baker",
+                "tts-qwen3-0-6b-customvoice",
+                "tts-kokoro-multilingual-v1-1-zh-en",
+            ),
+        )
+        selected, _ = self.router.choose("speech", "zh", [
+            {"id": "tts-kokoro-multilingual-v1-1-zh-en", "task": "speech"},
+            {"id": "tts-qwen3-0-6b-customvoice", "task": "speech"},
+            {"id": "tts-matcha-zh-baker", "task": "speech"},
+        ])
+        self.assertEqual(selected, "tts-matcha-zh-baker")
+
     def test_no_installed_candidate_returns_actionable_model_error(self):
         with self.assertRaisesRegex(UnsupportedFeatureError, "Install a configured model"):
             self.router.choose("transcription", "zh", [])

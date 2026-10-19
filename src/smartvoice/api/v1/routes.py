@@ -91,7 +91,7 @@ async def capabilities(
 ) -> dict[str, object]:
     if task not in {None, "transcription", "speech"}:
         raise UnsupportedFeatureError(f"Task {task!r} is not supported.")
-    result = get_provider(request).capabilities()
+    result = get_provider(request).capabilities().to_document()
     result["capability_schema_version"] = "1.1"
     result["speech_output"] = request.app.state.audio_encoder.capabilities()
     settings = request.app.state.settings
@@ -271,6 +271,23 @@ async def catalog(
     if task not in {None, "transcription", "speech", "translation", "punctuation"}:
         raise UnsupportedFeatureError(f"Task {task!r} is not supported.")
     return request.app.state.model_management.catalog(task, category)
+
+
+@router.get("/model-packages", tags=["models"])
+async def model_packages(request: Request) -> dict[str, object]:
+    """Return install bundles derived from the active router and stream plan."""
+    return request.app.state.model_management.packages()
+
+
+@router.post("/language-identification/install", status_code=202, tags=["models"])
+async def install_language_identification(request: Request) -> dict[str, object]:
+    from smartvoice.services.spoken_language_identifier import ensure_language_id_model
+
+    await run_in_threadpool(ensure_language_id_model, request.app.state.settings)
+    refresh = getattr(request.app.state, "refresh_model_availability", None)
+    if callable(refresh):
+        await run_in_threadpool(refresh)
+    return {"id": "sherpa-onnx-whisper-tiny-int8-language-id", "status": "installed"}
 
 
 @router.post("/models/{model_id}/download", status_code=202, tags=["models"])

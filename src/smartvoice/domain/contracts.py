@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import TypedDict
 
+from smartvoice.domain.capabilities import ProviderCapabilityDocument
+
 
 class InstalledModel(TypedDict, total=False):
     id: str
@@ -29,18 +31,6 @@ class TranscriptionResult(TypedDict, total=False):
     rtf: float | None
     segments: list[dict[str, object]]
     chunk_count: int
-
-
-class ProviderCapabilityDocument(TypedDict, total=False):
-    api_version: str
-    capability_schema_version: str
-    backend: str
-    backends: list[str]
-    tasks: list[dict[str, object]]
-    language_identification: dict[str, object]
-    router: dict[str, object]
-    speech_output: dict[str, object]
-    limits: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)

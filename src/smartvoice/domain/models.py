@@ -30,6 +30,8 @@ class ModelSpec:
     vocoder_file: str | None = None
     voice_count: int | None = None
     estimated_size_bytes: int | None = None
+    estimated_download_size_bytes: int | None = None
+    estimated_download_size_complete: bool = False
     minimum_free_bytes: int | None = None
     rule_fsts: str | None = None
     speech_segment_characters: int = 0

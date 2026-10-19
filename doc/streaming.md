@@ -10,9 +10,9 @@
 
 模型管理分为 STT、TTS、Streaming 三个同级分类。流式专用 ID 使用 `streaming-stt-*`（在线识别）、`streaming-mt-*`（翻译）、`streaming-ct-*`（文本标点）；共用 TTS 保留 `tts-*`，只安装一份。`models list --category streaming` 查看专用模型；REST 的 `/v1/models?category=streaming` 列出已验证安装资产，`/v1/catalog?category=streaming` 包含未安装模型。前者的 `runtime_check_required` 不等于链路可用，仍需查询流式 capabilities。
 
-所有目录模型均支持 `models install MODEL_ID`，`models install all` 包含流式模型及语言检测器。翻译模型在安装阶段下载固定源文件、校验 SHA-256、离线转换到 int8，再核对固定产物 SHA-256；需安装 `model-preparation` extra。缺少或版本不匹配时明确报错，全量安装在开始下载前检查这些依赖。启动/推理不下载或转换模型。已有旧 ID、目录和离线包可继续识别；列表和处理计划统一返回新 ID，新安装/导出使用新命名。
+模型支持 Package 和 Individual 两种安装方式。`models install streaming` 安装当前默认中英文 Streaming 计划覆盖的全部依赖；`models install static-speech` 安装普通智能路由首选 STT/TTS 及语种检测器；两者组合可提供中英文完整功能。`models install all` 包含整个模型目录及语种检测器。也可以用 `models install MODEL_ID` 单独安装模型。翻译模型在安装阶段下载固定源文件、校验 SHA-256、离线转换到 int8，再核对固定产物 SHA-256；需安装 `model-preparation` extra。缺少或版本不匹配时明确报错，全量安装在开始下载前检查这些依赖。启动/推理不下载或转换模型。已有旧 ID、目录和离线包可继续识别；列表和处理计划统一返回新 ID，新安装/导出使用新命名。
 
-访问 `/console/streaming` 选择三个场景、语言和音频文件。页面支持实时重放、修订字幕、按顺序播放译文语音和动态首输出指标；当前没有麦克风采集 UI。SDK 可发送实时 PCM。先查询 `GET /v1/audio/stream/capabilities`；兼容字段 `enabled` 固定为 `true`，还需确认所选链路的 `available`，并考虑即时容量限制。
+访问 `/console/streaming` 可选择本地音频文件或浏览器麦克风，并选择三个处理场景和语言。麦克风需要在 `localhost` 或 HTTPS 页面授权；点击“停止收音”会结束输入并排空当前会话，“取消”会中止会话。麦克风按 16 kHz 单声道 PCM16 实时发送，浏览器按服务输入队列上限有界缓冲（默认 250 帧，即 5 秒），超过后会停止收音并提示重试；启用的服务音频时长上限会自动收尾。页面支持修订字幕、有序播放译文语音、首输出延迟和阶段首输出状态；会话完成后可查看各阶段采样 p50/p90、调用次数及原始诊断。页面显示服务容量与输入队列快照（打开页面时读取），不是实时监控。SDK 也可发送实时 PCM。先查询 `GET /v1/audio/stream/capabilities`；兼容字段 `enabled` 固定为 `true`，还需确认所选链路的 `available`，并考虑当前容量限制。
 
 Python、Node.js/TypeScript 和浏览器 SDK 可用于应用集成，提供能力发现、PCM 分帧、事件处理及可选的同进程断线恢复。安装方式和客户端示例见 [SDK 接口规范](sdk-spec.md)；完整消息级约定见本页下方的 `smartvoice.stream.v1` 章节。
 

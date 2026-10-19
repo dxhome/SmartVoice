@@ -4,6 +4,7 @@ import threading
 import time
 from dataclasses import replace
 
+from smartvoice.domain.capabilities import SegmentLimits
 from smartvoice.adapters.inference.runtime.elastic_pool import ElasticRuntimePool
 
 
@@ -36,7 +37,7 @@ class PooledInferenceProvider:
             return list(self._availability)
 
     def segment_limits(self, model_id):
-        return self.metadata.segment_limits(model_id) if hasattr(self.metadata, "segment_limits") else {}
+        return self.metadata.segment_limits(model_id) if hasattr(self.metadata, "segment_limits") else SegmentLimits()
 
     def capabilities(self):
         return self.metadata.capabilities()

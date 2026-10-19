@@ -34,6 +34,7 @@ from smartvoice.adapters.platform.host_metrics import host_info, process_metrics
 STT_MODEL_ID = "stt-sensevoice-small-int8"
 DEFAULT_TTS_MODEL_ID = "tts-kokoro-multilingual-v1-1-zh-en"
 TARGET_SAMPLE_RATE = 16000
+BACKEND_ID = "sherpa-onnx"
 SUPERTONIC_GENERATION_STEPS = 6
 logger = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ class SherpaOnnxProvider:
     def runtime_for_models(self, models: Sequence[InstalledModel]) -> dict[str, object]:
         issue = self._runtime_issue()
         return {
-            "backend": "sherpa-onnx",
+            "backend": BACKEND_ID,
             "requested_device": self.settings.device,
             "actual_device": "cpu" if issue is None else None,
             "provider_status": "available" if issue is None else (
@@ -176,27 +177,38 @@ class SherpaOnnxProvider:
         }
 
     def segment_limits(self, model_id):
-        spec = self.model_repository.get_spec(model_id)
-        return {"characters": spec.speech_segment_characters,
-                "audio_seconds": (spec.transcription_segment_seconds or DEFAULT_TRANSCRIPTION_WINDOW_SECONDS)
-                if spec.task == "transcription" else 0}
+        from smartvoice.domain.capabilities import SegmentLimits
 
-    def capabilities(self) -> dict[str, object]:
+        spec = self.model_repository.get_spec(model_id)
+        return SegmentLimits(
+            characters=spec.speech_segment_characters or None,
+            audio_seconds=(spec.transcription_segment_seconds or DEFAULT_TRANSCRIPTION_WINDOW_SECONDS)
+            if spec.task == "transcription" else None,
+        )
+
+    def capabilities(self):
         return self.capabilities_for_models(self.installed_models())
 
-    def capabilities_for_models(self, models: Sequence[InstalledModel]) -> dict[str, object]:
+    def capabilities_for_models(self, models: Sequence[InstalledModel]):
+        from smartvoice.domain.capabilities import ProviderCapabilities, SegmentLimits, TaskCapability
+
         tasks = []
         for model in models:
-            task = {"task": model["task"], "model": model["id"], "languages": model["languages"], "streaming": False}
-            if model["task"] == "speech":
-                task["voices"] = ["default"]
-                task["generation_formats"] = ["wav"]
-                spec = self.model_repository.get_spec(str(model["id"]))
-                if spec.voice_count:
-                    task["voice_count"] = spec.voice_count
-            task["segmentation"] = self.segment_limits(str(model["id"]))
+            spec = self.model_repository.get_spec(str(model["id"]))
+            task = TaskCapability(
+                task=model["task"], model_id=spec.id, backend=BACKEND_ID,
+                languages=spec.languages,
+                voices=("default",) if spec.task == "speech" else None,
+                voice_count=spec.voice_count if spec.task == "speech" else None,
+                generation_formats=("wav",) if spec.task == "speech" else (),
+                segmentation=SegmentLimits(
+                    characters=spec.speech_segment_characters or None,
+                    audio_seconds=(spec.transcription_segment_seconds or DEFAULT_TRANSCRIPTION_WINDOW_SECONDS)
+                    if spec.task == "transcription" else None,
+                ),
+            )
             tasks.append(task)
-        return {"api_version": "v1", "capability_schema_version": "1.0", "backend": "sherpa-onnx", "tasks": tasks}
+        return ProviderCapabilities(backend=BACKEND_ID, tasks=tuple(tasks))
 
     def transcribe(
         self, audio: bytes, language: str = "auto", model_id: str = STT_MODEL_ID

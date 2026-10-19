@@ -95,31 +95,23 @@ class QwenTTSProvider:
             "reason": None if available else "The native C INT8 Qwen3-TTS runtime is not installed for this platform.",
         }
 
-    def capabilities(self) -> dict[str, object]:
+    def capabilities(self):
         return self.capabilities_for_models(self.installed_models())
 
-    def capabilities_for_models(self, models: list[InstalledModel]) -> dict[str, object]:
+    def capabilities_for_models(self, models: list[InstalledModel]):
+        from smartvoice.domain.capabilities import ProviderCapabilities, TaskCapability
+
         tasks = []
         runtime_available = bool(models)
         for model in models:
-            tasks.append({
-                "task": model["task"],
-                "model": model["id"],
-                "backend": self.backend,
-                "languages": model["languages"],
-                "streaming": False,
-                "voices": ["default", *SPEAKERS.values()],
-                "voice_count": len(SPEAKERS),
-                "speed_control": False,
-                "generation_formats": ["wav"],
-                "available": runtime_available,
-            })
-        return {
-            "api_version": "v1",
-            "capability_schema_version": "1.0",
-            "backend": self.backend,
-            "tasks": tasks,
-        }
+            spec = self.model_repository.get_spec(str(model["id"]))
+            tasks.append(TaskCapability(
+                task="speech", model_id=spec.id, backend=self.backend,
+                languages=spec.languages, available=runtime_available,
+                voices=("default", *SPEAKERS.values()), voice_count=len(SPEAKERS),
+                speed_control=False, generation_formats=("wav",),
+            ))
+        return ProviderCapabilities(backend=self.backend, tasks=tuple(tasks))
 
     def transcribe(self, audio: bytes, language: str = "auto", model_id: str | None = None):
         raise UnsupportedFeatureError("Qwen3-TTS does not support transcription.")

@@ -84,6 +84,34 @@ def _format_model_list(
     return "\n".join(lines)
 
 
+def _format_model_packages(packages: list[dict[str, object]]) -> str:
+    if not packages:
+        return "No model packages are available."
+    lines = [f"SmartVoice model packages ({len(packages)})"]
+    for package in packages:
+        estimated = package.get("estimated_size_bytes")
+        if isinstance(estimated, int):
+            size_label = f"~{estimated / 1024**2:.0f} MiB download"
+            if not package.get("estimated_size_complete", False):
+                size_label += " (incomplete estimate)"
+        else:
+            size_label = "Download size unknown"
+        installed_estimate = package.get("estimated_installed_size_bytes")
+        if isinstance(installed_estimate, int):
+            size_label += f"; ~{installed_estimate / 1024**2:.0f} MiB installed payload"
+        status = str(package.get("status", "unknown")).replace("_", " ").title()
+        assets = list(package.get("assets", []))
+        lines.extend([
+            "",
+            f"{package.get('name', package.get('id', 'Package'))} ({package.get('id', 'unknown')})",
+            f"  Status: {status}; {size_label}; {len(assets)} asset(s)",
+        ])
+        for asset in assets:
+            asset_status = str(asset.get("status", "unknown")).replace("_", " ").title()
+            lines.append(f"  - {asset.get('name', asset.get('id', 'Unknown'))} ({asset.get('id', 'unknown')}) | {asset_status}")
+    return "\n".join(lines)
+
+
 def _models_with_availability(
     models: list[dict[str, object]],
     runtime_by_backend: dict[str, dict[str, object]],
@@ -114,6 +142,7 @@ def _models_with_availability(
 
 def _native_model_status(settings: Settings, sherpa_runtime: dict[str, object]) -> dict[str, object]:
     from smartvoice.services.spoken_language_identifier import (
+        LANGUAGE_ID_ESTIMATED_SIZE_BYTES,
         installed_language_id_model_dir,
         language_id_model_dir,
     )
@@ -139,6 +168,7 @@ def _native_model_status(settings: Settings, sherpa_runtime: dict[str, object]) 
         "task": "native",
         "languages": ["multilingual"],
         "backend": "SmartVoice native",
+        "estimated_size_bytes": LANGUAGE_ID_ESTIMATED_SIZE_BYTES,
         "status": availability,
         "availability_reason": reason,
         "installed_size_bytes": (
@@ -268,12 +298,13 @@ def _models(args: list[str]) -> None:
     subparsers = parser.add_subparsers(dest="action", required=True)
     list_parser = subparsers.add_parser("list", help="List catalog entries and installation state")
     list_parser.add_argument("--category", choices=("stt", "tts", "streaming"), help="Filter the top-level model category")
+    list_parser.add_argument("--package", choices=("static-speech", "streaming", "all"), help="Show package assets instead of the default catalog view")
     list_parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
     refresh_parser = subparsers.add_parser("refresh", help="Refresh the running service's model availability snapshot")
     refresh_parser.add_argument("--host", default=None, help="Running SmartVoice service bind address")
     refresh_parser.add_argument("--port", type=int, default=None, help="Running SmartVoice service port")
     install_parser = subparsers.add_parser("install", help="Download and install a catalog model")
-    install_parser.add_argument("model_id", help="Catalog model ID, or 'all' to install every uninstalled catalog model")
+    install_parser.add_argument("model_id", help="Catalog model ID or package ID: static-speech, streaming, or all")
     install_parser.add_argument("--source", help="Optional HTTPS base URL for a Hugging Face-compatible model mirror")
     uninstall_parser = subparsers.add_parser("uninstall", help="Remove an installed model")
     uninstall_parser.add_argument("model_id")
@@ -289,7 +320,7 @@ def _models(args: list[str]) -> None:
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(f"Invalid configuration: {exc}")
     model_management = ModelManagementService(
-        ModelJobManager(settings), CatalogModelRepository(settings)
+        ModelJobManager(settings), CatalogModelRepository(settings), settings=settings
     )
 
     if parsed.action == "refresh":
@@ -338,6 +369,8 @@ def _models(args: list[str]) -> None:
         print(f"\n{message}", flush=True)
 
     if parsed.action == "list":
+        if parsed.package and parsed.category:
+            parser.error("--category cannot be combined with --package.")
         from smartvoice.adapters.inference.factory import create_inference_provider
         from smartvoice.services.model_storage import catalog_models
 
@@ -349,6 +382,19 @@ def _models(args: list[str]) -> None:
             backend_runtimes = {}
         models = _models_with_availability(catalog_models(settings), backend_runtimes)
         native_models = [_native_model_status(settings, backend_runtimes.get("sherpa-onnx", {}))]
+        if parsed.package:
+            from smartvoice.services.model_router import ModelRouter
+
+            model_management.model_router = ModelRouter(settings)
+            packages = [
+                package for package in model_management.packages()["data"]
+                if package["id"] == parsed.package
+            ]
+            if parsed.json:
+                print(json.dumps(packages, ensure_ascii=False, indent=2))
+            else:
+                print(_format_model_packages(packages))
+            return
         if parsed.category:
             models = [model for model in models if model.get("category") == parsed.category]
             native_models = []
@@ -394,11 +440,16 @@ def _models(args: list[str]) -> None:
         _refresh_running_model_availability(settings)
         return
 
-    if parsed.model_id == "all":
+    is_package = parsed.model_id in {"static-speech", "streaming", "all"}
+    if is_package:
         if parsed.source:
-            parser.error("--source cannot be used with 'install all'; each model uses its catalog source.")
+            parser.error("--source cannot be used with package installation; each asset uses its declared source.")
+        from smartvoice.services.model_router import ModelRouter
+        model_management.model_router = ModelRouter(settings)
+        package = next(item for item in model_management.packages()["data"] if item["id"] == parsed.model_id)
         catalog = model_management.catalog()["data"]
-        pending = [model for model in catalog if model.get("status") == "uninstalled"]
+        selected_ids = set(package["model_ids"])
+        pending = [model for model in catalog if model["id"] in selected_ids and model.get("status") == "uninstalled"]
         # Fail before downloading large unrelated assets if conversion cannot run.
         from smartvoice.adapters.storage.converted_model import check_dependencies
         try:
@@ -408,7 +459,7 @@ def _models(args: list[str]) -> None:
                     check_dependencies(spec.preparation)
         except SmartVoiceError as exc:
             parser.error(str(exc))
-        invalid = [model for model in catalog if model.get("status") == "invalid"]
+        invalid = [model for model in catalog if model["id"] in selected_ids and model.get("status") == "invalid"]
         if invalid:
             print(
                 "Skipping models with existing invalid files: "
@@ -416,9 +467,9 @@ def _models(args: list[str]) -> None:
                 + ". Remove them with 'models uninstall <model-id>' before retrying."
             )
         if not pending:
-            print("No uninstalled catalog models to install.")
+            print(f"No uninstalled models in package {parsed.model_id}.")
         else:
-            print(f"Installing {len(pending)} uninstalled catalog models.")
+            print(f"Installing package {parsed.model_id}: {len(pending)} model(s), estimated download {package['estimated_size_bytes']} bytes.")
         model_ids = [str(model["id"]) for model in pending]
     else:
         model_ids = [parsed.model_id]
@@ -428,7 +479,7 @@ def _models(args: list[str]) -> None:
         try:
             spec = model_management.get_spec(model_id)
             source_label = parsed.source or "catalog source"
-            if parsed.model_id == "all":
+            if is_package:
                 print(f"\nInstalling {spec.name} ({spec.id})")
             if spec.installation_method == "convert":
                 print("Pinned source files are downloaded, verified, converted to int8, and checked against catalog output hashes.")
@@ -445,7 +496,7 @@ def _models(args: list[str]) -> None:
 
     _refresh_running_model_availability(settings)
 
-    if parsed.model_id == "all":
+    if parsed.model_id in {"static-speech", "all"}:
         from smartvoice.services.spoken_language_identifier import ensure_language_id_model
 
         print("\nEnsuring Whisper Tiny is installed for automatic language identification.")

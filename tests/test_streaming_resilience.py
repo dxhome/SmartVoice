@@ -17,7 +17,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
-from smartvoice.domain.streaming import Hypothesis, SourceRef, TextUnit, StageError, TranslationResult
+from smartvoice.domain.streaming import Hypothesis, SourceRef, TextUnit, StageError, TranslationResult, SynthesizedAudio
 from smartvoice.adapters.audio.streaming import package_wav
 from smartvoice.adapters.inference.runtime.stream_profile import Profiler
 from smartvoice.adapters.inference.runtime.stream_workers import FairGate
@@ -302,6 +302,19 @@ class RevisionAndPlaybackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(terminal_text['text'], '固定终稿'); self.assertEqual(session.translation_completed, 1)
         await session.cancel(); await instance.close(); self.assertEqual(repo.users, 0)
 
+    async def test_tts_rejects_uncommitted_translation(self):
+        owner = SimpleNamespace(workers=ControlledWorkers(), profiler=Profiler(), stop=asyncio.Event(),
+                                plan=SimpleNamespace(output_consumption='delivery'))
+        speech = SpeechPipeline(owner, package_wav)
+        ref = SourceRef(1, 1, 1, 0, 12, 0, 16000)
+        draft = TextUnit(1, 1, 'A revisable sentence', 'A revisable sentence', 'en', False,
+                         (ref,), 'draft')
+        with self.assertRaisesRegex(StageError, 'finalized sentence'):
+            await speech.submit(draft, {'translation_id': 'draft', 'revision': 1, 'text': draft.text,
+                                         'committed': False, 'final': False})
+        self.assertTrue(speech.queue.empty())
+        await speech.worker.aclose()
+
     async def test_playback_order_and_slow_consumer_capacity(self):
         owner = SimpleNamespace(workers=ControlledWorkers(), profiler=Profiler(), stop=asyncio.Event(),
                                 plan=SimpleNamespace(output_consumption='playback'))
@@ -357,7 +370,8 @@ class AdditionalBoundaryTests(unittest.IsolatedAsyncioTestCase):
         unit = TextUnit(1, 1, 'A sentence.', 'A sentence.', 'en', True,
                         (SourceRef(1, 1, 1, 0, 11, 0, 16000),), 'endpoint')
         with self.assertRaisesRegex(StageError, 'budget'):
-            await speech.submit(unit, dict(translation_id='t', revision=1, text='字' * 513))
+            await speech.submit(unit, dict(translation_id='t', revision=1, text='字' * 513,
+                                           committed=True, final=True))
         self.assertEqual(speech.pending_chars, 0); await speech.worker.aclose()
 
     async def test_forced_incomplete_is_skipped_but_terminal_tail_is_spoken(self):
@@ -368,7 +382,7 @@ class AdditionalBoundaryTests(unittest.IsolatedAsyncioTestCase):
         speech = SpeechPipeline(owner, package_wav)
         unit = TextUnit(1, 1, 'provided by', 'provided by', 'en', True,
                         (SourceRef(1, 1, 1, 0, 11, 0, 16000),), 'forced_length', incomplete=True)
-        event = dict(translation_id='t', revision=1, text='由')
+        event = dict(translation_id='t', revision=1, text='由', committed=True, final=True)
         await speech.submit(unit, event)
         await speech.submit(replace(unit, incomplete=False), {**event, 'quality_issues': ['negation_requires_review']})
         self.assertEqual([e['reason'] for e in emitted], ['incomplete', 'quality_issues'])
@@ -492,6 +506,30 @@ class AdditionalBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
 
 class SemanticBoundaryTests(unittest.TestCase):
+    def test_tts_chunks_prefer_complete_sentence_boundaries(self):
+        from smartvoice.domain.speech_chunks import chunks
+        text = 'The first sentence is complete. A second complete sentence follows. The last sentence ends here.'
+        parts = list(chunks(text, 40, 'en'))
+        self.assertEqual(' '.join(part for _, _, part in parts), text)
+        self.assertEqual([part for _, _, part in parts], [
+            'The first sentence is complete.',
+            'A second complete sentence follows.',
+            'The last sentence ends here.',
+        ])
+        self.assertTrue(all(part.endswith(('.', '!', '?')) for _, _, part in parts))
+
+    def test_tts_keeps_long_but_bounded_sentence_in_one_chunk(self):
+        from smartvoice.domain.speech_chunks import chunks
+        text = ' '.join(['clear'] * 24) + '.'
+        parts = list(chunks(text, 180, 'en'))
+        self.assertEqual(len(parts), 1)
+        self.assertEqual(parts[0][2], text)
+
+    def test_tts_sentence_chunking_does_not_treat_decimal_as_boundary(self):
+        from smartvoice.domain.speech_chunks import chunks
+        parts = list(chunks('The value is 3.14 units. Next sentence.', 24, 'en'))
+        self.assertEqual(parts[0][2], 'The value is 3.14 units.')
+
     def test_dangling_english_endpoint_merges_next_confirmed_span(self):
         from smartvoice.services.streaming.text_units import TextCoordinator, boundary_incomplete
         from smartvoice.services.streaming.planning import CONFIG
@@ -510,6 +548,71 @@ class SemanticBoundaryTests(unittest.TestCase):
         self.assertEqual(len(units[0].refs), 2)
         self.assertEqual([(r.start_sample, r.end_sample) for r in units[0].refs], [(0, 16000), (16000, 32000)])
         coordinator.close()
+
+    def test_forced_arrival_time_phrase_waits_for_continuation(self):
+        from smartvoice.services.streaming.text_units import TextCoordinator, boundary_incomplete
+        from smartvoice.services.streaming.planning import CONFIG
+        coordinator = TextCoordinator('en', CONFIG['text_policy'])
+        first = Hypothesis('source_final', 1, 1, 'The train', 'en',
+                           0, 16000, True, 'forced_length').event()
+        first['event_sequence'] = 1
+        coordinator.ingest(first, now=0)
+        second = Hypothesis('source_final', 2, 1, 'arrived only a few minutes', 'en',
+                            16000, 32000, True, 'endpoint').event()
+        second['event_sequence'] = 2
+        coordinator.ingest(second, now=2)
+        self.assertTrue(boundary_incomplete('The train arrived only a few minutes', 'en'))
+        self.assertFalse(any(u.committed for u in coordinator.update('The train arrived. Only a few minutes.', now=20)))
+        third = Hypothesis('source_final', 3, 1, 'later the family thanked her', 'en', 32000, 64000, True, 'endpoint').event()
+        third['event_sequence'] = 3
+        coordinator.ingest(third, now=4)
+        units = coordinator.update('The train arrived. Only a few minutes. Later, the family thanked her.', now=4)
+        self.assertEqual(len(units), 1)
+        self.assertTrue(units[0].committed)
+        self.assertTrue(units[0].text.startswith('The train arrived only a few minutes later.'))
+        coordinator.close()
+
+    def test_speech_synthesizes_before_reserving_actual_audio_duration(self):
+        from contextlib import asynccontextmanager
+        trace = []
+
+        class Worker:
+            async def call(self, function, *args, **kwargs):
+                return function(*args)
+
+        class Workers:
+            def create(self, *_args): return Worker()
+
+        class Gate:
+            @asynccontextmanager
+            async def permit(self, _priority): yield
+
+        class Adapter:
+            def synthesize(self, target):
+                trace.append('synthesize')
+                return SynthesizedAudio(target.translation_id, target.language,
+                                        b'\0\0' * (22050 * 6), 22050, 1, profile='fake')
+
+        async def wait_capacity(seconds): trace.append(('capacity', seconds))
+        async def emit(event): event['event_sequence'] = 1; return event
+
+        owner = SimpleNamespace(workers=Workers(), profiler=Profiler(), stop=asyncio.Event(),
+            plan=SimpleNamespace(output_consumption='delivery', tts_chunk_chars=100, target_language='en',
+                                 source_language='zh'), translation_gate=Gate(), id='session',
+            limits=SimpleNamespace(translation_job_seconds=1), last_ack=0, emit=emit)
+        speech = SpeechPipeline(owner, package_wav)
+        speech.adapter = Adapter()
+        speech.wait_capacity = wait_capacity
+        ref = SourceRef(1, 1, 1, 0, 5, 0, 16000)
+        unit = TextUnit(1, 1, 'hello', 'hello', 'zh', True, (ref,), 'semantic_final')
+        async def scenario():
+            await speech.submit(unit, {'translation_id': 'translation', 'revision': 1, 'text': 'Hello.',
+                                       'committed': True, 'final': True})
+            speech.queue.put_nowait(None)
+            await speech.run()
+        asyncio.run(scenario())
+        self.assertEqual(trace[0], 'synthesize')
+        self.assertEqual(trace[1], ('capacity', 6.0))
 
     def test_chinese_conditional_and_english_word_boundaries(self):
         from smartvoice.services.streaming.text_units import boundary_incomplete

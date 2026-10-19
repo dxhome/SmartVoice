@@ -64,7 +64,7 @@ class RealSttAudioRegressionTests(unittest.TestCase):
             import sherpa_onnx
             if sherpa_onnx.__version__ != "1.13.8+smartvoice.whisper2":
                 self.skipTest("Whisper regression requires the validated sherpa-onnx whisper2 repair wheel")
-        window = float(self.provider.segment_limits(model)["audio_seconds"])
+        window = float(self.provider.segment_limits(model).audio_seconds)
         response = self.client.post(
             "/v1/audio/transcriptions",
             files={"file": (filename, audio, "audio/wav")},

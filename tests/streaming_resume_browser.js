@@ -58,6 +58,7 @@ class OfflineAudioContext{
 }
 const sandbox={document,location:{search:'',hash:'',protocol:'http:',host:'localhost'},
     URLSearchParams,performance,WebSocket:Socket,AudioContext,OfflineAudioContext,
+    requestAnimationFrame:()=>1,cancelAnimationFrame:noop,
     setTimeout,clearTimeout,setInterval,clearInterval,queueMicrotask,console,window:{addEventListener:noop},
     localStorage:{getItem:()=>null},AbortController,fetch:async()=>{throw Error('unexpected fetch')}};
 vm.createContext(sandbox);vm.runInContext(source,sandbox);

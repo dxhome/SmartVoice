@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from smartvoice.app import create_app
 from smartvoice.config.settings import Settings
 from smartvoice.domain.contracts import SynthesizedSpeech
+from smartvoice.domain.capabilities import ProviderCapabilities
 from smartvoice.adapters.inference.sherpa_onnx.provider import SherpaOnnxProvider
 from smartvoice.services.file_integrity import cache_verified_files
 from smartvoice.services.model_registry import get_model_spec
@@ -67,6 +68,18 @@ class ProviderContractTests(unittest.TestCase):
         self.assertFalse(provider._tts_locks)
         self.assertIsNone(provider._language_identifier)
         self.assertFalse(provider._verified_files)
+
+    def test_sherpa_capabilities_use_the_runtime_backend_identifier(self):
+        provider = SherpaOnnxProvider(Settings(data_dir=Path.cwd() / ".smartvoice-dev" / "capability-contract"))
+        spec = provider.model_repository.get_spec("stt-sensevoice-small-int8")
+
+        capabilities = provider.capabilities_for_models([{
+            "id": spec.id,
+            "task": spec.task,
+        }]).to_document()
+
+        self.assertEqual(capabilities["backend"], "sherpa-onnx")
+        self.assertEqual(capabilities["tasks"][0]["backend"], "sherpa-onnx")
 
     def test_model_directory_validation_reuses_persisted_integrity_cache(self):
         data_dir = Path.cwd() / ".smartvoice-dev" / f"provider-integrity-cache-{uuid.uuid4().hex}"
@@ -242,7 +255,7 @@ class ProviderContractTests(unittest.TestCase):
                 return {"backend": self.backend, "actual_device": "cpu"}
 
             def capabilities(self):
-                return {"api_version": "v1", "capability_schema_version": "1.0", "tasks": []}
+                return ProviderCapabilities(backend=self.backend, tasks=())
 
             def transcribe(self, audio, language="auto", model_id=None):
                 return {"text": "contract", "language": language, "duration": 1.0, "model": model_id, "device": "cpu"}

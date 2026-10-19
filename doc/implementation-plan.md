@@ -1,6 +1,6 @@
 # SmartVoice Implementation Plan
 
-**Last reviewed:** 2026-10-09
+**Last reviewed:** 2026-10-19
 
 This plan reflects the current code and product scope. It separates the implemented local-service baseline from the next P1 capability and the P2 verification and expansion work. For architecture principles, implementation summary, and the centralized backend/platform compatibility matrix, see [architecture-guidelines.md](architecture-guidelines.md); for HTTP behavior, see [api-spec.md](api-spec.md); for test commands, see [testing.md](testing.md).
 
@@ -12,6 +12,12 @@ This plan reflects the current code and product scope. It separates the implemen
 
 P2 work is planned but is not a promise that every item will ship in the next release. Confirm platform targets, measurable thresholds, and release scope before starting an item.
 
+## Current Streaming Status — 2026-10-19
+
+The current product code provides the three streaming modes through the versioned WebSocket API and the browser workspace. The workspace supports both local audio files and live browser microphone capture, with permission handling, stop/cancel controls, 16 kHz mono PCM input, and bounded buffering. Microphone access requires `localhost` or HTTPS. These user-facing controls are implemented; the browser simulation in `tests/streaming_microphone_browser.js` checks the client flow but does not replace real-browser, device, and model-backed acceptance.
+
+P1 remains open for formal acceptance of the supported model chains and language directions: real-device/browser validation, reviewed speech boundaries and output quality, and the latency and playback evidence described below. Historical prototype checkpoints retain the status that was accurate when each checkpoint was recorded; they are not the current product status.
+
 ## Current Implemented Baseline
 
 The current product is a local CPU speech service. It exposes REST endpoints for health/readiness, runtime/capability and model discovery, model catalog/lifecycle, file transcription, and WAV synthesis. STT and TTS use the `smartvoice-auto` virtual model for language-aware routing or a concrete installed model ID for direct calls. Routing configuration is validated and can be reloaded while the service runs.
@@ -20,7 +26,7 @@ The code is divided into API, application services, domain contracts, ports, and
 
 The regression suite runs functional/API tests and real CPU inference via REST routes. Its routed integration cases exercise service/model discovery, routed and direct STT, Chinese/English speech-language detection, supported input audio formats, invalid audio, routed/direct TTS, automatic TTS language detection, and long-text synthesis when their required models/assets are installed. It also generates a direct smoke test for every catalog model and runs it for each installed model whose runtime is available; absent models are reported as skips. Run `python scripts/test.py ci` for CI and `python scripts/test.py regression` for local regression with SmartVoice installed and any desired models present.
 
-Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Source-install paths and release wheel builds cover Windows x64, macOS Apple Silicon, and Linux x86_64. Linux x86_64 has passed clean installation and model-backed inference validation on Ubuntu 26.04. Other Linux distributions and Linux arm64 are not yet verified. Android is not supported. GPU inference and remote/LAN product access are not part of the accepted baseline. Streaming sessions and a browser file-replay page are available by default as a preview, with separate release gates.
+Current platform and backend compatibility is summarized in [architecture-guidelines.md](architecture-guidelines.md); installation state and current inference availability are separate. Source-install paths and release wheel builds cover Windows x64, macOS Apple Silicon, and Linux x86_64. Linux x86_64 has passed clean installation and model-backed inference validation on Ubuntu 26.04. Other Linux distributions and Linux ARM64 are not yet verified. Android is not supported. GPU inference and remote/LAN product access are not part of the accepted baseline. Streaming sessions and the browser workspace are available by default as a preview; the workspace supports local-file replay and live microphone input. Formal streaming quality and performance acceptance remains a separate release gate.
 
 ## P1 — Streaming STT, Translation, and Interpretation
 
@@ -160,7 +166,7 @@ The local pre-S3 validation is documented in [the follow-up report](../sandbox/s
 
 **Next priority — S3.** Select/license one real Chinese-to-English text translation candidate, then translate finalized source segments using bounded context and finite inference jobs. Carry source segment IDs, distinguish revisable and committed target text, bound pending work, and support cancel during drain. Evaluate real translation on held-out speech with bilingual review of numbers, names and reordered clauses. Measure source commit to target delivery now; add human speech-end annotations before accepting precise speech-end latency targets. S4 follows with committed-segment TTS and ordered playback.
 
-**S5/promotion remains required.** Production model-use/removal leases, shared resource admission/fairness, catalog/capability/session-plan integration, production application lifespan, microphone/playback UX, manual speech-boundary and wider accent/real-room evaluation, Windows x64 and Linux x86_64 are not completed by this local prototype. Retain sample coverage semantics; do not advertise them as word timestamps or accurate speech boundaries.
+**Historical S5/promotion status (2026-10-03).** At this prototype checkpoint, production model-use/removal leases, shared resource admission/fairness, catalog/capability/session-plan integration, production application lifespan, microphone/playback UX, manual speech-boundary and wider accent/real-room evaluation, Windows x64 and Linux x86_64 were not completed. This records the state of that local prototype; see [Current Streaming Status](#current-streaming-status--2026-10-19) for the current product state. Retain sample coverage semantics; do not advertise them as word timestamps or accurate speech boundaries.
 
 ### S3 prototype checkpoint and open quality gate (2026-10-03)
 
@@ -343,7 +349,7 @@ All outstanding human work is consolidated here:
 
 **Multi-path engineering baseline (2026-10-05).** The pinned Google FLEURS set now has ten clean real recordings per scenario and 50 successful real-model sessions across zh/en transcription, zh→en translation/speech and en→zh translation. TTFO P50/P90/P95: zh captions 1.861/3.083/3.678 s; en captions 1.762/2.088/2.738 s; zh→en text 3.732/4.928/4.946 s; en→zh text 3.030/3.616/3.720 s. Speech at one TTS thread was 11.809/15.299/15.539 s. A same-clip 10-sample two-thread comparison improved this to 9.987/13.285/14.080 s and playback-tail P50/P90/P95 from 8.982/11.011/16.765 s to 7.120/9.148/12.717 s. Two threads passed the named local REST/resource/cleanup gates and are the sandbox candidate setting. The first TTS synthesis call is the main observed post-target-final delay; target-final latency did not materially change. The detailed [corpus report](../sandbox/streaming/reports/experience-metrics-corpus.json) and [thread comparison](../sandbox/streaming/reports/tts-thread-comparison.json) retain per-session profiles, asset hashes, environment and limitations. M2M100 weights are restored and hash-verified, with en→zh replay checks passing. These local percentiles are not SLAs: samples cover one pinned subset/device, playback is simulated, and human onset/end annotations, translation/ASR review and TTS listening remain pending S5.
 
-Automatic platform/lifecycle/shared-pool/model-use-lease/catalog/lifespan work, microphone/playback UX, Windows/Linux evidence and the production integration decision remain S5 as already planned. S4 remains a sandbox prototype; all human fields stay pending until real reviewers supply ratings/annotations.
+**Historical S4 promotion status (2026-10-05).** At this sandbox checkpoint, automatic platform/lifecycle/shared-pool/model-use-lease/catalog/lifespan work, microphone/playback UX, Windows/Linux evidence and the production integration decision remained S5. S4 was a sandbox prototype and human review fields were pending at that time. See [Current Streaming Status](#current-streaming-status--2026-10-19) for the current product state; the human quality and latency acceptance gates remain open until review evidence is recorded.
 
 ### P1 completion criteria
 

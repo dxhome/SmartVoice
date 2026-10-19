@@ -74,7 +74,7 @@ python -m smartvoice router reload
 
 ## 流式处理
 
-流式处理是 SmartVoice 的正式功能，可在音频到达时持续处理。它提供三种场景：实时转录并显示原文字幕、中英双向译文字幕，以及播放译文语音。可以在 `/console/streaming` 浏览器工作区处理本地音频文件，也可以通过 `WS /v1/audio/stream` 接入发送实时 PCM 音频的客户端。Console 会显示当前场景所需模型链路是否就绪。
+流式处理是 SmartVoice 的正式功能，可在音频到达时持续处理。它提供三种场景：实时转录并显示原文字幕、中英双向译文字幕，以及播放译文语音。可以在 `/console/streaming` 浏览器工作区使用本地音频文件或麦克风，也可以通过 `WS /v1/audio/stream` 接入发送实时 PCM 音频的客户端。使用麦克风需要浏览器授权，页面须通过 `localhost` 或 HTTPS 访问。Console 会显示当前场景所需模型链路是否就绪。
 
 API 客户端应先查询 `GET /v1/audio/stream/capabilities`，再建立会话。WebSocket 使用版本化协议 `smartvoice.stream.v1`；客户端发送 16 kHz、单声道 PCM16 音频帧，接收增量转录/翻译事件；译文语音场景还会收到按序排列的音频块。浏览器工作区支持字幕修订、顺序播放，以及服务进程仍在运行时的断线重连；服务重启后不能续传。
 
@@ -83,6 +83,8 @@ API 客户端应先查询 `GET /v1/audio/stream/capabilities`，再建立会话�
 ## 模型管理
 
 SmartVoice 将应用程序与模型文件分开管理。你可以在 Console、CLI 或 API 下载任务中浏览和安装模型。系统会同时验证模型文件和当前运行时是否可用。下载模型需要互联网；已安装模型可在离线环境中推理。模型及音色许可可能不同于 SmartVoice 的许可协议。
+
+模型管理提供 Packages 和 Individual 两种方式。`static-speech` 包按当前智能路由首选项安装中英文静态 STT/TTS 和自动语种识别资源；`streaming` 包安装中英文流式转写、双向翻译和口译所需依赖；`all` 安装整个模型目录及语种识别资源。要启用全部中英文静态和流式能力，请同时安装前两个包。每个包显示去重后的预计下载量；转换模型的下载估算可能不完整。也可以按需安装单个模型。
 
 ### 语音模型
 
@@ -116,12 +118,19 @@ SmartVoice 将应用程序与模型文件分开管理。你可以在 Console、C
 
 ### 安装与维护
 
-按模型 ID 安装，或使用 `all` 安装整个目录及语言检测器（可能需要数 GiB 磁盘空间）：
+按需选择模型包或单个模型。安装静态语音包和流式包可启用完整中英文功能；只有需要整个模型目录时才使用 `all`（可能需要数 GiB 磁盘空间）：
 
 ```bash
 python -m smartvoice models list
-python -m smartvoice models install stt-sensevoice-small-int8
-python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
+# 可选：按模型包查看；不传 --package 时仍使用原有目录视图：
+python -m smartvoice models list --package static-speech
+# 完整的中英文静态和流式功能：
+python -m smartvoice models install static-speech
+python -m smartvoice models install streaming
+# 或安装整个模型目录：
+# python -m smartvoice models install all
+# 或仅安装一个模型：
+# python -m smartvoice models install stt-qwen3-asr-600m-int8
 python -m smartvoice models refresh
 python -m smartvoice models export stt-sensevoice-small-int8 ./sensevoice.smartvoice.zip
 python -m smartvoice models import ./sensevoice.smartvoice.zip
@@ -264,16 +273,15 @@ python -m smartvoice --host 127.0.0.1 --port 8000
 
 在 Console 工作区中使用已安装的模型试用语音识别和合成。可以使用根据所选模型和设置生成的 API 示例，也可以直接在 Console 中编辑 Smart Router 优先级；保存的路由配置会立即生效。你也可以打开交互式 [API 文档](http://127.0.0.1:8000/docs)。
 
-试用流式处理时，安装对应场景需要的模型组件，然后打开[流式工作区](http://127.0.0.1:8000/console/streaming)。页面可将本地音频文件流式处理为原文字幕、译文字幕或译文语音。安装翻译模型前需执行 `python -m pip install 'smartvoice[streaming,model-preparation]'`，详见[模型管理](#模型管理)。
+试用流式处理时，安装对应场景需要的模型组件，然后打开[流式工作区](http://127.0.0.1:8000/console/streaming)。页面可通过本地音频文件或麦克风输入，生成原文字幕、译文字幕或译文语音。麦克风需要浏览器授权，且页面须通过 `localhost` 或 HTTPS 访问。安装翻译模型前需执行 `python -m pip install 'smartvoice[streaming,model-preparation]'`，详见[模型管理](#模型管理)。
 
 服务设置保存在 `<data_dir>/smartvoice.json`；路由优先级单独保存在 `<data_dir>/router.json`。
 
-也可以通过 CLI 管理模型。例如，安装一组基础 STT 和 TTS 模型以及语言检测器：
+也可以通过 CLI 管理模型。例如，安装中英文静态语音和流式功能包：
 
 ```bash
-python -m smartvoice models install stt-sensevoice-small-int8
-python -m smartvoice models install tts-kokoro-multilingual-v1-1-zh-en
-python -m smartvoice models install-language-id
+python -m smartvoice models install static-speech
+python -m smartvoice models install streaming
 ```
 
 通过 PyPI 安装到 macOS Apple Silicon、Windows x64 或 Linux x86_64 时，会附带 Qwen3-TTS 运行时。从源码目录安装时，请按上文说明在 Windows 和 Linux 上构建运行时；macOS 源码安装会自动编译。然后安装 Qwen3-TTS：

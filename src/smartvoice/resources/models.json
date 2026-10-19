@@ -40,7 +40,9 @@
       "license_note": "Whisper is multilingual; review the model license and archive notices before redistribution.",
       "model_type": "whisper",
       "estimated_size_bytes": 160610247,
-      "category": "stt"
+      "category": "stt",
+      "estimated_download_size_bytes": 160609290,
+      "estimated_download_size_complete": true
     },
     {
       "id": "stt-sensevoice-small-int8",
@@ -67,7 +69,9 @@
       "license_note": "Review the LICENSE file included in the downloaded model archive before redistribution.",
       "model_type": "sense_voice",
       "estimated_size_bytes": 240507515,
-      "category": "stt"
+      "category": "stt",
+      "estimated_download_size_bytes": 163002883,
+      "estimated_download_size_complete": true
     },
     {
       "id": "stt-qwen3-asr-600m-int8",
@@ -144,7 +148,9 @@
       "license_note": "The Qwen3-ASR upstream is Apache-2.0; review the sherpa-onnx conversion notices and derived artifacts before redistribution.",
       "model_type": "qwen3_asr",
       "estimated_size_bytes": 987016766,
-      "category": "stt"
+      "category": "stt",
+      "estimated_download_size_bytes": 987015347,
+      "estimated_download_size_complete": true
     },
     {
       "id": "tts-kokoro-multilingual-v1-1-zh-en",
@@ -184,7 +190,9 @@
         "requires_mixed_script_fallback": false,
         "native_partial": false
       },
-      "category": "tts"
+      "category": "tts",
+      "estimated_download_size_bytes": 364816464,
+      "estimated_download_size_complete": true
     },
     {
       "id": "tts-matcha-zh-baker",
@@ -228,7 +236,9 @@
         "requires_mixed_script_fallback": true,
         "native_partial": false
       },
-      "category": "tts"
+      "category": "tts",
+      "estimated_download_size_bytes": 75480460,
+      "estimated_download_size_complete": true
     },
     {
       "id": "tts-supertonic-v3-multilingual-int8",
@@ -304,7 +314,9 @@
         "requires_mixed_script_fallback": false,
         "native_partial": false
       },
-      "category": "tts"
+      "category": "tts",
+      "estimated_download_size_bytes": 128774318,
+      "estimated_download_size_complete": true
     },
     {
       "id": "tts-qwen3-0-6b-customvoice",
@@ -372,7 +384,9 @@
       "license_note": "Qwen3-TTS is Apache-2.0. This 0.6B CustomVoice model includes Qwen3-TTS-Tokenizer-12Hz assets; review upstream terms before redistribution.",
       "model_type": "qwen3_tts",
       "estimated_size_bytes": 2498385866,
-      "category": "tts"
+      "category": "tts",
+      "estimated_download_size_bytes": 2498385866,
+      "estimated_download_size_complete": false
     },
     {
       "id": "streaming-stt-paraformer-zh-en-int8",
@@ -420,7 +434,10 @@
       "legacy_ids": [
         "stt-streaming-paraformer-zh-en-int8"
       ],
-      "category": "streaming"
+      "category": "streaming",
+      "estimated_size_bytes": 237202916,
+      "estimated_download_size_bytes": 237202916,
+      "estimated_download_size_complete": true
     },
     {
       "id": "streaming-stt-zipformer-en-int8",
@@ -470,7 +487,10 @@
       "legacy_ids": [
         "stt-streaming-zipformer-en-int8"
       ],
-      "category": "streaming"
+      "category": "streaming",
+      "estimated_size_bytes": 73439857,
+      "estimated_download_size_bytes": 73439857,
+      "estimated_download_size_complete": true
     },
     {
       "id": "streaming-ct-transformer-zh-en",
@@ -508,7 +528,10 @@
       "legacy_ids": [
         "punct-ct-transformer-zh-en"
       ],
-      "category": "streaming"
+      "category": "streaming",
+      "estimated_size_bytes": 294373974,
+      "estimated_download_size_bytes": 294373974,
+      "estimated_download_size_complete": true
     },
     {
       "id": "streaming-mt-opus-zh-en-int8",
@@ -619,7 +642,9 @@
         "quantization": "int8"
       },
       "category": "streaming",
-      "minimum_free_bytes": 4294967296
+      "minimum_free_bytes": 4294967296,
+      "estimated_download_size_bytes": 315321023,
+      "estimated_download_size_complete": true
     },
     {
       "id": "streaming-mt-m2m100-zh-en-int8",
@@ -728,7 +753,9 @@
         "quantization": "int8"
       },
       "category": "streaming",
-      "minimum_free_bytes": 4294967296
+      "minimum_free_bytes": 4294967296,
+      "estimated_download_size_bytes": 1941935615,
+      "estimated_download_size_complete": true
     }
   ]
 }
